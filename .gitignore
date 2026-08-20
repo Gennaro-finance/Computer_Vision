@@ -36,6 +36,19 @@ cache/
 *.pth
 *.npy
 
+# Log: si versionano SOLO quelli della pipeline (run_all.py, prefissi 00-05
+# piu' PIPELINE) e i due run precedenti usati per i confronti prima/dopo,
+# che servono a rendere verificabili i numeri citati in presentazione.
+# I log dei tentativi interrotti restano sul disco ma fuori dal repo: sono
+# rumore e rendono difficile capire quali siano i log veri.
+# E' una whitelist: un log nuovo non finisce nel repo se non lo si aggiunge
+# qui esplicitamente.
+logs/*
+!logs/0*.log
+!logs/PIPELINE.log
+!logs/run_fix_120.log
+!logs/training.log
+
 # Notebook: output ripuliti prima del commit (vedi SETUP.md)
 .ipynb_checkpoints/
 
