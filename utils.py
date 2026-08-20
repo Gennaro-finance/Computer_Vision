@@ -187,12 +187,37 @@ class CollapseMonitor:
             print("Fermarsi e cambiare qualcosa.")
     """
 
-    def __init__(self, std_floor=1e-3, rank_ratio_floor=0.15, min_epoch=None):
+    def __init__(self, std_floor=1e-3, rank_ratio_floor=None, min_epoch=None):
         self.history = []
+
+        # ATTENZIONE alla std: rileva SOLO il collasso costante, cioe' tutti
+        # gli embedding identici. Misurato su casi noti a 384 dimensioni
+        # (riferimento sano 1/sqrt(384) = 0.0510):
+        #     isotropo      std 0.0510    rango 280
+        #     rango 60      std 0.0508    rango  50
+        #     rango  6      std 0.0488    rango   6   <- il 96% del sano!
+        #     rango  2      std 0.0456    rango   2
+        #     costante      std 0.0000    rango   1
+        # Fra rango 2 e rango 384 la std si muove dell'11%: chi monitora la
+        # varianza crede che vada tutto bene mentre il modello usa 6
+        # direzioni su 384. Si tiene come rete di sicurezza per il collasso
+        # totale, non come diagnostico: l'unico segnale che discrimina e' il
+        # rango.
         self.std_floor = std_floor
+
         # Soglia sul RAPPORTO rango misurato / rango di riferimento, non sul
         # valore assoluto: vedi rank_reference().
-        self.rank_ratio_floor = rank_ratio_floor
+        #
+        # Era 0.15, cioe' 42 direzioni su 280, e non e' un valore
+        # raggiungibile in questo dominio: misurato il 20 ago, un ViT appena
+        # inizializzato sta a 1.07/280 (0.4%) e il run MIGLIORE ottenuto
+        # arriva a 13/280 (4.6%). Con 0.15 la guardia ha interrotto proprio
+        # il run che stava dando il miglior k-NN della serie.
+        # 0.02 (5.6/280) sta sopra l'inizializzazione casuale e sotto un run
+        # sano: separa il collasso vero dall'apprendimento lento.
+        from globals import COLLAPSE_RANK_FLOOR
+        self.rank_ratio_floor = (COLLAPSE_RANK_FLOOR if rank_ratio_floor is None
+                                 else rank_ratio_floor)
         # Guardia di warmup: all'inizio del training gli embedding sono
         # legittimamente quasi identici - la rete non ha ancora imparato a
         # distinguere niente, quindi il rango effettivo parte basso. Senza

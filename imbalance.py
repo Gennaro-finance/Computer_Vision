@@ -62,16 +62,33 @@ def focal_loss(logits, targets, gamma=FOCAL_GAMMA, weight=None):
     return loss.mean()
 
 
-def ordinal_loss(cum_logits, targets, num_classes=NUM_CLASSES, weight=None):
+def ordinal_loss(cum_logits, targets, num_classes=NUM_CLASSES, weight=None,
+                 focal=False, gamma=FOCAL_GAMMA):
     """
     BCE sui logit cumulativi, per la testa ordinale (stile CORAL).
 
     Penalizza correttamente gli errori a due gradi di distanza: e' il motivo
     per cui la testa ordinale ha senso su una scala come il PAI.
+
+    `focal=True` applica la modulazione focale a ciascuna delle K-1 decisioni
+    binarie cumulative, pesando (1 - p_t)^gamma come nella focal loss
+    ordinaria. Serve perche' senza, `focal` e `class_weighted` con la testa
+    ordinale finivano ENTRAMBI qui con gli stessi pesi e producevano numeri
+    identici cifra per cifra: due righe dell'ablation erano lo stesso
+    esperimento presentato come due confronti distinti.
     """
     lv = torch.arange(num_classes - 1, device=targets.device)[None, :]
     t = (targets[:, None] > lv).float()
     loss = F.binary_cross_entropy_with_logits(cum_logits, t, reduction="none")
+
+    if focal:
+        # p_t e' la probabilita' assegnata alla classe CORRETTA di ciascuna
+        # decisione binaria: alta sugli esempi facili, che vengono cosi'
+        # attenuati, bassa su quelli difficili, che restano pesanti.
+        p = torch.sigmoid(cum_logits)
+        p_t = p * t + (1 - p) * (1 - t)
+        loss = loss * (1 - p_t).pow(gamma)
+
     if weight is not None:
         loss = loss * weight[targets][:, None]
     return loss.mean()
@@ -343,7 +360,11 @@ def compute_loss(logits, targets, method="none", head_type="flat",
         weight = inverse_frequency_weights(train_labels).to(logits.device)
 
     if head_type == "ordinal":
-        return ordinal_loss(logits, targets, weight=weight)
+        # `focal` deve restare distinto da `class_weighted` anche qui:
+        # entrambi passano da ordinal_loss, ma solo il primo attiva la
+        # modulazione focale. Vedi la docstring di ordinal_loss.
+        return ordinal_loss(logits, targets, weight=weight,
+                            focal=(method == "focal"))
 
     if method == "focal":
         return focal_loss(logits, targets, weight=weight)

@@ -259,6 +259,20 @@ KNN_SUBSET = 1500
 # pretendere di superarla entro l'epoca 15 non era realistico.
 COLLAPSE_MIN_EPOCH = 100
 COLLAPSE_PATIENCE = 5
+
+# Soglia sul rapporto rango_misurato / rango_di_riferimento sotto la quale la
+# rappresentazione e' considerata collassata.
+#
+# ANCORATA A MISURE, non scelta a priori. Sulle 384 dimensioni del ViT-Small,
+# con 1024 campioni il riferimento isotropo e' 279.8, e:
+#     ViT appena inizializzato    1.07/280 = 0.4%
+#     run migliore ottenuto      13   /280 = 4.6%
+# Il valore precedente era 0.15, cioe' 42 direzioni: irraggiungibile in
+# questo dominio, e infatti la guardia ha interrotto all'epoca 100 il run che
+# aveva il miglior k-NN della serie (macro-F1 0.4534 contro 0.4095 del
+# precedente). 0.02 corrisponde a ~5.6 direzioni: sta sopra il rumore
+# dell'inizializzazione e sotto un pre-training che sta funzionando.
+COLLAPSE_RANK_FLOOR = 0.02
 # Il riferimento per il k-NN probe viene MISURATO sulle etichette di
 # validazione dentro train_ssl.run_probe(), non fissato qui: dipende dallo
 # split e i numeri del brief non coincidono con il dataset reale.
