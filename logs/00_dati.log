@@ -1,0 +1,12 @@
+
+=== Split (livello immagine) ===
+  split    imgs  lesioni   PAI3  PAI4  PAI5
+  train    2746     4719   63.9%  26.0%  10.0%
+  val       588     1009   61.1%  26.6%  12.3%
+  test      590     1013   63.5%  25.5%  11.1%
+
+  Nessuna immagine condivisa tra gli split: verificato.
+  ID paziente (PN da <filename>): 3924 distinti su 3924 immagini
+  Una panoramica per paziente: split per immagine == split per paziente.
+
+Split salvati in ./runs\splits.json

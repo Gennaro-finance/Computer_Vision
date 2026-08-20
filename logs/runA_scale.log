@@ -1,0 +1,16 @@
+Tile di pre-training: 21968 da 2746 immagini (5492 item x 4 crop per decodifica)
+Step per epoca: 171  (batch = 32 img x 4 = 128 tile)
+vit_small: 22.11M parametri addestrabili
+Precisione: torch.bfloat16 (GradScaler non necessario)
+    ep000 step    0/171  loss=17.5158  32s
+    ep000 step   25/171  loss=17.0002  48s
+    ep000 step   50/171  loss=15.0087  63s
+    ep000 step   75/171  loss=12.1281  79s
+    ep000 step  100/171  loss=8.7425  94s
+    ep000 step  125/171  loss=5.3211  107s
+    ep000 step  150/171  loss=4.2082  121s
+  [monitor] ep000 loss=10.9703 std=0.01142 rango=1/280 (0% del sano)   <-- COLLASSO
+            epoca in 132s   restano 119 epoche (~4.4 h)
+    ep001 step    0/171  loss=4.4854  6s
+    ep001 step   25/171  loss=3.9357  22s
+    ep001 step   50/171  loss=3.2384  36s

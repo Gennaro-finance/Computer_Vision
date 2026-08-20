@@ -1,0 +1,14 @@
+  none             flat     macroF1=0.5069+-0.0116  F1(3/4/5)=0.790/0.312/0.419  recall5=0.3696  prec5=0.491  kappa=0.3967
+  none             ordinal  macroF1=0.5216+-0.0135  F1(3/4/5)=0.788/0.365/0.411  recall5=0.3214  prec5=0.573  kappa=0.4428
+  class_weighted   flat     macroF1=0.5302+-0.0060  F1(3/4/5)=0.731/0.393/0.467  recall5=0.5696  prec5=0.396  kappa=0.4144
+  class_weighted   ordinal  macroF1=0.5301+-0.0118  F1(3/4/5)=0.669/0.411/0.510  recall5=0.5482  prec5=0.479  kappa=0.4242
+  focal            flat     macroF1=0.5130+-0.0090  F1(3/4/5)=0.705/0.388/0.446  recall5=0.5786  prec5=0.367  kappa=0.3967
+  focal            ordinal  macroF1=0.5301+-0.0118  F1(3/4/5)=0.669/0.411/0.510  recall5=0.5482  prec5=0.479  kappa=0.4242
+  oversample       flat     macroF1=0.5164+-0.0104  F1(3/4/5)=0.727/0.379/0.443  recall5=0.5321  prec5=0.383  kappa=0.4139
+  oversample       ordinal  macroF1=0.5199+-0.0123  F1(3/4/5)=0.677/0.396/0.487  recall5=0.5036  prec5=0.475  kappa=0.4125
+  latent_smote     flat     macroF1=0.5339+-0.0038  F1(3/4/5)=0.733/0.405/0.465  recall5=0.5464  prec5=0.406  kappa=0.4213
+  latent_smote     ordinal  macroF1=0.5170+-0.0130  F1(3/4/5)=0.694/0.402/0.454  recall5=0.4429  prec5=0.472  kappa=0.4064
+  balanced_tokens  flat     macroF1=0.5279+-0.0092  F1(3/4/5)=0.736/0.379/0.469  recall5=0.5036  prec5=0.439  kappa=0.4203
+  balanced_tokens  ordinal  macroF1=0.5372+-0.0105  F1(3/4/5)=0.726/0.415/0.471  recall5=0.4286  prec5=0.523  kappa=0.4430
+
+Risultati in ./runs\results_ijepa_vit_small.json

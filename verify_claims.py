@@ -1,0 +1,172 @@
+"""
+Verifica - ricalcola dai file salvati ogni numero riportato.
+
+Serve a non dover credere sulla parola a nessuno, incluse le tabelle nelle
+slide: ogni riga qui sotto viene ricalcolata dai runs/results_*.json e dai
+dati, non trascritta.
+
+Uso:
+    python verify_claims.py
+    python verify_claims.py --criterio      # solo il confronto PAI5 vs migliore
+"""
+
+import argparse
+import json
+import os
+
+import numpy as np
+
+from globals import NUM_CLASSES, OUT_DIR, PAI_GRADES
+
+ARMS = ["ijepa", "imagenet", "random"]
+
+
+def carica(arm, variant="vit_small"):
+    p = os.path.join(OUT_DIR, f"results_{arm}_{variant}.json")
+    if not os.path.isfile(p):
+        return None
+    with open(p, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def pavimento_macro_f1(quota_maggioritaria, k=NUM_CLASSES):
+    """
+    Macro-F1 di un classificatore che predice SEMPRE la maggioritaria.
+
+    F1 della maggioritaria = 2*prec*rec/(prec+rec) con rec=1 e prec=q,
+    cioe' 2q/(1+q). Le altre K-1 classi hanno F1=0. Quindi la macro-F1
+    e' 2q/(1+q)/K. E' il pavimento onesto, NON l'accuracy q: quest'ultima
+    e' proprio la metrica che il brief vieta come criterio.
+    """
+    return (2 * quota_maggioritaria / (1 + quota_maggioritaria)) / k
+
+
+def riga(r):
+    return (r["method"], r["head"], r["macro_f1_mean"], r["macro_f1_std"],
+            r.get("f1_pai3_mean"), r.get("f1_pai4_mean"), r.get("f1_pai5_mean"),
+            r["recall_pai5_mean"], r.get("precision_pai5_mean"),
+            r["quadratic_kappa_mean"])
+
+
+def tabella(variant="vit_small"):
+    print("=" * 108)
+    print("TABELLA COMPLETA - ricalcolata da runs/results_*.json")
+    print("=" * 108)
+    print(f"{'braccio':9s} {'metodo':16s} {'testa':8s} {'macroF1':>16s} "
+          f"{'F1 PAI3':>8s} {'F1 PAI4':>8s} {'F1 PAI5':>8s} {'rec5':>7s} {'prec5':>7s} {'kappa':>7s}")
+    tutte = []
+    for arm in ARMS:
+        rows = carica(arm, variant)
+        if not rows:
+            print(f"{arm:9s} (nessun risultato)")
+            continue
+        for r in rows:
+            m, h, f1, sd, a, b, c, r5, p5, kp = riga(r)
+            tutte.append((arm, r))
+            def f(x):
+                return "   n/d" if x is None else f"{x:8.3f}"
+            print(f"{arm:9s} {m:16s} {h:8s} {f1:8.4f}+-{sd:.4f} "
+                  f"{f(a)} {f(b)} {f(c)} {r5:7.4f} "
+                  f"{'  n/d' if p5 is None else f'{p5:7.3f}'} {kp:7.4f}")
+    return tutte
+
+
+def criterio(tutte):
+    """
+    Criterio operativo dichiarato: PAI 3 e PAI 4 non peggiorano, PAI 5 migliora,
+    rispetto alla configurazione migliore attuale.
+    """
+    if not tutte:
+        print("\nNessun risultato da confrontare.")
+        return
+
+    # Due confronti, e sono domande diverse:
+    #
+    #  (a) contro `none` dello stesso braccio: "la gestione dello
+    #      sbilanciamento migliora PAI 5?" - e' la domanda scientifica, ed e'
+    #      quella che l'obiettivo 4 chiede di ablare.
+    #  (b) contro la riga migliore in assoluto: "esiste di meglio?" - contro
+    #      il massimo non puo' esistere nulla per costruzione, quindi da solo
+    #      questo confronto dice sempre NESSUNO e non informa.
+    for arm in ARMS:
+        base = [r for a, r in tutte
+                if a == arm and r["method"] == "none" and r["head"] == "flat"]
+        if not base or base[0].get("f1_pai3_mean") is None:
+            continue
+        _criterio_contro(arm, base[0],
+                         [(a, r) for a, r in tutte if a == arm],
+                         f"[{arm}] contro CE semplice (none/flat)")
+
+    arm_b, best = max(tutte, key=lambda t: t[1]["macro_f1_mean"])
+    _criterio_contro(arm_b, best, tutte, "contro la riga migliore in assoluto")
+
+
+def _criterio_contro(arm_b, best, candidati, titolo):
+    print("\n" + "=" * 108)
+    print(f"CRITERIO: stessa resa su PAI 3 e 4, migliore su PAI 5 - {titolo}")
+    print("=" * 108)
+    print(f"Riferimento: {arm_b} / {best['method']} / {best['head']}")
+    print(f"  macroF1={best['macro_f1_mean']:.4f}  F1 PAI3={best.get('f1_pai3_mean')}  "
+          f"F1 PAI4={best.get('f1_pai4_mean')}  F1 PAI5={best.get('f1_pai5_mean')}  "
+          f"recall PAI5={best['recall_pai5_mean']:.4f}")
+
+    if best.get("f1_pai3_mean") is None:
+        print("\n  ATTENZIONE: il riferimento e' stato prodotto prima che la griglia")
+        print("  salvasse le F1 per classe. Rilanciate quel braccio per confrontare")
+        print("  su PAI 3 e 4: senza quei numeri il criterio NON e' verificabile.")
+        return
+
+    print("\nCandidati che soddisfano il criterio (tolleranza 1 dev.std sul riferimento):")
+    tol3 = best["f1_pai3_std"]
+    tol4 = best["f1_pai4_std"]
+    trovati = 0
+    for arm, r in candidati:
+        if r.get("f1_pai5_mean") is None:
+            continue
+        if r is best:
+            continue
+        ok3 = r["f1_pai3_mean"] >= best["f1_pai3_mean"] - tol3
+        ok4 = r["f1_pai4_mean"] >= best["f1_pai4_mean"] - tol4
+        su5 = r["recall_pai5_mean"] > best["recall_pai5_mean"]
+        if ok3 and ok4 and su5:
+            trovati += 1
+            d = r["recall_pai5_mean"] - best["recall_pai5_mean"]
+            # Differenza significativa? Con n seed per parte, errore standard
+            # della differenza ~ sqrt(s1^2/n + s2^2/n).
+            n = r["n_seeds"]
+            se = float(np.sqrt(r["recall_pai5_std"] ** 2 / n
+                               + best["recall_pai5_std"] ** 2 / n))
+            z = d / se if se > 0 else float("inf")
+            print(f"  {arm}/{r['method']}/{r['head']}: recall PAI5 "
+                  f"{r['recall_pai5_mean']:.4f} (+{d:.4f}, ~{z:.1f} err.std)  "
+                  f"F1 3/4 = {r['f1_pai3_mean']:.3f}/{r['f1_pai4_mean']:.3f}")
+    if not trovati:
+        print("  NESSUNO. Nessuna configurazione alza PAI 5 senza perdere su PAI 3 o 4.")
+        print("  Non arrotondate questo in 'risultati promettenti': e' un no.")
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--variant", default="vit_small")
+    ap.add_argument("--criterio", action="store_true")
+    a = ap.parse_args()
+
+    tutte = tabella(a.variant)
+
+    # Pavimenti, ricalcolati e non citati a memoria.
+    from data import load_splits, parse_annotations
+    recs = parse_annotations(verbose=False)
+    sp = load_splits()
+    by = {r["image_id"]: r for r in recs}
+    y = [l["grade"] for i in sp["test"] for l in by[i]["lesions"]]
+    q = max(y.count(g) for g in PAI_GRADES) / len(y)
+    print("\n" + "=" * 108)
+    print("PAVIMENTI (ricalcolati sul test split)")
+    print("=" * 108)
+    print(f"  lesioni nel test        : {len(y)}")
+    print(f"  quota maggioritaria (q) : {q:.4f}   <- e' l'ACCURACY di un modello costante")
+    print(f"  macro-F1 di quel modello: {pavimento_macro_f1(q):.4f}   <- 2q/(1+q)/{NUM_CLASSES}")
+    print("  Confrontare la macro-F1 con q invece che con questo valore e' l'errore")
+    print("  che faceva dichiarare 'al livello del caso' un encoder che imparava.")
+
+    criterio(tutte)

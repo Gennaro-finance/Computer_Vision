@@ -1,0 +1,6 @@
+  train :  4719 lesioni  token=(4719, 196, 384)  PAI3/4/5 = [3017, 1229, 473]
+  val   :  1009 lesioni  token=(1009, 196, 384)  PAI3/4/5 = [617, 268, 124]
+  test  :  1013 lesioni  token=(1013, 196, 384)  PAI3/4/5 = [643, 258, 112]
+
+Latenti salvati: ./runs\cache\latents_ijepa_vit_small.pt (1016 MB)
+Da qui in poi ogni esperimento sullo sbilanciamento gira in secondi.

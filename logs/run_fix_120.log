@@ -1,0 +1,311 @@
+Tile di pre-training: 10984 da 2746 immagini
+Step per epoca: 85
+vit_small: 22.11M parametri addestrabili
+Precisione: torch.bfloat16 (GradScaler non necessario)
+    ep000 step    0/85  loss=17.1414  17s
+    ep000 step   25/85  loss=16.3964  26s
+    ep000 step   50/85  loss=13.4168  35s
+    ep000 step   75/85  loss=7.4272  45s
+  [monitor] ep000 loss=13.5098 std=0.01166 rango=1/280 (0% del sano)   <-- COLLASSO
+            epoca in 48s   restano 119 epoche (~1.6 h)
+    ep001 step    0/85  loss=6.3286  4s
+    ep001 step   25/85  loss=4.6999  14s
+    ep001 step   50/85  loss=3.7099  25s
+    ep001 step   75/85  loss=3.5085  36s
+  [monitor] ep001 loss=4.4456 std=0.01217 rango=1/280 (0% del sano)   <-- COLLASSO
+            epoca in 39s   restano 118 epoche (~1.3 h)
+    ep002 step    0/85  loss=3.3170  4s
+    ep002 step   25/85  loss=2.7780  16s
+    ep002 step   50/85  loss=2.4164  30s
+    ep002 step   75/85  loss=1.6654  47s
+  [monitor] ep002 loss=2.6407 std=0.01471 rango=1/280 (0% del sano)   <-- COLLASSO
+            epoca in 54s   restano 117 epoche (~1.8 h)
+    ep003 step    0/85  loss=1.9059  5s
+    ep003 step   25/85  loss=1.6936  17s
+    ep003 step   50/85  loss=1.5452  31s
+    ep003 step   75/85  loss=1.2978  45s
+  [monitor] ep003 loss=1.7153 std=0.01770 rango=1/280 (0% del sano)   <-- COLLASSO
+            epoca in 49s   restano 116 epoche (~1.6 h)
+    ep004 step    0/85  loss=1.4649  5s
+    ep004 step   25/85  loss=1.3209  19s
+    ep004 step   50/85  loss=1.8174  32s
+    ep004 step   75/85  loss=0.9882  46s
+  [monitor] ep004 loss=1.3340 std=0.02045 rango=1/280 (1% del sano)   <-- COLLASSO
+            epoca in 49s   restano 115 epoche (~1.6 h)
+    ep005 step    0/85  loss=1.2349  5s
+    ep005 step   25/85  loss=1.3940  18s
+    ep005 step   50/85  loss=1.4585  31s
+    ep005 step   75/85  loss=1.2137  48s
+  [monitor] ep005 loss=1.2109 std=0.02413 rango=2/280 (1% del sano)   <-- COLLASSO
+            epoca in 56s   restano 114 epoche (~1.8 h)
+    ep006 step    0/85  loss=0.9600  10s
+    ep006 step   25/85  loss=1.4010  30s
+    ep006 step   50/85  loss=1.1867  44s
+    ep006 step   75/85  loss=1.0872  60s
+  [monitor] ep006 loss=1.1773 std=0.02857 rango=2/280 (1% del sano)   <-- COLLASSO
+            epoca in 66s   restano 113 epoche (~2.1 h)
+    ep007 step    0/85  loss=1.1650  5s
+    ep007 step   25/85  loss=1.2100  19s
+    ep007 step   50/85  loss=1.4507  35s
+    ep007 step   75/85  loss=1.4222  52s
+  [monitor] ep007 loss=1.1278 std=0.03331 rango=3/280 (1% del sano)   <-- COLLASSO
+            epoca in 56s   restano 112 epoche (~1.7 h)
+    ep008 step    0/85  loss=0.9067  5s
+    ep008 step   25/85  loss=1.3062  20s
+    ep008 step   50/85  loss=1.5041  49s
+    ep008 step   75/85  loss=0.8827  82s
+  [monitor] ep008 loss=1.1869 std=0.03860 rango=3/280 (1% del sano)   <-- COLLASSO
+            epoca in 91s   restano 111 epoche (~2.8 h)
+    ep009 step    0/85  loss=1.1048  12s
+    ep009 step   25/85  loss=0.8626  46s
+    ep009 step   50/85  loss=1.0559  79s
+    ep009 step   75/85  loss=1.2105  113s
+  [k-NN probe] acc=0.6046 macroF1=0.3571 (predire sempre la maggioritaria darebbe 0.6115) <-- AL LIVELLO DEL CASO
+  [monitor] ep009 loss=1.0355 std=0.04191 rango=4/280 (1% del sano)   <-- COLLASSO
+            epoca in 286s   restano 110 epoche (~8.7 h)
+    ep010 step    0/85  loss=0.8882  12s
+    ep010 step   25/85  loss=0.9509  46s
+    ep010 step   50/85  loss=1.1771  82s
+    ep010 step   75/85  loss=0.7266  116s
+  [monitor] ep010 loss=1.0043 std=0.04364 rango=4/280 (2% del sano)   <-- COLLASSO
+            epoca in 127s   restano 109 epoche (~3.8 h)
+    ep011 step    0/85  loss=0.9800  12s
+    ep011 step   25/85  loss=0.9505  45s
+    ep011 step   50/85  loss=0.8874  80s
+    ep011 step   75/85  loss=0.8146  114s
+  [monitor] ep011 loss=0.9428 std=0.04515 rango=5/280 (2% del sano)   <-- COLLASSO
+            epoca in 123s   restano 108 epoche (~3.7 h)
+    ep012 step    0/85  loss=1.0092  11s
+    ep012 step   25/85  loss=0.8966  44s
+    ep012 step   50/85  loss=0.7664  80s
+    ep012 step   75/85  loss=0.8021  112s
+  [monitor] ep012 loss=0.9102 std=0.04497 rango=5/280 (2% del sano)   <-- COLLASSO
+            epoca in 121s   restano 107 epoche (~3.6 h)
+    ep013 step    0/85  loss=0.9255  13s
+    ep013 step   25/85  loss=1.0293  46s
+    ep013 step   50/85  loss=1.2958  80s
+    ep013 step   75/85  loss=1.2019  113s
+  [monitor] ep013 loss=0.9472 std=0.04606 rango=5/280 (2% del sano)   <-- COLLASSO
+            epoca in 123s   restano 106 epoche (~3.6 h)
+    ep014 step    0/85  loss=0.6265  12s
+    ep014 step   25/85  loss=0.9845  45s
+    ep014 step   50/85  loss=0.7761  79s
+    ep014 step   75/85  loss=0.9130  114s
+  [monitor] ep014 loss=0.8888 std=0.04635 rango=5/280 (2% del sano)   <-- COLLASSO
+            epoca in 123s   restano 105 epoche (~3.6 h)
+    ep015 step    0/85  loss=1.0197  13s
+    ep015 step   25/85  loss=0.7253  45s
+    ep015 step   50/85  loss=0.9109  81s
+    ep015 step   75/85  loss=0.8194  116s
+  [monitor] ep015 loss=0.9225 std=0.04608 rango=5/280 (2% del sano)   <-- COLLASSO
+            epoca in 126s   restano 104 epoche (~3.6 h)
+    ep016 step    0/85  loss=1.1233  12s
+    ep016 step   25/85  loss=1.0453  44s
+    ep016 step   50/85  loss=0.9178  75s
+    ep016 step   75/85  loss=0.6925  108s
+  [monitor] ep016 loss=0.8608 std=0.04694 rango=5/280 (2% del sano)   <-- COLLASSO
+            epoca in 117s   restano 103 epoche (~3.3 h)
+    ep017 step    0/85  loss=0.9989  12s
+    ep017 step   25/85  loss=0.7439  42s
+    ep017 step   50/85  loss=0.8983  72s
+    ep017 step   75/85  loss=0.7654  106s
+  [monitor] ep017 loss=0.8635 std=0.04698 rango=5/280 (2% del sano)   <-- COLLASSO
+            epoca in 115s   restano 102 epoche (~3.3 h)
+    ep018 step    0/85  loss=0.5739  12s
+    ep018 step   25/85  loss=0.7952  45s
+    ep018 step   50/85  loss=0.9627  77s
+    ep018 step   75/85  loss=0.8037  109s
+  [monitor] ep018 loss=0.8818 std=0.04730 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 118s   restano 101 epoche (~3.3 h)
+    ep019 step    0/85  loss=0.8339  11s
+    ep019 step   25/85  loss=1.0720  42s
+    ep019 step   50/85  loss=0.6022  74s
+    ep019 step   75/85  loss=0.8328  106s
+  [k-NN probe] acc=0.6204 macroF1=0.4095 (predire sempre la maggioritaria darebbe 0.6115) <-- AL LIVELLO DEL CASO
+  [monitor] ep019 loss=0.8477 std=0.04723 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 18463s   restano 100 epoche (~512.9 h)
+    ep020 step    0/85  loss=0.5837  5s
+    ep020 step   25/85  loss=0.8461  14s
+    ep020 step   50/85  loss=0.7475  23s
+    ep020 step   75/85  loss=0.9168  33s
+  [monitor] ep020 loss=0.8239 std=0.04783 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 35s   restano 99 epoche (~1.0 h)
+    ep021 step    0/85  loss=0.7218  4s
+    ep021 step   25/85  loss=0.8062  13s
+    ep021 step   50/85  loss=0.9142  23s
+    ep021 step   75/85  loss=0.8956  33s
+  [monitor] ep021 loss=0.8355 std=0.04767 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 36s   restano 98 epoche (~1.0 h)
+    ep022 step    0/85  loss=0.7296  4s
+    ep022 step   25/85  loss=0.7507  13s
+    ep022 step   50/85  loss=0.9216  23s
+    ep022 step   75/85  loss=0.6460  33s
+  [monitor] ep022 loss=0.8184 std=0.04797 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 36s   restano 97 epoche (~1.0 h)
+    ep023 step    0/85  loss=0.9669  4s
+    ep023 step   25/85  loss=1.0004  14s
+    ep023 step   50/85  loss=0.8042  24s
+    ep023 step   75/85  loss=0.6680  34s
+  [monitor] ep023 loss=0.8452 std=0.04797 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 37s   restano 96 epoche (~1.0 h)
+    ep024 step    0/85  loss=0.6893  4s
+    ep024 step   25/85  loss=0.5910  14s
+    ep024 step   50/85  loss=0.7945  24s
+    ep024 step   75/85  loss=0.8642  35s
+  [monitor] ep024 loss=0.7666 std=0.04829 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 38s   restano 95 epoche (~1.0 h)
+    ep025 step    0/85  loss=0.7585  4s
+    ep025 step   25/85  loss=0.6822  14s
+    ep025 step   50/85  loss=0.8613  25s
+    ep025 step   75/85  loss=0.7950  35s
+  [monitor] ep025 loss=0.8009 std=0.04829 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 39s   restano 94 epoche (~1.0 h)
+    ep026 step    0/85  loss=1.1834  4s
+    ep026 step   25/85  loss=0.7986  15s
+    ep026 step   50/85  loss=0.9232  25s
+    ep026 step   75/85  loss=0.7614  36s
+  [monitor] ep026 loss=0.7898 std=0.04831 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 39s   restano 93 epoche (~1.0 h)
+    ep027 step    0/85  loss=0.6580  4s
+    ep027 step   25/85  loss=0.9011  15s
+    ep027 step   50/85  loss=0.7765  25s
+    ep027 step   75/85  loss=0.8272  36s
+  [monitor] ep027 loss=0.8461 std=0.04856 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 40s   restano 92 epoche (~1.0 h)
+    ep028 step    0/85  loss=1.0480  4s
+    ep028 step   25/85  loss=0.7065  15s
+    ep028 step   50/85  loss=0.6921  26s
+    ep028 step   75/85  loss=0.9703  38s
+  [monitor] ep028 loss=0.8018 std=0.04859 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 41s   restano 91 epoche (~1.0 h)
+    ep029 step    0/85  loss=0.7943  4s
+    ep029 step   25/85  loss=0.6109  15s
+    ep029 step   50/85  loss=0.8192  26s
+    ep029 step   75/85  loss=0.7353  38s
+  [k-NN probe] acc=0.6135 macroF1=0.4060 (predire sempre la maggioritaria darebbe 0.6115) <-- AL LIVELLO DEL CASO
+  [monitor] ep029 loss=0.7629 std=0.04874 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 121s   restano 90 epoche (~3.0 h)
+    ep030 step    0/85  loss=0.8835  4s
+    ep030 step   25/85  loss=0.7583  15s
+    ep030 step   50/85  loss=0.6209  27s
+    ep030 step   75/85  loss=1.0398  39s
+  [monitor] ep030 loss=0.8073 std=0.04885 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 42s   restano 89 epoche (~1.0 h)
+    ep031 step    0/85  loss=0.9635  4s
+    ep031 step   25/85  loss=0.7458  16s
+    ep031 step   50/85  loss=0.6055  28s
+    ep031 step   75/85  loss=0.8908  40s
+  [monitor] ep031 loss=0.7641 std=0.04877 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 43s   restano 88 epoche (~1.1 h)
+    ep032 step    0/85  loss=0.7081  4s
+    ep032 step   25/85  loss=0.6118  17s
+    ep032 step   50/85  loss=0.8044  29s
+    ep032 step   75/85  loss=0.7466  41s
+  [monitor] ep032 loss=0.7718 std=0.04881 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 87 epoche (~1.1 h)
+    ep033 step    0/85  loss=0.8315  4s
+    ep033 step   25/85  loss=0.7123  16s
+    ep033 step   50/85  loss=0.8001  29s
+    ep033 step   75/85  loss=0.9452  41s
+  [monitor] ep033 loss=0.7817 std=0.04885 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 86 epoche (~1.1 h)
+    ep034 step    0/85  loss=0.6950  5s
+    ep034 step   25/85  loss=0.7544  16s
+    ep034 step   50/85  loss=0.7505  29s
+    ep034 step   75/85  loss=0.7499  41s
+  [monitor] ep034 loss=0.7630 std=0.04892 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 85 epoche (~1.0 h)
+    ep035 step    0/85  loss=0.5924  5s
+    ep035 step   25/85  loss=0.8034  16s
+    ep035 step   50/85  loss=0.6274  28s
+    ep035 step   75/85  loss=0.7997  41s
+  [monitor] ep035 loss=0.7402 std=0.04894 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 84 epoche (~1.0 h)
+    ep036 step    0/85  loss=0.6436  4s
+    ep036 step   25/85  loss=0.7436  16s
+    ep036 step   50/85  loss=0.7351  29s
+    ep036 step   75/85  loss=0.7970  41s
+  [monitor] ep036 loss=0.7374 std=0.04891 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 83 epoche (~1.0 h)
+    ep037 step    0/85  loss=0.7061  4s
+    ep037 step   25/85  loss=0.8525  16s
+    ep037 step   50/85  loss=0.8843  28s
+    ep037 step   75/85  loss=0.7139  41s
+  [monitor] ep037 loss=0.7088 std=0.04900 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 82 epoche (~1.0 h)
+    ep038 step    0/85  loss=0.8776  5s
+    ep038 step   25/85  loss=0.5214  17s
+    ep038 step   50/85  loss=0.5928  29s
+    ep038 step   75/85  loss=0.6405  42s
+  [monitor] ep038 loss=0.7182 std=0.04889 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 46s   restano 81 epoche (~1.0 h)
+    ep039 step    0/85  loss=0.6459  5s
+    ep039 step   25/85  loss=0.8186  17s
+    ep039 step   50/85  loss=0.5311  30s
+    ep039 step   75/85  loss=0.5235  42s
+  [k-NN probe] acc=0.6085 macroF1=0.3771 (predire sempre la maggioritaria darebbe 0.6115) <-- AL LIVELLO DEL CASO
+  [monitor] ep039 loss=0.6817 std=0.04898 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 135s   restano 80 epoche (~3.0 h)
+    ep040 step    0/85  loss=0.5779  4s
+    ep040 step   25/85  loss=0.7945  16s
+    ep040 step   50/85  loss=0.7897  29s
+    ep040 step   75/85  loss=0.6576  41s
+  [monitor] ep040 loss=0.7029 std=0.04900 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 45s   restano 79 epoche (~1.0 h)
+    ep041 step    0/85  loss=0.7519  4s
+    ep041 step   25/85  loss=0.7059  16s
+    ep041 step   50/85  loss=0.6122  28s
+    ep041 step   75/85  loss=0.6229  40s
+  [monitor] ep041 loss=0.6916 std=0.04894 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 78 epoche (~0.9 h)
+    ep042 step    0/85  loss=0.6396  4s
+    ep042 step   25/85  loss=0.7820  17s
+    ep042 step   50/85  loss=0.7286  29s
+    ep042 step   75/85  loss=0.9327  41s
+  [monitor] ep042 loss=0.7624 std=0.04886 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 77 epoche (~0.9 h)
+    ep043 step    0/85  loss=0.6567  5s
+    ep043 step   25/85  loss=0.8218  16s
+    ep043 step   50/85  loss=0.7520  29s
+    ep043 step   75/85  loss=0.7301  41s
+  [monitor] ep043 loss=0.7239 std=0.04902 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 76 epoche (~0.9 h)
+    ep044 step    0/85  loss=0.7093  4s
+    ep044 step   25/85  loss=0.6369  16s
+    ep044 step   50/85  loss=0.5395  29s
+    ep044 step   75/85  loss=0.8310  41s
+  [monitor] ep044 loss=0.7084 std=0.04905 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 75 epoche (~0.9 h)
+    ep045 step    0/85  loss=0.6607  4s
+    ep045 step   25/85  loss=0.6433  16s
+    ep045 step   50/85  loss=0.8256  29s
+    ep045 step   75/85  loss=0.6983  41s
+  [monitor] ep045 loss=0.7139 std=0.04904 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 74 epoche (~0.9 h)
+    ep046 step    0/85  loss=0.7839  4s
+    ep046 step   25/85  loss=0.6237  16s
+    ep046 step   50/85  loss=0.6867  29s
+    ep046 step   75/85  loss=0.9210  41s
+  [monitor] ep046 loss=0.7050 std=0.04902 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 73 epoche (~0.9 h)
+    ep047 step    0/85  loss=0.6325  4s
+    ep047 step   25/85  loss=0.7249  16s
+    ep047 step   50/85  loss=0.6131  28s
+    ep047 step   75/85  loss=0.6636  41s
+  [monitor] ep047 loss=0.7132 std=0.04897 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 44s   restano 72 epoche (~0.9 h)
+    ep048 step    0/85  loss=0.6804  4s
+    ep048 step   25/85  loss=0.7064  17s
+    ep048 step   50/85  loss=0.7272  29s
+    ep048 step   75/85  loss=0.6603  42s
+  [monitor] ep048 loss=0.7167 std=0.04906 rango=7/280 (2% del sano)   <-- COLLASSO
+            epoca in 45s   restano 71 epoche (~0.9 h)
+    ep049 step    0/85  loss=0.5402  4s
+    ep049 step   25/85  loss=0.7295  16s
+    ep049 step   50/85  loss=0.4928  29s
+    ep049 step   75/85  loss=0.5334  41s
+  [k-NN probe] acc=0.6194 macroF1=0.3977 (predire sempre la maggioritaria darebbe 0.6115) <-- AL LIVELLO DEL CASO
+  [monitor] ep049 loss=0.6827 std=0.04901 rango=7/280 (2% del sano)   <-- COLLASSO
+            epoca in 134s   restano 70 epoche (~2.6 h)
+    ep050 step    0/85  loss=0.6897  4s
+    ep050 step   25/85  loss=0.6161  16s
