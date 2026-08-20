@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# PyCharm — la configurazione locale e' personale e si ignora.
+# Le run configuration condivise stanno in ide/pycharm/runConfigurations/
+# (versionate) e bootstrap.ps1 le copia dentro .idea al primo avvio: cosi'
+# tutti e tre avete gli stessi pulsanti e nessuno sbaglia un flag.
+.idea/
+
+# Dati — MAI committare il dataset: e' grande e ha licenza propria.
+# Nel README mettete il link Mendeley, come chiede il brief
+# ("Dataset (or the link to it)").
+data/
+*.jpg
+*.jpeg
+*.png
+!runs/figures/*.png
+
+# Output di training: si escludono i BINARI pesanti (4.2 GB fra latenti
+# cachati e checkpoint) ma si TENGONO i risultati, che sono il deliverable
+# dell'obiettivo 4 e pesano poche decine di KB.
+#
+# Nota: non si puo' escludere `runs/` in blocco e poi ri-includere con `!`:
+# git non scende dentro una cartella esclusa, quindi le eccezioni non
+# verrebbero mai valutate. Si escludono le sottocartelle pesanti una per una.
+runs/cache/
+runs/checkpoints/
+checkpoints/
+cache/
+*.pt
+*.pth
+*.npy
+
+# Notebook: output ripuliti prima del commit (vedi SETUP.md)
+.ipynb_checkpoints/
+
+# Sistema
+.DS_Store
+Thumbs.db

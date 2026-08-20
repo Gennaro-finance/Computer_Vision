@@ -1,0 +1,18 @@
+conteggi train PAI3/4/5: [3017, 1229, 473]
+  alpha=0.00 -> viste per classe [1, 1, 1]
+  alpha=0.25 -> viste per classe [1, 2, 2]
+  alpha=0.50 -> viste per classe [1, 2, 3]
+  alpha=0.75 -> viste per classe [1, 2, 5]
+  alpha=1.00 -> viste per classe [1, 3, 7]
+  alpha=0.00 flat     macroF1=0.5069+-0.0116  F1(3/4/5)=0.790/0.312/0.419  recall5=0.3696+-0.0623  prec5=0.491
+  alpha=0.00 ordinal  macroF1=0.5216+-0.0135  F1(3/4/5)=0.788/0.365/0.411  recall5=0.3214+-0.0253  prec5=0.573
+  alpha=0.25 flat     macroF1=0.5348+-0.0087  F1(3/4/5)=0.737/0.414/0.453  recall5=0.4107+-0.0502  prec5=0.512
+  alpha=0.25 ordinal  macroF1=0.5280+-0.0054  F1(3/4/5)=0.732/0.412/0.440  recall5=0.3607+-0.0436  prec5=0.573
+  alpha=0.50 flat     macroF1=0.5279+-0.0092  F1(3/4/5)=0.736/0.379/0.469  recall5=0.5036+-0.0322  prec5=0.439
+  alpha=0.50 ordinal  macroF1=0.5372+-0.0105  F1(3/4/5)=0.726/0.415/0.471  recall5=0.4286+-0.0343  prec5=0.523
+  alpha=0.75 flat     macroF1=0.5328+-0.0123  F1(3/4/5)=0.746/0.376/0.477  recall5=0.5964+-0.0409  prec5=0.398
+  alpha=0.75 ordinal  macroF1=0.5221+-0.0097  F1(3/4/5)=0.701/0.394/0.471  recall5=0.4839+-0.0306  prec5=0.460
+  alpha=1.00 flat     macroF1=0.5328+-0.0067  F1(3/4/5)=0.696/0.427/0.475  recall5=0.5429+-0.0222  prec5=0.423
+  alpha=1.00 ordinal  macroF1=0.5150+-0.0127  F1(3/4/5)=0.643/0.419/0.482  recall5=0.5250+-0.0554  prec5=0.451
+
+Risultati in ./runs\sweep_alpha_ijepa_vit_small.json
