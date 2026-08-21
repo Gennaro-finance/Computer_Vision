@@ -39,8 +39,24 @@ class AverageMeter:
 # Il pre-training SSL supera facilmente le 12 h di una sessione Kaggle
 # (300 epoche ~ 6 h, 600 ~ 12.5 h). Il resume non e' opzionale.
 def save_checkpoint(state: dict, name: str) -> str:
+    """
+    Salvataggio ATOMICO: prima su file temporaneo, poi rinomina.
+
+    Perche' non si scrive diretti sul file finale: il checkpoint pesa ~350 MB
+    e la scrittura dura secondi. Se la macchina si spegne in quella finestra,
+    il file resta troncato e torch.load fallisce con
+    "PytorchStreamReader failed reading zip archive" - e si perde ANCHE il
+    checkpoint dell'epoca precedente, che era gia' stato sovrascritto.
+    Successo il 21 ago: un arresto improvviso ha distrutto un run a 22
+    epoche che avrebbe potuto riprendere dall'epoca 21.
+
+    Con la rinomina (atomica sullo stesso filesystem) il file finale o e'
+    quello vecchio integro o quello nuovo completo, mai una via di mezzo.
+    """
     path = os.path.join(CKPT_DIR, f"{name}.pt")
-    torch.save(state, path)
+    tmp = path + ".tmp"
+    torch.save(state, tmp)
+    os.replace(tmp, path)      # atomica: sostituisce anche se path esiste
     return path
 
 
