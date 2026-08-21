@@ -1,0 +1,918 @@
+[config] tag=hardctx context=(0.7, 0.9) target=(0.15, 0.2) sigreg_lambda=1.0 predictor_dim=96 workers=16
+Tile di pre-training: 21968 da 2746 immagini (5492 item x 4 crop per decodifica)
+Step per epoca: 171  (batch = 32 img x 4 = 128 tile)
+vit_small: 22.11M parametri addestrabili
+Precisione: torch.bfloat16 (GradScaler non necessario)
+    ep000 step    0/171  loss=17.6930  30s
+    ep000 step   25/171  loss=17.4583  35s
+    ep000 step   50/171  loss=14.8799  40s
+    ep000 step   75/171  loss=13.2275  46s
+    ep000 step  100/171  loss=9.5640  52s
+    ep000 step  125/171  loss=6.2542  58s
+    ep000 step  150/171  loss=5.0958  63s
+  [monitor] ep000 loss=11.2152 std=0.01142 rango=1/280 (0% del sano)   <-- COLLASSO
+            epoca in 67s   restano 99 epoche (~1.8 h)
+    ep001 step    0/171  loss=5.2449  3s
+    ep001 step   25/171  loss=3.9591  8s
+    ep001 step   50/171  loss=3.8029  13s
+    ep001 step   75/171  loss=3.7300  19s
+    ep001 step  100/171  loss=2.8577  24s
+    ep001 step  125/171  loss=2.3344  29s
+    ep001 step  150/171  loss=2.3565  34s
+  [monitor] ep001 loss=3.3246 std=0.01300 rango=1/280 (0% del sano)   <-- COLLASSO
+            epoca in 38s   restano 98 epoche (~1.0 h)
+    ep002 step    0/171  loss=1.8963  3s
+    ep002 step   25/171  loss=1.9150  9s
+    ep002 step   50/171  loss=1.9270  14s
+    ep002 step   75/171  loss=1.7878  20s
+    ep002 step  100/171  loss=1.5545  25s
+    ep002 step  125/171  loss=1.4245  31s
+    ep002 step  150/171  loss=1.4978  36s
+  [monitor] ep002 loss=1.7597 std=0.01834 rango=1/280 (0% del sano)   <-- COLLASSO
+            epoca in 40s   restano 97 epoche (~1.1 h)
+    ep003 step    0/171  loss=1.3183  4s
+    ep003 step   25/171  loss=1.5070  9s
+    ep003 step   50/171  loss=1.2550  15s
+    ep003 step   75/171  loss=1.3063  21s
+    ep003 step  100/171  loss=1.3838  26s
+    ep003 step  125/171  loss=1.2432  32s
+    ep003 step  150/171  loss=1.1488  38s
+  [monitor] ep003 loss=1.3015 std=0.02498 rango=2/280 (1% del sano)   <-- COLLASSO
+            epoca in 42s   restano 96 epoche (~1.1 h)
+    ep004 step    0/171  loss=0.9683  3s
+    ep004 step   25/171  loss=1.0796  9s
+    ep004 step   50/171  loss=1.0133  15s
+    ep004 step   75/171  loss=0.9127  20s
+    ep004 step  100/171  loss=0.9500  26s
+    ep004 step  125/171  loss=1.0812  32s
+    ep004 step  150/171  loss=1.0203  38s
+  [monitor] ep004 loss=1.1717 std=0.03255 rango=2/280 (1% del sano)   <-- COLLASSO
+            epoca in 42s   restano 95 epoche (~1.1 h)
+    ep005 step    0/171  loss=0.9230  3s
+    ep005 step   25/171  loss=1.0945  10s
+    ep005 step   50/171  loss=1.0883  15s
+    ep005 step   75/171  loss=0.9090  21s
+    ep005 step  100/171  loss=0.7684  28s
+    ep005 step  125/171  loss=1.2264  34s
+    ep005 step  150/171  loss=0.8143  39s
+  [monitor] ep005 loss=1.0943 std=0.03949 rango=4/280 (1% del sano)   <-- COLLASSO
+            epoca in 44s   restano 94 epoche (~1.1 h)
+    ep006 step    0/171  loss=0.9752  3s
+    ep006 step   25/171  loss=0.7704  9s
+    ep006 step   50/171  loss=1.1033  15s
+    ep006 step   75/171  loss=1.2493  21s
+    ep006 step  100/171  loss=1.2030  27s
+    ep006 step  125/171  loss=1.0503  32s
+    ep006 step  150/171  loss=0.7940  38s
+  [monitor] ep006 loss=1.0313 std=0.04411 rango=5/280 (2% del sano)   <-- COLLASSO
+            epoca in 43s   restano 93 epoche (~1.1 h)
+    ep007 step    0/171  loss=0.7730  3s
+    ep007 step   25/171  loss=0.7901  9s
+    ep007 step   50/171  loss=0.7255  15s
+    ep007 step   75/171  loss=0.9753  21s
+    ep007 step  100/171  loss=1.1163  27s
+    ep007 step  125/171  loss=0.9500  33s
+    ep007 step  150/171  loss=0.7760  39s
+  [monitor] ep007 loss=0.9795 std=0.04559 rango=5/280 (2% del sano)   <-- COLLASSO
+            epoca in 43s   restano 92 epoche (~1.1 h)
+    ep008 step    0/171  loss=1.3072  3s
+    ep008 step   25/171  loss=0.9638  9s
+    ep008 step   50/171  loss=0.9813  15s
+    ep008 step   75/171  loss=1.0658  21s
+    ep008 step  100/171  loss=1.1394  27s
+    ep008 step  125/171  loss=0.9034  33s
+    ep008 step  150/171  loss=1.9751  39s
+  [monitor] ep008 loss=1.0215 std=0.04648 rango=5/280 (2% del sano)   <-- COLLASSO
+            epoca in 43s   restano 91 epoche (~1.1 h)
+    ep009 step    0/171  loss=1.0818  3s
+    ep009 step   25/171  loss=1.3985  9s
+    ep009 step   50/171  loss=1.2331  16s
+    ep009 step   75/171  loss=0.9891  21s
+    ep009 step  100/171  loss=0.8343  27s
+    ep009 step  125/171  loss=0.6861  33s
+    ep009 step  150/171  loss=0.9673  39s
+  [k-NN probe] acc=0.6095 macroF1=0.3857  (costante: acc=0.6115 macroF1=0.2530) OK
+  [monitor] ep009 loss=0.9541 std=0.04735 rango=6/280 (2% del sano)   <-- COLLASSO
+            epoca in 96s   restano 90 epoche (~2.4 h)
+    ep010 step    0/171  loss=0.7272  3s
+    ep010 step   25/171  loss=1.1101  8s
+    ep010 step   50/171  loss=0.7737  13s
+    ep010 step   75/171  loss=1.0058  18s
+    ep010 step  100/171  loss=0.7871  23s
+    ep010 step  125/171  loss=1.1071  29s
+    ep010 step  150/171  loss=1.0470  34s
+  [monitor] ep010 loss=0.9051 std=0.04766 rango=6/280 (2% del sano)
+            epoca in 37s   restano 89 epoche (~0.9 h)
+    ep011 step    0/171  loss=0.9900  3s
+    ep011 step   25/171  loss=1.0130  9s
+    ep011 step   50/171  loss=0.7941  14s
+    ep011 step   75/171  loss=0.9198  20s
+    ep011 step  100/171  loss=0.8832  25s
+    ep011 step  125/171  loss=0.8230  31s
+    ep011 step  150/171  loss=0.9260  37s
+  [monitor] ep011 loss=0.8927 std=0.04800 rango=6/280 (2% del sano)
+            epoca in 41s   restano 88 epoche (~1.0 h)
+    ep012 step    0/171  loss=0.8206  2s
+    ep012 step   25/171  loss=1.1716  9s
+    ep012 step   50/171  loss=1.7221  15s
+    ep012 step   75/171  loss=0.6995  21s
+    ep012 step  100/171  loss=1.0890  27s
+    ep012 step  125/171  loss=0.7012  33s
+    ep012 step  150/171  loss=0.7690  38s
+  [monitor] ep012 loss=0.9219 std=0.04816 rango=6/280 (2% del sano)
+            epoca in 43s   restano 87 epoche (~1.0 h)
+    ep013 step    0/171  loss=0.7820  4s
+    ep013 step   25/171  loss=1.0016  9s
+    ep013 step   50/171  loss=0.8675  16s
+    ep013 step   75/171  loss=1.0518  22s
+    ep013 step  100/171  loss=0.6646  28s
+    ep013 step  125/171  loss=0.8310  33s
+    ep013 step  150/171  loss=0.8078  39s
+  [monitor] ep013 loss=0.8746 std=0.04848 rango=6/280 (2% del sano)
+            epoca in 43s   restano 86 epoche (~1.0 h)
+    ep014 step    0/171  loss=0.8052  3s
+    ep014 step   25/171  loss=0.7417  9s
+    ep014 step   50/171  loss=0.8204  15s
+    ep014 step   75/171  loss=0.7395  20s
+    ep014 step  100/171  loss=0.7689  26s
+    ep014 step  125/171  loss=0.9902  32s
+    ep014 step  150/171  loss=0.6892  38s
+  [monitor] ep014 loss=0.8866 std=0.04854 rango=6/280 (2% del sano)
+            epoca in 42s   restano 85 epoche (~1.0 h)
+    ep015 step    0/171  loss=0.7366  3s
+    ep015 step   25/171  loss=0.8215  9s
+    ep015 step   50/171  loss=0.8030  15s
+    ep015 step   75/171  loss=0.9043  21s
+    ep015 step  100/171  loss=0.8004  27s
+    ep015 step  125/171  loss=0.8319  33s
+    ep015 step  150/171  loss=0.7596  39s
+  [monitor] ep015 loss=0.8925 std=0.04862 rango=6/280 (2% del sano)
+            epoca in 43s   restano 84 epoche (~1.0 h)
+    ep016 step    0/171  loss=0.8963  4s
+    ep016 step   25/171  loss=0.6768  10s
+    ep016 step   50/171  loss=0.9885  16s
+    ep016 step   75/171  loss=0.7811  22s
+    ep016 step  100/171  loss=0.8994  28s
+    ep016 step  125/171  loss=1.0276  33s
+    ep016 step  150/171  loss=0.7071  39s
+  [monitor] ep016 loss=0.9030 std=0.04885 rango=6/280 (2% del sano)
+            epoca in 43s   restano 83 epoche (~1.0 h)
+    ep017 step    0/171  loss=0.7152  4s
+    ep017 step   25/171  loss=0.9823  10s
+    ep017 step   50/171  loss=0.8492  16s
+    ep017 step   75/171  loss=0.6863  21s
+    ep017 step  100/171  loss=0.7680  28s
+    ep017 step  125/171  loss=0.9818  33s
+    ep017 step  150/171  loss=0.9399  39s
+  [monitor] ep017 loss=0.8684 std=0.04881 rango=6/280 (2% del sano)
+            epoca in 43s   restano 82 epoche (~1.0 h)
+    ep018 step    0/171  loss=0.8067  4s
+    ep018 step   25/171  loss=0.8544  9s
+    ep018 step   50/171  loss=0.6827  15s
+    ep018 step   75/171  loss=0.7520  22s
+    ep018 step  100/171  loss=0.8147  28s
+    ep018 step  125/171  loss=0.6860  34s
+    ep018 step  150/171  loss=0.8909  39s
+  [monitor] ep018 loss=0.8604 std=0.04888 rango=6/280 (2% del sano)
+            epoca in 44s   restano 81 epoche (~1.0 h)
+    ep019 step    0/171  loss=0.7192  3s
+    ep019 step   25/171  loss=0.8162  9s
+    ep019 step   50/171  loss=0.9237  16s
+    ep019 step   75/171  loss=0.8137  22s
+    ep019 step  100/171  loss=1.3895  28s
+    ep019 step  125/171  loss=0.8128  33s
+    ep019 step  150/171  loss=0.7562  39s
+  [k-NN probe] acc=0.6135 macroF1=0.4085  (costante: acc=0.6115 macroF1=0.2530) OK
+  [monitor] ep019 loss=0.8457 std=0.04883 rango=6/280 (2% del sano)
+            epoca in 97s   restano 80 epoche (~2.1 h)
+    ep020 step    0/171  loss=0.6452  3s
+    ep020 step   25/171  loss=0.6974  8s
+    ep020 step   50/171  loss=0.9835  13s
+    ep020 step   75/171  loss=0.7890  18s
+    ep020 step  100/171  loss=0.7690  23s
+    ep020 step  125/171  loss=0.8312  28s
+    ep020 step  150/171  loss=0.7367  34s
+  [monitor] ep020 loss=0.7926 std=0.04893 rango=6/280 (2% del sano)
+            epoca in 38s   restano 79 epoche (~0.8 h)
+    ep021 step    0/171  loss=0.6830  4s
+    ep021 step   25/171  loss=0.9387  9s
+    ep021 step   50/171  loss=0.8699  14s
+    ep021 step   75/171  loss=0.9219  20s
+    ep021 step  100/171  loss=0.7706  26s
+    ep021 step  125/171  loss=0.9355  32s
+    ep021 step  150/171  loss=0.7494  37s
+  [monitor] ep021 loss=0.8117 std=0.04881 rango=6/280 (2% del sano)
+            epoca in 41s   restano 78 epoche (~0.9 h)
+    ep022 step    0/171  loss=0.6516  3s
+    ep022 step   25/171  loss=0.7728  9s
+    ep022 step   50/171  loss=1.0840  15s
+    ep022 step   75/171  loss=0.8378  21s
+    ep022 step  100/171  loss=0.9234  26s
+    ep022 step  125/171  loss=0.8713  33s
+    ep022 step  150/171  loss=1.0356  38s
+  [monitor] ep022 loss=0.8087 std=0.04878 rango=6/280 (2% del sano)
+            epoca in 42s   restano 77 epoche (~0.9 h)
+    ep023 step    0/171  loss=0.6636  4s
+    ep023 step   25/171  loss=0.6758  10s
+    ep023 step   50/171  loss=0.7471  15s
+    ep023 step   75/171  loss=0.7660  21s
+    ep023 step  100/171  loss=0.6438  27s
+    ep023 step  125/171  loss=0.9487  33s
+    ep023 step  150/171  loss=0.8924  39s
+  [monitor] ep023 loss=0.7779 std=0.04870 rango=6/280 (2% del sano)
+            epoca in 43s   restano 76 epoche (~0.9 h)
+    ep024 step    0/171  loss=0.7260  3s
+    ep024 step   25/171  loss=0.6418  9s
+    ep024 step   50/171  loss=0.9369  15s
+    ep024 step   75/171  loss=0.8834  21s
+    ep024 step  100/171  loss=0.7964  26s
+    ep024 step  125/171  loss=0.5832  32s
+    ep024 step  150/171  loss=0.8989  38s
+  [monitor] ep024 loss=0.7979 std=0.04882 rango=6/280 (2% del sano)
+            epoca in 42s   restano 75 epoche (~0.9 h)
+    ep025 step    0/171  loss=0.7559  3s
+    ep025 step   25/171  loss=0.5470  9s
+    ep025 step   50/171  loss=1.0023  15s
+    ep025 step   75/171  loss=0.7473  21s
+    ep025 step  100/171  loss=0.6367  27s
+    ep025 step  125/171  loss=0.6754  33s
+    ep025 step  150/171  loss=0.6134  38s
+  [monitor] ep025 loss=0.7772 std=0.04872 rango=6/280 (2% del sano)
+            epoca in 42s   restano 74 epoche (~0.9 h)
+    ep026 step    0/171  loss=0.7569  3s
+    ep026 step   25/171  loss=0.7617  10s
+    ep026 step   50/171  loss=0.7736  16s
+    ep026 step   75/171  loss=0.8326  22s
+    ep026 step  100/171  loss=0.7063  27s
+    ep026 step  125/171  loss=0.7158  34s
+    ep026 step  150/171  loss=0.9127  40s
+  [monitor] ep026 loss=0.7618 std=0.04874 rango=6/280 (2% del sano)
+            epoca in 44s   restano 73 epoche (~0.9 h)
+    ep027 step    0/171  loss=0.6710  3s
+    ep027 step   25/171  loss=0.6913  9s
+    ep027 step   50/171  loss=0.9652  15s
+    ep027 step   75/171  loss=1.0126  21s
+    ep027 step  100/171  loss=0.8503  27s
+    ep027 step  125/171  loss=0.8524  33s
+    ep027 step  150/171  loss=0.8860  39s
+  [monitor] ep027 loss=0.7910 std=0.04874 rango=7/280 (2% del sano)
+            epoca in 43s   restano 72 epoche (~0.9 h)
+    ep028 step    0/171  loss=0.7502  4s
+    ep028 step   25/171  loss=0.6730  10s
+    ep028 step   50/171  loss=0.7993  16s
+    ep028 step   75/171  loss=0.7371  22s
+    ep028 step  100/171  loss=0.5999  28s
+    ep028 step  125/171  loss=0.7341  34s
+    ep028 step  150/171  loss=0.6921  39s
+  [monitor] ep028 loss=0.7478 std=0.04881 rango=7/280 (2% del sano)
+            epoca in 44s   restano 71 epoche (~0.9 h)
+    ep029 step    0/171  loss=0.7635  3s
+    ep029 step   25/171  loss=0.9659  9s
+    ep029 step   50/171  loss=0.7011  15s
+    ep029 step   75/171  loss=0.6975  21s
+    ep029 step  100/171  loss=0.7604  27s
+    ep029 step  125/171  loss=0.8094  33s
+    ep029 step  150/171  loss=0.6006  39s
+  [k-NN probe] acc=0.6165 macroF1=0.3914  (costante: acc=0.6115 macroF1=0.2530) OK
+  [monitor] ep029 loss=0.7685 std=0.04871 rango=7/280 (3% del sano)
+            epoca in 94s   restano 70 epoche (~1.8 h)
+    ep030 step    0/171  loss=0.6142  3s
+    ep030 step   25/171  loss=0.7689  8s
+    ep030 step   50/171  loss=0.8196  13s
+    ep030 step   75/171  loss=0.6631  18s
+    ep030 step  100/171  loss=0.9680  23s
+    ep030 step  125/171  loss=0.7712  29s
+    ep030 step  150/171  loss=0.6847  34s
+  [monitor] ep030 loss=0.7706 std=0.04886 rango=7/280 (3% del sano)
+            epoca in 38s   restano 69 epoche (~0.7 h)
+    ep031 step    0/171  loss=0.8195  2s
+    ep031 step   25/171  loss=0.6063  8s
+    ep031 step   50/171  loss=0.7030  14s
+    ep031 step   75/171  loss=0.7520  20s
+    ep031 step  100/171  loss=0.9031  26s
+    ep031 step  125/171  loss=0.7614  31s
+    ep031 step  150/171  loss=0.6757  37s
+  [monitor] ep031 loss=0.7427 std=0.04890 rango=7/280 (3% del sano)
+            epoca in 40s   restano 68 epoche (~0.8 h)
+    ep032 step    0/171  loss=0.6969  2s
+    ep032 step   25/171  loss=0.6912  9s
+    ep032 step   50/171  loss=0.8579  15s
+    ep032 step   75/171  loss=0.7012  21s
+    ep032 step  100/171  loss=0.7259  27s
+    ep032 step  125/171  loss=0.7617  33s
+    ep032 step  150/171  loss=0.8298  38s
+  [monitor] ep032 loss=0.7409 std=0.04889 rango=7/280 (3% del sano)
+            epoca in 43s   restano 67 epoche (~0.8 h)
+    ep033 step    0/171  loss=1.0513  4s
+    ep033 step   25/171  loss=0.7018  9s
+    ep033 step   50/171  loss=0.6265  15s
+    ep033 step   75/171  loss=0.7890  21s
+    ep033 step  100/171  loss=0.7141  27s
+    ep033 step  125/171  loss=0.9600  33s
+    ep033 step  150/171  loss=0.9285  38s
+  [monitor] ep033 loss=0.7249 std=0.04895 rango=7/280 (3% del sano)
+            epoca in 42s   restano 66 epoche (~0.8 h)
+    ep034 step    0/171  loss=0.6196  4s
+    ep034 step   25/171  loss=0.5788  9s
+    ep034 step   50/171  loss=0.7779  15s
+    ep034 step   75/171  loss=0.6329  21s
+    ep034 step  100/171  loss=0.5921  27s
+    ep034 step  125/171  loss=0.5873  33s
+    ep034 step  150/171  loss=0.7077  39s
+  [monitor] ep034 loss=0.7141 std=0.04894 rango=7/280 (3% del sano)
+            epoca in 43s   restano 65 epoche (~0.8 h)
+    ep035 step    0/171  loss=0.6693  4s
+    ep035 step   25/171  loss=0.5908  10s
+    ep035 step   50/171  loss=0.6006  15s
+    ep035 step   75/171  loss=0.7319  21s
+    ep035 step  100/171  loss=0.7707  28s
+    ep035 step  125/171  loss=0.8627  33s
+    ep035 step  150/171  loss=0.6631  39s
+  [monitor] ep035 loss=0.7062 std=0.04897 rango=7/280 (3% del sano)
+            epoca in 43s   restano 64 epoche (~0.8 h)
+    ep036 step    0/171  loss=0.7019  3s
+    ep036 step   25/171  loss=0.6051  9s
+    ep036 step   50/171  loss=0.6926  15s
+    ep036 step   75/171  loss=0.5982  21s
+    ep036 step  100/171  loss=0.6880  27s
+    ep036 step  125/171  loss=0.6872  33s
+    ep036 step  150/171  loss=0.7301  39s
+  [monitor] ep036 loss=0.7230 std=0.04891 rango=7/280 (3% del sano)
+            epoca in 43s   restano 63 epoche (~0.8 h)
+    ep037 step    0/171  loss=0.6310  4s
+    ep037 step   25/171  loss=0.7032  10s
+    ep037 step   50/171  loss=0.5092  16s
+    ep037 step   75/171  loss=0.5811  21s
+    ep037 step  100/171  loss=0.8952  27s
+    ep037 step  125/171  loss=0.7764  33s
+    ep037 step  150/171  loss=0.6705  39s
+  [monitor] ep037 loss=0.7036 std=0.04891 rango=8/280 (3% del sano)
+            epoca in 43s   restano 62 epoche (~0.7 h)
+    ep038 step    0/171  loss=0.6867  3s
+    ep038 step   25/171  loss=1.0322  10s
+    ep038 step   50/171  loss=0.7563  16s
+    ep038 step   75/171  loss=0.8620  22s
+    ep038 step  100/171  loss=0.6115  27s
+    ep038 step  125/171  loss=0.6019  33s
+    ep038 step  150/171  loss=0.6367  39s
+  [monitor] ep038 loss=0.6916 std=0.04888 rango=7/280 (3% del sano)
+            epoca in 43s   restano 61 epoche (~0.7 h)
+    ep039 step    0/171  loss=0.6253  3s
+    ep039 step   25/171  loss=0.7472  9s
+    ep039 step   50/171  loss=0.7388  15s
+    ep039 step   75/171  loss=0.6751  21s
+    ep039 step  100/171  loss=0.5979  27s
+    ep039 step  125/171  loss=0.9962  33s
+    ep039 step  150/171  loss=0.6017  39s
+  [k-NN probe] acc=0.6155 macroF1=0.4079  (costante: acc=0.6115 macroF1=0.2530) OK
+  [monitor] ep039 loss=0.6818 std=0.04890 rango=8/280 (3% del sano)
+            epoca in 96s   restano 60 epoche (~1.6 h)
+    ep040 step    0/171  loss=0.7572  2s
+    ep040 step   25/171  loss=0.6616  8s
+    ep040 step   50/171  loss=0.7007  13s
+    ep040 step   75/171  loss=0.6637  18s
+    ep040 step  100/171  loss=0.5818  23s
+    ep040 step  125/171  loss=0.6713  29s
+    ep040 step  150/171  loss=0.7333  34s
+  [monitor] ep040 loss=0.6566 std=0.04895 rango=8/280 (3% del sano)
+            epoca in 38s   restano 59 epoche (~0.6 h)
+    ep041 step    0/171  loss=0.7072  3s
+    ep041 step   25/171  loss=0.5302  9s
+    ep041 step   50/171  loss=0.7542  14s
+    ep041 step   75/171  loss=0.9795  20s
+    ep041 step  100/171  loss=0.5660  26s
+    ep041 step  125/171  loss=0.5868  32s
+    ep041 step  150/171  loss=0.7421  37s
+  [monitor] ep041 loss=0.6535 std=0.04899 rango=8/280 (3% del sano)
+            epoca in 41s   restano 58 epoche (~0.7 h)
+    ep042 step    0/171  loss=0.7626  3s
+    ep042 step   25/171  loss=0.7331  9s
+    ep042 step   50/171  loss=0.7392  15s
+    ep042 step   75/171  loss=0.5988  21s
+    ep042 step  100/171  loss=0.5967  27s
+    ep042 step  125/171  loss=0.5610  33s
+    ep042 step  150/171  loss=0.6796  38s
+  [monitor] ep042 loss=0.6654 std=0.04900 rango=8/280 (3% del sano)
+            epoca in 43s   restano 57 epoche (~0.7 h)
+    ep043 step    0/171  loss=0.6647  3s
+    ep043 step   25/171  loss=0.6284  9s
+    ep043 step   50/171  loss=0.7544  15s
+    ep043 step   75/171  loss=0.6387  21s
+    ep043 step  100/171  loss=0.7294  27s
+    ep043 step  125/171  loss=0.5446  33s
+    ep043 step  150/171  loss=0.6595  38s
+  [monitor] ep043 loss=0.6615 std=0.04914 rango=8/280 (3% del sano)
+            epoca in 43s   restano 56 epoche (~0.7 h)
+    ep044 step    0/171  loss=0.8699  4s
+    ep044 step   25/171  loss=0.5491  9s
+    ep044 step   50/171  loss=0.5891  15s
+    ep044 step   75/171  loss=0.7129  21s
+    ep044 step  100/171  loss=0.6200  27s
+    ep044 step  125/171  loss=0.6630  33s
+    ep044 step  150/171  loss=0.8223  39s
+  [monitor] ep044 loss=0.6488 std=0.04914 rango=9/280 (3% del sano)
+            epoca in 43s   restano 55 epoche (~0.7 h)
+    ep045 step    0/171  loss=0.8982  3s
+    ep045 step   25/171  loss=0.5302  9s
+    ep045 step   50/171  loss=0.5804  15s
+    ep045 step   75/171  loss=0.6238  21s
+    ep045 step  100/171  loss=0.5612  27s
+    ep045 step  125/171  loss=0.5883  33s
+    ep045 step  150/171  loss=0.5941  39s
+  [monitor] ep045 loss=0.6613 std=0.04911 rango=9/280 (3% del sano)
+            epoca in 43s   restano 54 epoche (~0.6 h)
+    ep046 step    0/171  loss=0.5952  4s
+    ep046 step   25/171  loss=0.6499  9s
+    ep046 step   50/171  loss=0.7249  15s
+    ep046 step   75/171  loss=0.5864  21s
+    ep046 step  100/171  loss=0.5467  28s
+    ep046 step  125/171  loss=0.7009  34s
+    ep046 step  150/171  loss=0.6740  39s
+  [monitor] ep046 loss=0.6542 std=0.04919 rango=9/280 (3% del sano)
+            epoca in 44s   restano 53 epoche (~0.6 h)
+    ep047 step    0/171  loss=0.6405  3s
+    ep047 step   25/171  loss=0.8456  9s
+    ep047 step   50/171  loss=0.8199  15s
+    ep047 step   75/171  loss=0.6048  21s
+    ep047 step  100/171  loss=0.6653  27s
+    ep047 step  125/171  loss=0.6347  33s
+    ep047 step  150/171  loss=0.5657  39s
+  [monitor] ep047 loss=0.6579 std=0.04926 rango=9/280 (3% del sano)
+            epoca in 43s   restano 52 epoche (~0.6 h)
+    ep048 step    0/171  loss=0.6320  3s
+    ep048 step   25/171  loss=0.6047  10s
+    ep048 step   50/171  loss=0.6040  16s
+    ep048 step   75/171  loss=0.6555  22s
+    ep048 step  100/171  loss=0.5516  28s
+    ep048 step  125/171  loss=0.6018  34s
+    ep048 step  150/171  loss=0.7890  39s
+  [monitor] ep048 loss=0.6665 std=0.04929 rango=9/280 (3% del sano)
+            epoca in 44s   restano 51 epoche (~0.6 h)
+    ep049 step    0/171  loss=0.6562  4s
+    ep049 step   25/171  loss=0.5851  10s
+    ep049 step   50/171  loss=0.9464  16s
+    ep049 step   75/171  loss=0.5900  22s
+    ep049 step  100/171  loss=0.7449  28s
+    ep049 step  125/171  loss=0.6049  34s
+    ep049 step  150/171  loss=0.7008  39s
+  [k-NN probe] acc=0.6036 macroF1=0.4226  (costante: acc=0.6115 macroF1=0.2530) OK
+  [monitor] ep049 loss=0.6617 std=0.04932 rango=10/280 (3% del sano)
+            epoca in 95s   restano 50 epoche (~1.3 h)
+    ep050 step    0/171  loss=0.6095  3s
+    ep050 step   25/171  loss=0.6990  8s
+    ep050 step   50/171  loss=0.7111  13s
+    ep050 step   75/171  loss=0.6105  18s
+    ep050 step  100/171  loss=0.5793  24s
+    ep050 step  125/171  loss=0.5259  29s
+    ep050 step  150/171  loss=0.4954  34s
+  [monitor] ep050 loss=0.6464 std=0.04931 rango=10/280 (3% del sano)
+            epoca in 39s   restano 49 epoche (~0.5 h)
+    ep051 step    0/171  loss=0.6361  3s
+    ep051 step   25/171  loss=0.5654  9s
+    ep051 step   50/171  loss=0.6165  15s
+    ep051 step   75/171  loss=0.5807  20s
+    ep051 step  100/171  loss=0.6515  26s
+    ep051 step  125/171  loss=0.6720  31s
+    ep051 step  150/171  loss=0.5574  37s
+  [monitor] ep051 loss=0.6432 std=0.04934 rango=10/280 (3% del sano)
+            epoca in 41s   restano 48 epoche (~0.6 h)
+    ep052 step    0/171  loss=0.6498  4s
+    ep052 step   25/171  loss=0.6674  10s
+    ep052 step   50/171  loss=0.6251  15s
+    ep052 step   75/171  loss=0.6840  21s
+    ep052 step  100/171  loss=0.5744  27s
+    ep052 step  125/171  loss=0.6507  33s
+    ep052 step  150/171  loss=0.7424  38s
+  [monitor] ep052 loss=0.6490 std=0.04935 rango=10/280 (4% del sano)
+            epoca in 43s   restano 47 epoche (~0.6 h)
+    ep053 step    0/171  loss=0.7016  3s
+    ep053 step   25/171  loss=0.7142  9s
+    ep053 step   50/171  loss=0.8338  15s
+    ep053 step   75/171  loss=0.6612  21s
+    ep053 step  100/171  loss=0.5875  27s
+    ep053 step  125/171  loss=0.6413  33s
+    ep053 step  150/171  loss=0.7205  39s
+  [monitor] ep053 loss=0.6583 std=0.04939 rango=10/280 (3% del sano)
+            epoca in 43s   restano 46 epoche (~0.5 h)
+    ep054 step    0/171  loss=0.6400  4s
+    ep054 step   25/171  loss=0.6108  9s
+    ep054 step   50/171  loss=0.5665  15s
+    ep054 step   75/171  loss=0.6561  21s
+    ep054 step  100/171  loss=0.6430  27s
+    ep054 step  125/171  loss=0.6213  33s
+    ep054 step  150/171  loss=0.7745  39s
+  [monitor] ep054 loss=0.6563 std=0.04940 rango=10/280 (4% del sano)
+            epoca in 43s   restano 45 epoche (~0.5 h)
+    ep055 step    0/171  loss=0.5532  3s
+    ep055 step   25/171  loss=0.6241  10s
+    ep055 step   50/171  loss=0.5708  15s
+    ep055 step   75/171  loss=0.6828  21s
+    ep055 step  100/171  loss=0.6972  27s
+    ep055 step  125/171  loss=0.6350  33s
+    ep055 step  150/171  loss=0.6622  39s
+  [monitor] ep055 loss=0.6384 std=0.04936 rango=10/280 (4% del sano)
+            epoca in 44s   restano 44 epoche (~0.5 h)
+    ep056 step    0/171  loss=0.6063  3s
+    ep056 step   25/171  loss=0.6493  9s
+    ep056 step   50/171  loss=0.6183  15s
+    ep056 step   75/171  loss=0.5957  21s
+    ep056 step  100/171  loss=0.6719  27s
+    ep056 step  125/171  loss=0.6296  33s
+    ep056 step  150/171  loss=0.5581  39s
+  [monitor] ep056 loss=0.6351 std=0.04939 rango=10/280 (4% del sano)
+            epoca in 43s   restano 43 epoche (~0.5 h)
+    ep057 step    0/171  loss=0.6133  3s
+    ep057 step   25/171  loss=0.5863  10s
+    ep057 step   50/171  loss=0.7032  16s
+    ep057 step   75/171  loss=0.7392  21s
+    ep057 step  100/171  loss=0.6001  27s
+    ep057 step  125/171  loss=0.6205  34s
+    ep057 step  150/171  loss=0.5979  39s
+  [monitor] ep057 loss=0.6352 std=0.04943 rango=10/280 (4% del sano)
+            epoca in 44s   restano 42 epoche (~0.5 h)
+    ep058 step    0/171  loss=0.8120  4s
+    ep058 step   25/171  loss=0.4151  10s
+    ep058 step   50/171  loss=0.6522  16s
+    ep058 step   75/171  loss=0.5922  22s
+    ep058 step  100/171  loss=0.6252  27s
+    ep058 step  125/171  loss=0.5818  33s
+    ep058 step  150/171  loss=0.5834  39s
+  [monitor] ep058 loss=0.6375 std=0.04942 rango=10/280 (4% del sano)
+            epoca in 43s   restano 41 epoche (~0.5 h)
+    ep059 step    0/171  loss=0.7104  3s
+    ep059 step   25/171  loss=0.5862  9s
+    ep059 step   50/171  loss=0.5596  15s
+    ep059 step   75/171  loss=0.5768  21s
+    ep059 step  100/171  loss=0.6837  27s
+    ep059 step  125/171  loss=0.5380  33s
+    ep059 step  150/171  loss=0.6041  39s
+  [k-NN probe] acc=0.6155 macroF1=0.4027  (costante: acc=0.6115 macroF1=0.2530) OK
+  [monitor] ep059 loss=0.6248 std=0.04942 rango=10/280 (4% del sano)
+            epoca in 97s   restano 40 epoche (~1.1 h)
+    ep060 step    0/171  loss=0.5826  2s
+    ep060 step   25/171  loss=0.5893  8s
+    ep060 step   50/171  loss=0.7806  13s
+    ep060 step   75/171  loss=0.5538  18s
+    ep060 step  100/171  loss=0.6018  23s
+    ep060 step  125/171  loss=0.6947  29s
+    ep060 step  150/171  loss=0.5825  34s
+  [monitor] ep060 loss=0.6425 std=0.04944 rango=10/280 (4% del sano)
+            epoca in 38s   restano 39 epoche (~0.4 h)
+    ep061 step    0/171  loss=0.7038  3s
+    ep061 step   25/171  loss=0.6461  9s
+    ep061 step   50/171  loss=0.6247  14s
+    ep061 step   75/171  loss=0.4800  20s
+    ep061 step  100/171  loss=0.6240  26s
+    ep061 step  125/171  loss=0.4676  32s
+    ep061 step  150/171  loss=0.5823  37s
+  [monitor] ep061 loss=0.6217 std=0.04943 rango=10/280 (4% del sano)
+            epoca in 41s   restano 38 epoche (~0.4 h)
+    ep062 step    0/171  loss=0.6763  3s
+    ep062 step   25/171  loss=0.7157  9s
+    ep062 step   50/171  loss=0.6516  15s
+    ep062 step   75/171  loss=0.5910  21s
+    ep062 step  100/171  loss=0.7744  27s
+    ep062 step  125/171  loss=0.5927  33s
+    ep062 step  150/171  loss=0.6498  38s
+  [monitor] ep062 loss=0.6412 std=0.04941 rango=10/280 (4% del sano)
+            epoca in 42s   restano 37 epoche (~0.4 h)
+    ep063 step    0/171  loss=0.6238  3s
+    ep063 step   25/171  loss=0.5729  9s
+    ep063 step   50/171  loss=0.6388  15s
+    ep063 step   75/171  loss=0.5955  21s
+    ep063 step  100/171  loss=0.6072  27s
+    ep063 step  125/171  loss=0.5534  33s
+    ep063 step  150/171  loss=0.6466  39s
+  [monitor] ep063 loss=0.6264 std=0.04942 rango=10/280 (4% del sano)
+            epoca in 43s   restano 36 epoche (~0.4 h)
+    ep064 step    0/171  loss=0.5224  4s
+    ep064 step   25/171  loss=0.6296  10s
+    ep064 step   50/171  loss=0.6461  15s
+    ep064 step   75/171  loss=0.6510  21s
+    ep064 step  100/171  loss=0.6230  27s
+    ep064 step  125/171  loss=0.7736  33s
+    ep064 step  150/171  loss=0.5284  38s
+  [monitor] ep064 loss=0.6101 std=0.04946 rango=10/280 (4% del sano)
+            epoca in 43s   restano 35 epoche (~0.4 h)
+    ep065 step    0/171  loss=0.6353  3s
+    ep065 step   25/171  loss=0.8191  9s
+    ep065 step   50/171  loss=0.5754  15s
+    ep065 step   75/171  loss=0.6756  21s
+    ep065 step  100/171  loss=0.6899  27s
+    ep065 step  125/171  loss=0.5934  33s
+    ep065 step  150/171  loss=0.5454  39s
+  [monitor] ep065 loss=0.6244 std=0.04943 rango=10/280 (4% del sano)
+            epoca in 43s   restano 34 epoche (~0.4 h)
+    ep066 step    0/171  loss=0.7503  3s
+    ep066 step   25/171  loss=0.5488  10s
+    ep066 step   50/171  loss=0.5974  16s
+    ep066 step   75/171  loss=0.7176  22s
+    ep066 step  100/171  loss=0.4919  28s
+    ep066 step  125/171  loss=0.5563  34s
+    ep066 step  150/171  loss=0.5661  39s
+  [monitor] ep066 loss=0.6085 std=0.04945 rango=10/280 (4% del sano)
+            epoca in 44s   restano 33 epoche (~0.4 h)
+    ep067 step    0/171  loss=0.5251  3s
+    ep067 step   25/171  loss=0.7739  10s
+    ep067 step   50/171  loss=0.4935  16s
+    ep067 step   75/171  loss=0.6335  22s
+    ep067 step  100/171  loss=0.4582  28s
+    ep067 step  125/171  loss=0.6896  34s
+    ep067 step  150/171  loss=0.6183  39s
+  [monitor] ep067 loss=0.6007 std=0.04946 rango=10/280 (4% del sano)
+            epoca in 43s   restano 32 epoche (~0.4 h)
+    ep068 step    0/171  loss=0.6103  3s
+    ep068 step   25/171  loss=0.5672  10s
+    ep068 step   50/171  loss=0.6135  16s
+    ep068 step   75/171  loss=0.6881  22s
+    ep068 step  100/171  loss=0.6417  28s
+    ep068 step  125/171  loss=0.6534  34s
+    ep068 step  150/171  loss=0.6138  39s
+  [monitor] ep068 loss=0.6124 std=0.04941 rango=10/280 (4% del sano)
+            epoca in 44s   restano 31 epoche (~0.4 h)
+    ep069 step    0/171  loss=0.7400  4s
+    ep069 step   25/171  loss=0.4766  10s
+    ep069 step   50/171  loss=0.5454  16s
+    ep069 step   75/171  loss=0.6020  22s
+    ep069 step  100/171  loss=0.6878  28s
+    ep069 step  125/171  loss=0.6931  34s
+    ep069 step  150/171  loss=0.5836  40s
+  [k-NN probe] acc=0.5976 macroF1=0.3918  (costante: acc=0.6115 macroF1=0.2530) OK
+  [monitor] ep069 loss=0.5914 std=0.04939 rango=10/280 (4% del sano)
+            epoca in 94s   restano 30 epoche (~0.8 h)
+    ep070 step    0/171  loss=0.5442  3s
+    ep070 step   25/171  loss=0.5987  8s
+    ep070 step   50/171  loss=0.5258  13s
+    ep070 step   75/171  loss=0.5706  18s
+    ep070 step  100/171  loss=0.5121  23s
+    ep070 step  125/171  loss=0.5907  29s
+    ep070 step  150/171  loss=0.5375  34s
+  [monitor] ep070 loss=0.5915 std=0.04944 rango=10/280 (4% del sano)
+            epoca in 38s   restano 29 epoche (~0.3 h)
+    ep071 step    0/171  loss=0.7080  3s
+    ep071 step   25/171  loss=0.4809  8s
+    ep071 step   50/171  loss=0.6208  14s
+    ep071 step   75/171  loss=0.4953  19s
+    ep071 step  100/171  loss=0.5546  24s
+    ep071 step  125/171  loss=0.6108  30s
+    ep071 step  150/171  loss=0.4983  35s
+  [monitor] ep071 loss=0.5872 std=0.04941 rango=10/280 (4% del sano)
+            epoca in 39s   restano 28 epoche (~0.3 h)
+    ep072 step    0/171  loss=0.6603  3s
+    ep072 step   25/171  loss=0.5719  9s
+    ep072 step   50/171  loss=0.5255  14s
+    ep072 step   75/171  loss=0.4432  20s
+    ep072 step  100/171  loss=0.7748  26s
+    ep072 step  125/171  loss=0.6206  31s
+    ep072 step  150/171  loss=0.5499  36s
+  [monitor] ep072 loss=0.5905 std=0.04942 rango=10/280 (4% del sano)
+            epoca in 40s   restano 27 epoche (~0.3 h)
+    ep073 step    0/171  loss=0.6886  3s
+    ep073 step   25/171  loss=0.7477  9s
+    ep073 step   50/171  loss=0.6766  14s
+    ep073 step   75/171  loss=0.5608  20s
+    ep073 step  100/171  loss=0.6822  26s
+    ep073 step  125/171  loss=0.5463  32s
+    ep073 step  150/171  loss=0.6069  37s
+  [monitor] ep073 loss=0.5858 std=0.04944 rango=10/280 (4% del sano)
+            epoca in 42s   restano 26 epoche (~0.3 h)
+    ep074 step    0/171  loss=0.6848  3s
+    ep074 step   25/171  loss=0.4702  9s
+    ep074 step   50/171  loss=0.6249  15s
+    ep074 step   75/171  loss=0.4862  21s
+    ep074 step  100/171  loss=0.5169  26s
+    ep074 step  125/171  loss=0.5183  32s
+    ep074 step  150/171  loss=0.6062  37s
+  [monitor] ep074 loss=0.5879 std=0.04946 rango=10/280 (4% del sano)
+            epoca in 41s   restano 25 epoche (~0.3 h)
+    ep075 step    0/171  loss=0.5337  3s
+    ep075 step   25/171  loss=0.6697  9s
+    ep075 step   50/171  loss=0.6168  14s
+    ep075 step   75/171  loss=0.7544  20s
+    ep075 step  100/171  loss=0.6743  25s
+    ep075 step  125/171  loss=0.5789  31s
+    ep075 step  150/171  loss=0.5468  37s
+  [monitor] ep075 loss=0.5862 std=0.04946 rango=10/280 (4% del sano)
+            epoca in 41s   restano 24 epoche (~0.3 h)
+    ep076 step    0/171  loss=0.5152  3s
+    ep076 step   25/171  loss=0.6919  9s
+    ep076 step   50/171  loss=0.6494  15s
+    ep076 step   75/171  loss=0.5501  20s
+    ep076 step  100/171  loss=0.4705  26s
+    ep076 step  125/171  loss=0.6084  32s
+    ep076 step  150/171  loss=0.7318  37s
+  [monitor] ep076 loss=0.5786 std=0.04942 rango=10/280 (4% del sano)
+            epoca in 42s   restano 23 epoche (~0.3 h)
+    ep077 step    0/171  loss=0.6185  3s
+    ep077 step   25/171  loss=0.6013  9s
+    ep077 step   50/171  loss=0.6383  15s
+    ep077 step   75/171  loss=0.4771  21s
+    ep077 step  100/171  loss=0.6292  27s
+    ep077 step  125/171  loss=0.5179  32s
+    ep077 step  150/171  loss=0.5560  38s
+  [monitor] ep077 loss=0.5771 std=0.04940 rango=10/280 (4% del sano)
+            epoca in 42s   restano 22 epoche (~0.3 h)
+    ep078 step    0/171  loss=0.5362  2s
+    ep078 step   25/171  loss=0.5088  9s
+    ep078 step   50/171  loss=0.5765  15s
+    ep078 step   75/171  loss=0.4520  20s
+    ep078 step  100/171  loss=0.7462  26s
+    ep078 step  125/171  loss=0.5841  32s
+    ep078 step  150/171  loss=0.5859  37s
+  [monitor] ep078 loss=0.5744 std=0.04942 rango=10/280 (4% del sano)
+            epoca in 41s   restano 21 epoche (~0.2 h)
+    ep079 step    0/171  loss=0.6763  4s
+    ep079 step   25/171  loss=0.5015  9s
+    ep079 step   50/171  loss=0.4478  15s
+    ep079 step   75/171  loss=0.5260  21s
+    ep079 step  100/171  loss=0.4721  26s
+    ep079 step  125/171  loss=0.4788  32s
+    ep079 step  150/171  loss=0.6472  38s
+  [k-NN probe] acc=0.5966 macroF1=0.3808  (costante: acc=0.6115 macroF1=0.2530) OK
+  [monitor] ep079 loss=0.5705 std=0.04945 rango=10/280 (4% del sano)
+            epoca in 94s   restano 20 epoche (~0.5 h)
+    ep080 step    0/171  loss=0.7773  3s
+    ep080 step   25/171  loss=0.6166  8s
+    ep080 step   50/171  loss=0.4553  13s
+    ep080 step   75/171  loss=0.6380  17s
+    ep080 step  100/171  loss=0.4528  22s
+    ep080 step  125/171  loss=0.5999  27s
+    ep080 step  150/171  loss=0.5076  32s
+  [monitor] ep080 loss=0.5627 std=0.04943 rango=10/280 (4% del sano)
+            epoca in 36s   restano 19 epoche (~0.2 h)
+    ep081 step    0/171  loss=0.5625  3s
+    ep081 step   25/171  loss=0.6519  9s
+    ep081 step   50/171  loss=0.5910  14s
+    ep081 step   75/171  loss=0.6007  19s
+    ep081 step  100/171  loss=0.6305  25s
+    ep081 step  125/171  loss=0.5827  30s
+    ep081 step  150/171  loss=0.5192  36s
+  [monitor] ep081 loss=0.5822 std=0.04943 rango=11/280 (4% del sano)
+            epoca in 40s   restano 18 epoche (~0.2 h)
+    ep082 step    0/171  loss=0.4676  3s
+    ep082 step   25/171  loss=0.5716  9s
+    ep082 step   50/171  loss=0.5744  15s
+    ep082 step   75/171  loss=0.5275  20s
+    ep082 step  100/171  loss=0.5428  26s
+    ep082 step  125/171  loss=0.7027  31s
+    ep082 step  150/171  loss=0.5019  36s
+  [monitor] ep082 loss=0.5728 std=0.04948 rango=10/280 (4% del sano)
+            epoca in 40s   restano 17 epoche (~0.2 h)
+    ep083 step    0/171  loss=0.5382  3s
+    ep083 step   25/171  loss=0.5339  9s
+    ep083 step   50/171  loss=0.6632  14s
+    ep083 step   75/171  loss=0.6012  20s
+    ep083 step  100/171  loss=0.5306  25s
+    ep083 step  125/171  loss=0.5707  31s
+    ep083 step  150/171  loss=0.5473  36s
+  [monitor] ep083 loss=0.5676 std=0.04948 rango=10/280 (4% del sano)
+            epoca in 40s   restano 16 epoche (~0.2 h)
+    ep084 step    0/171  loss=0.4544  3s
+    ep084 step   25/171  loss=0.6707  9s
+    ep084 step   50/171  loss=0.6717  14s
+    ep084 step   75/171  loss=0.6280  20s
+    ep084 step  100/171  loss=0.5821  25s
+    ep084 step  125/171  loss=0.4898  31s
+    ep084 step  150/171  loss=0.5058  37s
+  [monitor] ep084 loss=0.5675 std=0.04942 rango=11/280 (4% del sano)
+            epoca in 41s   restano 15 epoche (~0.2 h)
+    ep085 step    0/171  loss=0.4873  3s
+    ep085 step   25/171  loss=0.5945  9s
+    ep085 step   50/171  loss=0.6308  15s
+    ep085 step   75/171  loss=0.6048  20s
+    ep085 step  100/171  loss=0.6234  26s
+    ep085 step  125/171  loss=0.5800  32s
+    ep085 step  150/171  loss=0.5996  37s
+  [monitor] ep085 loss=0.5582 std=0.04944 rango=10/280 (4% del sano)
+            epoca in 42s   restano 14 epoche (~0.2 h)
+    ep086 step    0/171  loss=0.5042  3s
+    ep086 step   25/171  loss=0.5249  9s
+    ep086 step   50/171  loss=0.6660  14s
+    ep086 step   75/171  loss=0.6446  20s
+    ep086 step  100/171  loss=0.5593  26s
+    ep086 step  125/171  loss=0.5592  32s
+    ep086 step  150/171  loss=0.5597  37s
+  [monitor] ep086 loss=0.5624 std=0.04940 rango=10/280 (4% del sano)
+            epoca in 41s   restano 13 epoche (~0.1 h)
+    ep087 step    0/171  loss=0.5064  3s
+    ep087 step   25/171  loss=0.6564  9s
+    ep087 step   50/171  loss=0.6950  15s
+    ep087 step   75/171  loss=0.5288  21s
+    ep087 step  100/171  loss=0.5235  26s
+    ep087 step  125/171  loss=0.5853  32s
+    ep087 step  150/171  loss=0.5906  37s
+  [monitor] ep087 loss=0.5608 std=0.04942 rango=10/280 (4% del sano)
+            epoca in 41s   restano 12 epoche (~0.1 h)
+    ep088 step    0/171  loss=0.6105  3s
+    ep088 step   25/171  loss=0.6412  9s
+    ep088 step   50/171  loss=0.6829  15s
+    ep088 step   75/171  loss=0.4801  21s
+    ep088 step  100/171  loss=0.5951  26s
+    ep088 step  125/171  loss=0.5058  32s
+    ep088 step  150/171  loss=0.5195  37s
+  [monitor] ep088 loss=0.5551 std=0.04942 rango=10/280 (4% del sano)
+            epoca in 41s   restano 11 epoche (~0.1 h)
+    ep089 step    0/171  loss=0.5477  2s
+    ep089 step   25/171  loss=0.5142  9s
+    ep089 step   50/171  loss=0.4718  14s
+    ep089 step   75/171  loss=0.6232  20s
+    ep089 step  100/171  loss=0.5411  26s
+    ep089 step  125/171  loss=0.5931  31s
+    ep089 step  150/171  loss=0.5727  37s
+  [k-NN probe] acc=0.6065 macroF1=0.3806  (costante: acc=0.6115 macroF1=0.2530) OK
+  [monitor] ep089 loss=0.5580 std=0.04946 rango=10/280 (4% del sano)
+            epoca in 93s   restano 10 epoche (~0.3 h)
+    ep090 step    0/171  loss=0.5531  3s
+    ep090 step   25/171  loss=0.6020  8s
+    ep090 step   50/171  loss=0.5500  13s
+    ep090 step   75/171  loss=0.6596  18s
+    ep090 step  100/171  loss=0.5948  23s
+    ep090 step  125/171  loss=0.6574  28s
+    ep090 step  150/171  loss=0.5733  33s
+  [monitor] ep090 loss=0.5546 std=0.04944 rango=11/280 (4% del sano)
+            epoca in 37s   restano 9 epoche (~0.1 h)
+    ep091 step    0/171  loss=0.4980  3s
+    ep091 step   25/171  loss=0.5167  9s
+    ep091 step   50/171  loss=0.6023  14s
+    ep091 step   75/171  loss=0.4761  20s
+    ep091 step  100/171  loss=0.6829  26s
+    ep091 step  125/171  loss=0.6272  31s
+    ep091 step  150/171  loss=0.6124  37s
+  [monitor] ep091 loss=0.5656 std=0.04945 rango=11/280 (4% del sano)
+            epoca in 41s   restano 8 epoche (~0.1 h)
+    ep092 step    0/171  loss=0.4521  4s
+    ep092 step   25/171  loss=0.5020  9s
+    ep092 step   50/171  loss=0.5196  15s
+    ep092 step   75/171  loss=0.5155  21s
+    ep092 step  100/171  loss=0.5510  27s
+    ep092 step  125/171  loss=0.7312  33s
+    ep092 step  150/171  loss=0.6002  38s
+  [monitor] ep092 loss=0.5579 std=0.04942 rango=10/280 (4% del sano)
+            epoca in 42s   restano 7 epoche (~0.1 h)
+    ep093 step    0/171  loss=0.5197  3s
+    ep093 step   25/171  loss=0.4549  9s
+    ep093 step   50/171  loss=0.5561  15s
+    ep093 step   75/171  loss=0.5118  21s
+    ep093 step  100/171  loss=0.4150  27s
+    ep093 step  125/171  loss=0.6271  32s
+    ep093 step  150/171  loss=0.4988  38s
+  [monitor] ep093 loss=0.5651 std=0.04945 rango=11/280 (4% del sano)
+            epoca in 42s   restano 6 epoche (~0.1 h)
+    ep094 step    0/171  loss=0.5605  2s
+    ep094 step   25/171  loss=0.5003  9s
+    ep094 step   50/171  loss=0.4907  15s
+    ep094 step   75/171  loss=0.5186  21s
+    ep094 step  100/171  loss=0.4667  27s
+    ep094 step  125/171  loss=0.6025  33s
+    ep094 step  150/171  loss=0.5517  39s
+  [monitor] ep094 loss=0.5498 std=0.04944 rango=10/280 (4% del sano)
+            epoca in 43s   restano 5 epoche (~0.1 h)
+    ep095 step    0/171  loss=0.6096  4s
+    ep095 step   25/171  loss=0.4165  10s
+    ep095 step   50/171  loss=0.5209  15s
+    ep095 step   75/171  loss=0.4722  21s
+    ep095 step  100/171  loss=0.6760  27s
+    ep095 step  125/171  loss=0.5142  33s
+    ep095 step  150/171  loss=0.5291  39s
+  [monitor] ep095 loss=0.5645 std=0.04945 rango=10/280 (4% del sano)
+            epoca in 43s   restano 4 epoche (~0.0 h)
+    ep096 step    0/171  loss=0.5650  3s
+    ep096 step   25/171  loss=0.4023  9s
+    ep096 step   50/171  loss=0.5639  15s
+    ep096 step   75/171  loss=0.5641  21s
+    ep096 step  100/171  loss=0.5851  27s
+    ep096 step  125/171  loss=0.5743  33s
+    ep096 step  150/171  loss=0.5041  39s
+  [monitor] ep096 loss=0.5476 std=0.04946 rango=11/280 (4% del sano)
+            epoca in 43s   restano 3 epoche (~0.0 h)
+    ep097 step    0/171  loss=0.5032  3s
+    ep097 step   25/171  loss=0.5126  9s
+    ep097 step   50/171  loss=0.6352  15s
+    ep097 step   75/171  loss=0.5831  21s
+    ep097 step  100/171  loss=0.5200  27s
+    ep097 step  125/171  loss=0.5062  33s
+    ep097 step  150/171  loss=0.6344  39s
+  [monitor] ep097 loss=0.5531 std=0.04945 rango=10/280 (4% del sano)
+            epoca in 43s   restano 2 epoche (~0.0 h)
+    ep098 step    0/171  loss=0.5215  3s
+    ep098 step   25/171  loss=0.5887  9s
+    ep098 step   50/171  loss=0.5041  15s
+    ep098 step   75/171  loss=0.5927  21s
+    ep098 step  100/171  loss=0.5249  27s
+    ep098 step  125/171  loss=0.6129  33s
+    ep098 step  150/171  loss=0.5530  39s
+  [monitor] ep098 loss=0.5577 std=0.04947 rango=11/280 (4% del sano)
+            epoca in 43s   restano 1 epoche (~0.0 h)
+    ep099 step    0/171  loss=0.5398  4s
+    ep099 step   25/171  loss=0.5799  10s
+    ep099 step   50/171  loss=0.5180  16s
+    ep099 step   75/171  loss=0.5204  22s
+    ep099 step  100/171  loss=0.6050  28s
+    ep099 step  125/171  loss=0.6092  34s
+    ep099 step  150/171  loss=0.5810  39s
+  [k-NN probe] acc=0.6075 macroF1=0.3811  (costante: acc=0.6115 macroF1=0.2530) OK
+  [monitor] ep099 loss=0.5671 std=0.04944 rango=10/280 (4% del sano)
+            epoca in 106s   restano 0 epoche (~0.0 h)
+
+Figura monitoraggio: ./runs\figures\ijepa_vit_small_hardctx_monitor.png
+Checkpoint: ./runs\checkpoints/ijepa_vit_small_hardctx.pt
