@@ -55,3 +55,6 @@ logs/*
 # Sistema
 .DS_Store
 Thumbs.db
+
+# TensorBoard: event file binari, crescono e si rigenerano a ogni run
+runs/tb/

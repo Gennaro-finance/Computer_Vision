@@ -19,8 +19,8 @@ import torch
 from data import LesionCropDataset, TileDataset, load_splits, make_loader, parse_annotations
 from globals import (
     AMP, CKPT_DIR, GRAD_CLIP, MONITOR_SAMPLES, NUM_CLASSES, amp_dtype, DEFAULT_VARIANT, DEVICE, FIG_DIR, KNN_PROBE_EVERY, KNN_SUBSET,
-    LESION_CROP_MODE, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START, SSL_EPOCHS,
-    SSL_LR, SSL_WARMUP_EPOCHS, SSL_WEIGHT_DECAY, TILE_SIZE,
+    LESION_CROP_MODE, OUT_DIR, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START,
+    SSL_EPOCHS, SSL_LR, SSL_WARMUP_EPOCHS, SSL_WEIGHT_DECAY, TILE_SIZE,
 )
 from network import bbox_to_token_mask, build_ijepa, count_params
 from utils import (
@@ -208,6 +208,18 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
 
     monitor = CollapseMonitor()
 
+    # TensorBoard: curve dal vivo. Mentre un run gira, in un altro terminale:
+    #     .venv\Scripts\tensorboard --logdir runs\tb
+    # poi apri http://localhost:6006. Scrive per epoca loss, rango effettivo,
+    # rapporto di rango, std, k-NN, durata e temperatura GPU. Costa nulla, e se
+    # tensorboard non e' installato il run prosegue senza.
+    try:
+        from torch.utils.tensorboard import SummaryWriter
+        tb = SummaryWriter(os.path.join(OUT_DIR, "tb", run_name))
+    except Exception as e:
+        print(f"  [tensorboard non attivo: {e}]")
+        tb = None
+
     start_epoch, gstep = 0, 0
     if resume:
         ckpt = load_checkpoint(run_name, map_location=DEVICE)
@@ -282,6 +294,24 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
         print(f"            epoca in {dt:.0f}s   restano {rimanenti} epoche "
               f"(~{rimanenti * dt / 3600:.1f} h)", flush=True)
 
+        if tb is not None:
+            tb.add_scalar("loss", meter.avg, epoch)
+            # Si logga qualunque scalare numerico ci sia nella voce del
+            # monitor (std, eff_rank, rank_ratio...), senza assumerne i nomi.
+            for k, v in entry.items():
+                if isinstance(v, (int, float)):
+                    tb.add_scalar(f"monitor/{k}", v, epoch)
+            if knn is not None:
+                tb.add_scalar("knn/acc", knn[0], epoch)
+                tb.add_scalar("knn/macro_f1", knn[1], epoch)
+            tb.add_scalar("sistema/epoca_secondi", dt, epoch)
+            tb.add_scalar("sistema/learning_rate", scheduler.get_last_lr()[0], epoch)
+            from utils import temperatura_gpu
+            tgpu = temperatura_gpu()
+            if tgpu is not None:
+                tb.add_scalar("sistema/gpu_temp_C", tgpu, epoch)
+            tb.flush()
+
         if monitor.is_collapsing():
             print("\n  COLLASSO RILEVATO. Non insistete: cambiate qualcosa.")
             print("  Ordine di intervento suggerito:")
@@ -299,6 +329,8 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             "monitor": monitor.history,
         }, run_name)
 
+    if tb is not None:
+        tb.close()
     monitor.save(os.path.join(FIG_DIR, f"{run_name}_monitor.json"))
     print(f"\nFigura monitoraggio: {monitor.plot(f'{run_name}_monitor')}")
     print(f"Checkpoint: {CKPT_DIR}/{run_name}.pt")
