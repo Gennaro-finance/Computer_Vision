@@ -157,6 +157,29 @@ CROPS_PER_ITEM = 4
 
 # Griglia deterministica: serve solo quando volete risultati riproducibili
 # tile per tile (diagnostica, figure), non per il training.
+# Intensita' dell'augmentation nel pre-training.
+#
+# PERCHE' ESISTE. Fino al 21 ago il TileDataset applicava soltanto flip
+# orizzontale al 50% e luminosita' +-15%. Con 2.746 immagini di training -
+# lo 0,3% dei dati di I-JEPA originale - l'augmentation e' il sostituto piu'
+# diretto dei dati che mancano, e cinque ablation avevano gia' indicato la
+# quantita' di dati come vincolo. Era la leva piu' ovvia, ed era spenta.
+#
+# 'debole' e' il comportamento originale, tenuto per l'ablation.
+# 'forte' aggiunge trasformazioni che una radiografia panoramica puo'
+# realisticamente subire: rotazione lieve (posizionamento del paziente),
+# contrasto e gamma (esposizione e sviluppo), rumore (dose), sfocatura
+# (movimento). NON si usano flip verticali ne' distorsioni di colore:
+# sarebbero anatomicamente impossibili e insegnerebbero invarianze false.
+# TENUTA A 'debole', cioe' il comportamento originale. La versione 'forte' e'
+# implementata e verificata (aumenta del 35% la varieta' fra versioni diverse
+# dello stesso tile) ma NON e' attiva, per una ragione di metodo: I-JEPA
+# rivendica come proprio punto di forza il NON dipendere da augmentation
+# costruite a mano - l'invarianza deve emergere dal masking. Attivarla e' una
+# deviazione dalla ref [1] del brief, difendibile solo dichiarandola e
+# motivandola col regime di dati. Resta disponibile come riga di ablation.
+SSL_AUG = "debole"
+
 TILE_STRIDE = 168
 TILE_MIN_FOREGROUND = 0.15  # scarta i tile quasi tutti neri (bordi radiografia)
 
@@ -165,6 +188,49 @@ TILE_MIN_FOREGROUND = 0.15  # scarta i tile quasi tutti neri (bordi radiografia)
 RESIZE_H, RESIZE_W = 224, 224
 
 PATCH_SIZE = 16
+
+# ---------------------------------------------- scala dei crop di lesione
+# LA SECONDA DECISIONE PIU' IMPORTANTE, e ci era sfuggita fino al 21 ago.
+#
+# LesionCropDataset ritagliava una finestra di lato CONTEXT_FACTOR volte la
+# bbox e la ridimensionava a TILE_SIZE. Effetto collaterale: il fattore di
+# scala varia da lesione a lesione ESATTAMENTE in modo da annullare la
+# differenza di dimensione. Una lesione da 57 px e una da 126 px arrivavano
+# alla rete con la stessa dimensione apparente.
+#
+# Misurato sul train, lato mediano della bbox per grado:
+#     PAI 3   57 px      PAI 4   81 px      PAI 5  126 px
+# Due sole soglie su quel numero danno macro-F1 0.7567 e kappa 0.7779 sul
+# test - piu' di qualunque nostro modello, ImageNet compreso (0.7101).
+# Il grado PAI E' in larga parte l'estensione della radiotrasparenza, e la
+# normalizzazione la cancellava prima che la rete vedesse l'immagine.
+#
+# 'fixed'  ritaglia una finestra di LATO COSTANTE in pixel nativi: una
+#          lesione grande appare grande, la scala e' preservata.
+# 'relative' e' il comportamento precedente, tenuto per l'ablation: serve a
+#          mostrare col confronto quanto costa normalizzare via la scala.
+LESION_CROP_MODE = "fixed"
+# 224 e non di piu', ed e' MISURATO. Il ridimensionamento da crop nativo a
+# TILE_SIZE riduce la lesione in token, e il progetto si e' dato
+# MIN_TOKENS_PER_LESION = 4.0 come soglia (sez.2 dell'analisi). Lato della
+# lesione in token, per grado, al variare della finestra:
+#
+#     crop   scala   PAI 3   PAI 4   PAI 5   sotto soglia
+#      224   1.000     3.6     5.1     7.9        50%
+#      288   0.778     2.8     3.9     6.1        76%
+#      384   0.583     2.1     3.0     4.6        90%
+#
+# A 224 la scala e' 1.0: NESSUN ricampionamento. Oltre al fatto che
+# massimizza i token, questo mette i crop del downstream nella stessa
+# distribuzione di scala dei tile del pre-training (224 nativi con
+# SSL_SCALE_JITTER), quindi non reintroduce il disallineamento fra i due
+# stadi che avevamo corretto.
+#
+# LIMITE DA DICHIARARE: le PAI 3 restano a ~3.6 token, sotto la soglia di 4.
+# E' inerente - quelle lesioni sono piccole - e l'alternativa ('relative')
+# dava 4.7 token a tutte al prezzo di cancellare la dimensione, che e' il
+# segnale piu' predittivo del dataset.
+LESION_CROP_PIXELS = 224
 MIN_TOKENS_PER_LESION = 4.0  # soglia di allarme in data.py
 
 # ------------------------------------------------------------------- split
