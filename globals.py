@@ -255,10 +255,21 @@ GRAD_CLIP = 3.0
 #
 # Il margine evita di fermarsi per rumore: la sonda oscilla di ~0.01 fra
 # epoche adiacenti.
-GATE_EPOCH = 40
+# GATE_EPOCH e' l'epoca PRIMA della quale non si giudica: all'inizio la
+# sonda e' rumorosa e un run puo' legittimamente peggiorare per poi
+# risalire.
+GATE_EPOCH = 15
 GATE_MARGINE = 0.01
 
-KNN_PROBE_EVERY = 10
+# Quante sonde consecutive sotto il riferimento bastano per fermarsi.
+# Due: una sola puo' essere rumore, due di fila sono una tendenza.
+GATE_SONDE_SOTTO = 2
+
+# Scorciatoia per il crollo netto: una singola sonda sotto il riferimento
+# di piu' di questo numero di margini e' gia' una risposta, non rumore.
+GATE_CROLLO = 5
+
+KNN_PROBE_EVERY = 5
 KNN_K = 20
 KNN_SUBSET = 1500
 
