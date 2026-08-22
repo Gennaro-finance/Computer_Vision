@@ -73,11 +73,19 @@ def riga(r):
 
 
 def tabella(variant="vit_small"):
-    print("=" * 108)
+    # METRICA PRIMARIA: PR-AUC su PAI 5, non la macro-F1.
+    # Il Task chiede "performance on the MINORITY CLASS using
+    # THRESHOLD-AGNOSTIC metrics". La macro-F1 e' nell'elenco del brief ma
+    # media le tre classi con lo stesso peso, quindi non e' specifica per la
+    # minoritaria; e dipende dall'argmax, quindi non e' threshold-agnostic.
+    # La PR-AUC su PAI 5 (average precision) e' entrambe le cose, ed e' la
+    # seconda metrica nominata dal brief: e' quella su cui si ordina.
+    print("=" * 116)
     print("TABELLA COMPLETA - ricalcolata da runs/results_*.json")
-    print("=" * 108)
-    print(f"{'braccio':9s} {'metodo':16s} {'testa':8s} {'macroF1':>16s} "
-          f"{'F1 PAI3':>8s} {'F1 PAI4':>8s} {'F1 PAI5':>8s} {'rec5':>7s} {'prec5':>7s} {'kappa':>7s}")
+    print("  metrica PRIMARIA (criterio del Task): PR-AUC su PAI 5, la minoritaria")
+    print("=" * 116)
+    print(f"{'braccio':9s} {'metodo':16s} {'testa':8s} {'PR-AUC5':>9s} {'macroF1':>16s} "
+          f"{'F1 PAI5':>8s} {'rec5':>7s} {'prec5':>7s} {'kappa':>7s}")
     tutte = []
     for arm in ARMS:
         rows = carica(arm, variant)
@@ -85,14 +93,26 @@ def tabella(variant="vit_small"):
             print(f"{arm:9s} (nessun risultato)")
             continue
         print(f"{arm:9s} <- {rows[0].get('_file','?')}")
-        for r in rows:
+        # righe ordinate per PR-AUC su PAI 5 decrescente, dentro il braccio
+        for r in sorted(rows, key=lambda x: -x.get("pr_auc_pai5_mean", 0)):
             m, h, f1, sd, a, b, c, r5, p5, kp = riga(r)
+            pa = r.get("pr_auc_pai5_mean")
             tutte.append((arm, r))
-            def f(x):
-                return "   n/d" if x is None else f"{x:8.3f}"
-            print(f"{arm:9s} {m:16s} {h:8s} {f1:8.4f}+-{sd:.4f} "
-                  f"{f(a)} {f(b)} {f(c)} {r5:7.4f} "
+            fc = "   n/d" if c is None else f"{c:8.3f}"
+            print(f"{arm:9s} {m:16s} {h:8s} "
+                  f"{'    n/d' if pa is None else f'{pa:9.4f}'} "
+                  f"{f1:8.4f}+-{sd:.4f} {fc} {r5:7.4f} "
                   f"{'  n/d' if p5 is None else f'{p5:7.3f}'} {kp:7.4f}")
+
+    # classifica per la metrica primaria, sopra tutti i bracci
+    con_pa = [(a, r) for a, r in tutte if r.get("pr_auc_pai5_mean") is not None]
+    if con_pa:
+        print("\n" + "-" * 116)
+        print("CLASSIFICA per PR-AUC su PAI 5 (le prime 6):")
+        for a, r in sorted(con_pa, key=lambda x: -x[1]["pr_auc_pai5_mean"])[:6]:
+            print(f"  {r['pr_auc_pai5_mean']:.4f} +-{r.get('pr_auc_pai5_std',0):.4f}"
+                  f"   {a}/{r['method']}/{r['head']}"
+                  f"   (macroF1 {r['macro_f1_mean']:.4f}, recall5 {r['recall_pai5_mean']:.4f})")
     return tutte
 
 
@@ -122,8 +142,13 @@ def criterio(tutte):
                          [(a, r) for a, r in tutte if a == arm],
                          f"[{arm}] contro CE semplice (none/flat)")
 
-    arm_b, best = max(tutte, key=lambda t: t[1]["macro_f1_mean"])
-    _criterio_contro(arm_b, best, tutte, "contro la riga migliore in assoluto")
+    # "migliore in assoluto" ora per PR-AUC su PAI 5, la metrica primaria,
+    # non piu' per macro-F1.
+    chiave = ("pr_auc_pai5_mean" if all(r.get("pr_auc_pai5_mean") is not None
+                                        for _, r in tutte) else "macro_f1_mean")
+    arm_b, best = max(tutte, key=lambda t: t[1][chiave])
+    _criterio_contro(arm_b, best, tutte,
+                     f"contro la riga migliore per {chiave.replace('_mean','')}")
 
 
 def _criterio_contro(arm_b, best, candidati, titolo):
