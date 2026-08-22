@@ -27,8 +27,8 @@ from globals import (
     CROPS_PER_IMAGE, DATA_ROOT, DIR_ANNOTATIONS, DIR_AUGMENTED, DIR_ORIGINAL, EXPECTED_COUNTS,
     EXPECTED_TOTAL_IMAGES, EXPECTED_TOTAL_LESIONS, GRADE_TO_IDX,
     MIN_TOKENS_PER_LESION, NUM_WORKERS, PAI_GRADES, PATCH_SIZE, RESIZE_H,
-    CROPS_PER_ITEM, LESION_CROP_MODE, LESION_CROP_PIXELS, RESIZE_W, SEED, SSL_AUG,
-    SPLIT_FRACTIONS, SPLIT_JSON, SSL_SCALE_JITTER, TILE_MIN_FOREGROUND,
+    CROPS_PER_ITEM, LESION_CROP_PIXELS, RESIZE_W, SEED,
+    SPLIT_FRACTIONS, SPLIT_JSON, TILE_MIN_FOREGROUND,
     TILE_SIZE, TILE_STRIDE,
 )
 from utils import load_json, save_json
@@ -438,56 +438,31 @@ def tile_positions(width, height, size=TILE_SIZE, stride=TILE_STRIDE):
     return [(x, y) for y in ys for x in xs]
 
 
-def _augmenta(arr, forte=True):
+def _augmenta(arr):
     """
-    Augmentation per i tile del pre-training.
+    Augmentation per i tile del pre-training: SOLO flip orizzontale.
 
-    Con 'forte' si applicano trasformazioni fotometriche e geometriche che
-    una panoramica puo' realisticamente subire. La lista NON e' generica: il
-    flip verticale e le distorsioni di colore sono esclusi apposta perche'
-    anatomicamente impossibili su una radiografia, e insegnare invarianze
-    false e' peggio che non aumentare affatto.
+    I-JEPA non usa augmentation fatte a mano - il mascheramento E' la
+    perturbazione. Ogni trasformazione aggiunta insegna un'INVARIANZA, e
+    un'invarianza e' utile solo se la proprieta' resa invariante e'
+    irrilevante per il compito finale.
 
-    Vedi SSL_AUG in globals.py per il perche' l'augmentation debole era il
-    problema.
+    Qui non lo era. Le trasformazioni fotometriche che c'erano prima
+    (luminosita' x0.75-1.25, contrasto x0.7-1.4, gamma 0.7-1.4, e anche la
+    versione "debole" x0.85-1.15) insegnavano invarianza all'INTENSITA'.
+    Ma un encoder casuale codifica l'intensita' media della regione con
+    R^2 = 1.00, e il grado PAI e' in larga parte l'estensione e la
+    profondita' di una radiotrasparenza: cioe' intensita'. Si stava
+    addestrando la rete a buttare via il segnale piu' predittivo che
+    possedeva, ed e' il motivo per cui la sonda k-NN peggiorava
+    monotonamente dall'epoca 0.
+
+    Il flip orizzontale resta perche' e' l'unica trasformazione che non
+    tocca ne' la scala ne' l'intensita': l'arcata e' grosso modo simmetrica,
+    quindi l'invarianza che insegna e' vera e gratuita.
     """
-    if random.random() < 0.5:                      # flip orizzontale
-        arr = arr[:, ::-1].copy()
-
-    if not forte:
-        return np.clip(arr * random.uniform(0.85, 1.15), 0, 1)
-
-    # rotazione lieve: il paziente non e' mai posizionato identico
-    if random.random() < 0.7:
-        ang = random.uniform(-12, 12)
-        im = Image.fromarray((arr * 255).astype(np.uint8))
-        arr = np.asarray(im.rotate(ang, resample=Image.BILINEAR,
-                                   fillcolor=int(arr.mean() * 255)),
-                         dtype=np.float32) / 255.0
-
-    # luminosita' ed esposizione
-    arr = arr * random.uniform(0.75, 1.25)
-    # contrasto attorno alla media locale
-    if random.random() < 0.8:
-        mu = arr.mean()
-        arr = mu + (arr - mu) * random.uniform(0.7, 1.4)
-    # gamma: simula curve di sviluppo diverse
-    if random.random() < 0.6:
-        arr = np.clip(arr, 1e-4, None) ** random.uniform(0.7, 1.4)
-    # rumore: dose radiante variabile
     if random.random() < 0.5:
-        arr = arr + np.random.normal(0, random.uniform(0.01, 0.05), arr.shape)
-    # sfocatura da movimento, con un box filter separabile (economico)
-    if random.random() < 0.25:
-        k = random.choice([3, 5])
-        pad = k // 2
-        a = np.pad(arr, pad, mode="edge")
-        acc = np.zeros_like(arr)
-        for dy in range(k):
-            for dx in range(k):
-                acc += a[dy:dy + arr.shape[0], dx:dx + arr.shape[1]]
-        arr = acc / (k * k)
-
+        arr = arr[:, ::-1].copy()
     return np.clip(arr, 0, 1).astype(np.float32)
 
 
@@ -533,31 +508,33 @@ class TileDataset(Dataset):
         # niente e sprecherebbe capacita' predittiva. Si riprova qualche
         # volta, poi ci si arrende e si tiene quello che c'e'.
         for _ in range(8):
-            # Lato del crop variabile, poi riportato a self.size: e' cio'
-            # che allinea la scala del pre-training a quella del
-            # downstream. Senza, l'encoder vede solo 1.0x e il
-            # LesionCropDataset gli chiede da 0.69x a 1.59x. Vedi
-            # SSL_SCALE_JITTER in globals.py per i numeri misurati.
-            # Sulla griglia deterministica (x fissato) la scala resta 1.0:
-            # serve per figure e diagnostica riproducibili.
+            # Lato del crop COSTANTE, pari a self.size: nessun
+            # ridimensionamento, quindi ingrandimento esattamente 1.0x.
+            #
+            # C'era un jitter di scala 0.6-1.6 introdotto quando il
+            # downstream ritagliava in modo RELATIVO alla bbox e quindi
+            # vedeva ingrandimenti da 0.69x a 1.59x: serviva ad allineare i
+            # due stadi. Da quando LesionCropDataset ritaglia una finestra
+            # FISSA di 224 px nativi, il downstream lavora a 1.0x costante
+            # per ogni lesione, e quel jitter e' diventato il difetto
+            # opposto: creava il disallineamento invece di toglierlo, e
+            # insegnava invarianza alla DIMENSIONE della lesione. Ma il lato
+            # mediano della bbox e' 57 / 81 / 126 px per PAI 3 / 4 / 5: la
+            # dimensione e' il segnale piu' forte che ci sia.
+            side = self.size
             if x is None:
-                side = int(round(self.size * random.uniform(*SSL_SCALE_JITTER)))
-                side = max(16, min(side, W, H))
                 cx = random.randint(0, max(W - side, 0))
                 cy = random.randint(0, max(H - side, 0))
             else:
-                side = self.size
                 cx, cy = x, y
 
             tile = im.crop((cx, cy, cx + side, cy + side))
-            if side != self.size:
-                tile = tile.resize((self.size, self.size), Image.BILINEAR)
             arr = np.asarray(tile, dtype=np.float32) / 255.0
             if arr.mean() >= TILE_MIN_FOREGROUND or x is not None:
                 break
 
         if self.augment:
-            arr = _augmenta(arr, forte=(SSL_AUG == "forte"))
+            arr = _augmenta(arr)
 
         # le radiografie sono in scala di grigi: replichiamo su 3 canali per
         # restare compatibili con backbone standard
@@ -592,13 +569,14 @@ class LesionCropDataset(Dataset):
     pooling sui token interni alla lesione.
     """
 
-    def __init__(self, records, image_ids, size=TILE_SIZE, context_factor=3.0,
-                 augment=False, mode=None, crop_pixels=None):
+    def __init__(self, records, image_ids, size=TILE_SIZE, augment=False,
+                 crop_pixels=None):
         keep = set(image_ids)
-        self.size, self.cf, self.augment = size, context_factor, augment
-        # 'fixed' preserva la dimensione apparente della lesione, 'relative'
-        # la normalizza via. Vedi LESION_CROP_MODE in globals.py.
-        self.mode = LESION_CROP_MODE if mode is None else mode
+        self.size, self.augment = size, augment
+        # Finestra di lato COSTANTE in pixel nativi: la dimensione apparente
+        # della lesione e' preservata. Il ritaglio relativo alla bbox, che la
+        # normalizzava via, e' stato tolto: annullava il segnale piu' forte
+        # del problema (vedi LESION_CROP_PIXELS in globals.py).
         self.crop_px = LESION_CROP_PIXELS if crop_pixels is None else crop_pixels
         self.items = [
             {"image_id": r["image_id"], "image_path": r["image_path"],
@@ -613,13 +591,7 @@ class LesionCropDataset(Dataset):
     def __getitem__(self, i):
         it = self.items[i]
         cx, cy = (it["xmin"] + it["xmax"]) / 2, (it["ymin"] + it["ymax"]) / 2
-        if self.mode == "fixed":
-            # Finestra costante in pixel NATIVI: il fattore di scala e' lo
-            # stesso per tutte le lesioni, quindi una lesione grande resta
-            # grande nell'immagine data alla rete.
-            half = self.crop_px / 2
-        else:
-            half = max(it["xmax"] - it["xmin"], it["ymax"] - it["ymin"]) * self.cf / 2
+        half = self.crop_px / 2
 
         with Image.open(it["image_path"]) as im:
             im = im.convert("L")

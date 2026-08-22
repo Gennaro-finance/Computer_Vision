@@ -18,31 +18,28 @@ import numpy as np
 
 from globals import NUM_CLASSES, OUT_DIR, PAI_GRADES
 
-ARMS = ["ijepa"]
-
-
-def carica(arm, variant="vit_small", layers=None):
+def carica(variant="vit_small", layers=None):
     """
-    Carica i risultati di un braccio.
+    Carica i risultati della griglia.
 
     ATTENZIONE al suffisso: da quando l'estrazione puo' concatenare piu'
-    profondita', run_grid salva in results_{arm}_{variant}_L2-7-11.json.
+    profondita', run_grid salva in results_{variant}_L2-7-11.json.
     Cercando solo il nome senza suffisso, questo verificatore leggeva i
     risultati VECCHI - quelli misurati coi crop che annullavano la scala -
     e li presentava come correnti. Un fallimento silenzioso: nessun errore,
     solo numeri superati spacciati per attuali.
 
-    Senza `layers` si prende il file piu' RECENTE fra quelli disponibili per
-    quel braccio, e si dichiara quale.
+    Senza `layers` si prende il file piu' RECENTE fra quelli disponibili,
+    e si dichiara quale.
     """
     import glob
     if layers is not None:
         suff = "_L" + "-".join(map(str, layers))
-        p = os.path.join(OUT_DIR, f"results_{arm}_{variant}{suff}.json")
+        p = os.path.join(OUT_DIR, f"results_{variant}{suff}.json")
         if not os.path.isfile(p):
             return None
     else:
-        cand = glob.glob(os.path.join(OUT_DIR, f"results_{arm}_{variant}*.json"))
+        cand = glob.glob(os.path.join(OUT_DIR, f"results_{variant}*.json"))
         if not cand:
             return None
         p = max(cand, key=os.path.getmtime)
@@ -84,34 +81,32 @@ def tabella(variant="vit_small"):
     print("TABELLA COMPLETA - ricalcolata da runs/results_*.json")
     print("  metrica PRIMARIA (criterio del Task): PR-AUC su PAI 5, la minoritaria")
     print("=" * 116)
-    print(f"{'braccio':9s} {'metodo':16s} {'testa':8s} {'PR-AUC5':>9s} {'macroF1':>16s} "
+    print(f"{'metodo':16s} {'testa':8s} {'PR-AUC5':>9s} {'macroF1':>16s} "
           f"{'F1 PAI5':>8s} {'rec5':>7s} {'prec5':>7s} {'kappa':>7s}")
     tutte = []
-    for arm in ARMS:
-        rows = carica(arm, variant)
-        if not rows:
-            print(f"{arm:9s} (nessun risultato)")
-            continue
-        print(f"{arm:9s} <- {rows[0].get('_file','?')}")
-        # righe ordinate per PR-AUC su PAI 5 decrescente, dentro il braccio
-        for r in sorted(rows, key=lambda x: -x.get("pr_auc_pai5_mean", 0)):
-            m, h, f1, sd, a, b, c, r5, p5, kp = riga(r)
-            pa = r.get("pr_auc_pai5_mean")
-            tutte.append((arm, r))
-            fc = "   n/d" if c is None else f"{c:8.3f}"
-            print(f"{arm:9s} {m:16s} {h:8s} "
-                  f"{'    n/d' if pa is None else f'{pa:9.4f}'} "
-                  f"{f1:8.4f}+-{sd:.4f} {fc} {r5:7.4f} "
-                  f"{'  n/d' if p5 is None else f'{p5:7.3f}'} {kp:7.4f}")
+    rows = carica(variant)
+    if not rows:
+        print("(nessun risultato: lanciate train_downstream.py --grid)")
+        return tutte
+    print(f"letto da: {rows[0].get('_file','?')}")
+    for r in sorted(rows, key=lambda x: -x.get("pr_auc_pai5_mean", 0)):
+        m, h, f1, sd, a, b, c, r5, p5, kp = riga(r)
+        pa = r.get("pr_auc_pai5_mean")
+        tutte.append(r)
+        fc = "   n/d" if c is None else f"{c:8.3f}"
+        print(f"{m:16s} {h:8s} "
+              f"{'    n/d' if pa is None else f'{pa:9.4f}'} "
+              f"{f1:8.4f}+-{sd:.4f} {fc} {r5:7.4f} "
+              f"{'  n/d' if p5 is None else f'{p5:7.3f}'} {kp:7.4f}")
 
     # classifica per la metrica primaria, sopra tutti i bracci
-    con_pa = [(a, r) for a, r in tutte if r.get("pr_auc_pai5_mean") is not None]
+    con_pa = [r for r in tutte if r.get("pr_auc_pai5_mean") is not None]
     if con_pa:
         print("\n" + "-" * 116)
         print("CLASSIFICA per PR-AUC su PAI 5 (le prime 6):")
-        for a, r in sorted(con_pa, key=lambda x: -x[1]["pr_auc_pai5_mean"])[:6]:
+        for r in sorted(con_pa, key=lambda x: -x["pr_auc_pai5_mean"])[:6]:
             print(f"  {r['pr_auc_pai5_mean']:.4f} +-{r.get('pr_auc_pai5_std',0):.4f}"
-                  f"   {a}/{r['method']}/{r['head']}"
+                  f"   {r['method']}/{r['head']}"
                   f"   (macroF1 {r['macro_f1_mean']:.4f}, recall5 {r['recall_pai5_mean']:.4f})")
     return tutte
 
@@ -133,29 +128,24 @@ def criterio(tutte):
     #  (b) contro la riga migliore in assoluto: "esiste di meglio?" - contro
     #      il massimo non puo' esistere nulla per costruzione, quindi da solo
     #      questo confronto dice sempre NESSUNO e non informa.
-    for arm in ARMS:
-        base = [r for a, r in tutte
-                if a == arm and r["method"] == "none" and r["head"] == "flat"]
-        if not base or base[0].get("f1_pai3_mean") is None:
-            continue
-        _criterio_contro(arm, base[0],
-                         [(a, r) for a, r in tutte if a == arm],
-                         f"[{arm}] contro CE semplice (none/flat)")
+    base = [r for r in tutte if r["method"] == "none" and r["head"] == "flat"]
+    if base and base[0].get("f1_pai3_mean") is not None:
+        _criterio_contro(base[0], tutte, "contro CE semplice (none/flat)")
 
     # "migliore in assoluto" ora per PR-AUC su PAI 5, la metrica primaria,
     # non piu' per macro-F1.
     chiave = ("pr_auc_pai5_mean" if all(r.get("pr_auc_pai5_mean") is not None
-                                        for _, r in tutte) else "macro_f1_mean")
-    arm_b, best = max(tutte, key=lambda t: t[1][chiave])
-    _criterio_contro(arm_b, best, tutte,
+                                        for r in tutte) else "macro_f1_mean")
+    best = max(tutte, key=lambda r: r[chiave])
+    _criterio_contro(best, tutte,
                      f"contro la riga migliore per {chiave.replace('_mean','')}")
 
 
-def _criterio_contro(arm_b, best, candidati, titolo):
+def _criterio_contro(best, candidati, titolo):
     print("\n" + "=" * 108)
     print(f"CRITERIO: stessa resa su PAI 3 e 4, migliore su PAI 5 - {titolo}")
     print("=" * 108)
-    print(f"Riferimento: {arm_b} / {best['method']} / {best['head']}")
+    print(f"Riferimento: {best['method']} / {best['head']}")
     print(f"  macroF1={best['macro_f1_mean']:.4f}  F1 PAI3={best.get('f1_pai3_mean')}  "
           f"F1 PAI4={best.get('f1_pai4_mean')}  F1 PAI5={best.get('f1_pai5_mean')}  "
           f"recall PAI5={best['recall_pai5_mean']:.4f}")
@@ -170,7 +160,7 @@ def _criterio_contro(arm_b, best, candidati, titolo):
     tol3 = best["f1_pai3_std"]
     tol4 = best["f1_pai4_std"]
     trovati = 0
-    for arm, r in candidati:
+    for r in candidati:
         if r.get("f1_pai5_mean") is None:
             continue
         if r is best:
@@ -187,7 +177,7 @@ def _criterio_contro(arm_b, best, candidati, titolo):
             se = float(np.sqrt(r["recall_pai5_std"] ** 2 / n
                                + best["recall_pai5_std"] ** 2 / n))
             z = d / se if se > 0 else float("inf")
-            print(f"  {arm}/{r['method']}/{r['head']}: recall PAI5 "
+            print(f"  {r['method']}/{r['head']}: recall PAI5 "
                   f"{r['recall_pai5_mean']:.4f} (+{d:.4f}, ~{z:.1f} err.std)  "
                   f"F1 3/4 = {r['f1_pai3_mean']:.3f}/{r['f1_pai4_mean']:.3f}")
     if not trovati:

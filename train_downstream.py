@@ -43,7 +43,7 @@ from utils import load_checkpoint, save_json, set_seed
 # ==========================================================================
 @torch.no_grad()
 def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
-                  ckpt_tag="", arm="ijepa"):
+                  ckpt_tag=""):
     """
     Estrae e salva i token dell'encoder congelato per tutte le lesioni.
 
@@ -99,7 +99,7 @@ def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
 
     dim = out["train"]["tokens"].shape[-1]
     suffisso = "" if layers is None else "_L" + "-".join(map(str, layers))
-    path = os.path.join(CACHE_DIR, f"latents_{arm}_{variant}{suffisso}.pt")
+    path = os.path.join(CACHE_DIR, f"latents_{variant}{suffisso}.pt")
     torch.save({"data": out, "embed_dim": dim, "grid": model.grid,
                 "layers": layers}, path)
     size_mb = os.path.getsize(path) / 1e6
@@ -108,9 +108,9 @@ def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
     return path
 
 
-def load_latents(variant=DEFAULT_VARIANT, arm="ijepa", layers=None):
+def load_latents(variant=DEFAULT_VARIANT, layers=None):
     suffisso = "" if layers is None else "_L" + "-".join(map(str, layers))
-    path = os.path.join(CACHE_DIR, f"latents_{arm}_{variant}{suffisso}.pt")
+    path = os.path.join(CACHE_DIR, f"latents_{variant}{suffisso}.pt")
     if not os.path.isfile(path):
         raise FileNotFoundError(f"{path} mancante. Lanciate --cache")
     return torch.load(path, map_location="cpu", weights_only=False)
@@ -220,7 +220,7 @@ def train_head(cached, method="none", head_type="flat", seed=0,
     return clf, best
 
 
-def run_grid(variant=DEFAULT_VARIANT, arm="ijepa", methods=None, heads=None,
+def run_grid(variant=DEFAULT_VARIANT, methods=None, heads=None,
              seeds=None, layers=None):
     """
     Griglia completa: metodo x tipo di testa x seed.
@@ -230,7 +230,7 @@ def run_grid(variant=DEFAULT_VARIANT, arm="ijepa", methods=None, heads=None,
     """
     from evaluation import evaluate_split
 
-    cached = load_latents(variant, arm, layers=layers)
+    cached = load_latents(variant, layers=layers)
     methods = methods or IMBALANCE_METHODS
     heads = heads or HEAD_TYPES
     seeds = seeds or list(range(N_SEEDS))
@@ -270,13 +270,13 @@ def run_grid(variant=DEFAULT_VARIANT, arm="ijepa", methods=None, heads=None,
 
     if rows:
         suff = "" if layers is None else "_L" + "-".join(map(str, layers))
-        path = os.path.join(OUT_DIR, f"results_{arm}_{variant}{suff}.json")
+        path = os.path.join(OUT_DIR, f"results_{variant}{suff}.json")
         save_json(rows, path)
         print(f"\nRisultati in {path}")
     return rows
 
 
-def sweep_alpha(variant=DEFAULT_VARIANT, arm="ijepa", alphas=None, heads=None,
+def sweep_alpha(variant=DEFAULT_VARIANT, alphas=None, heads=None,
                 seeds=None, layers=None):
     """
     Ablation su alpha della novita' - richiesto dall'obiettivo 4.
@@ -293,7 +293,7 @@ def sweep_alpha(variant=DEFAULT_VARIANT, arm="ijepa", alphas=None, heads=None,
     """
     from evaluation import evaluate_split
 
-    cached = load_latents(variant, arm, layers=layers)
+    cached = load_latents(variant, layers=layers)
     alphas = alphas or [0.0, 0.25, 0.5, 0.75, 1.0]
     heads = heads or HEAD_TYPES
     seeds = seeds or list(range(N_SEEDS))
@@ -326,7 +326,7 @@ def sweep_alpha(variant=DEFAULT_VARIANT, arm="ijepa", alphas=None, heads=None,
               f"  prec5={agg['precision_pai5_mean']:.3f}")
 
     suff = "" if layers is None else "_L" + "-".join(map(str, layers))
-    path = os.path.join(OUT_DIR, f"sweep_alpha_{arm}_{variant}{suff}.json")
+    path = os.path.join(OUT_DIR, f"sweep_alpha_{variant}{suff}.json")
     save_json(rows, path)
     print(f"\nRisultati in {path}")
     return rows
@@ -336,7 +336,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", action="store_true")
     ap.add_argument("--sweep-alpha", action="store_true")
-    ap.add_argument("--arm", default="ijepa", choices=["ijepa"])
     ap.add_argument("--layers", type=int, nargs="+", default=None,
                     help="blocchi da concatenare, es. --layers 2 7 11")
     ap.add_argument("--ckpt-tag", default="",
@@ -348,15 +347,15 @@ if __name__ == "__main__":
     a = ap.parse_args()
 
     if a.cache:
-        cache_latents(a.variant, arm=a.arm, layers=a.layers,
+        cache_latents(a.variant, layers=a.layers,
                       ckpt_tag=a.ckpt_tag)
     elif a.sweep_alpha:
-        sweep_alpha(a.variant, a.arm, layers=a.layers)
+        sweep_alpha(a.variant, layers=a.layers)
     elif a.grid:
-        run_grid(a.variant, a.arm, layers=a.layers)
+        run_grid(a.variant, layers=a.layers)
     else:
         from evaluation import evaluate_split, print_report
-        cached = load_latents(a.variant, a.arm)
+        cached = load_latents(a.variant, layers=a.layers)
         clf, best = train_head(cached, a.method, a.head, verbose=True)
         print_report(evaluate_split(clf, cached["data"]["test"], a.head),
                      f"{a.method} / {a.head}")

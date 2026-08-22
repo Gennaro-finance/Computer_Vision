@@ -19,7 +19,7 @@ import torch
 from data import LesionCropDataset, TileDataset, load_splits, make_loader, parse_annotations
 from globals import (
     AMP, CKPT_DIR, GRAD_CLIP, MONITOR_SAMPLES, NUM_CLASSES, amp_dtype, DEFAULT_VARIANT, DEVICE, FIG_DIR, KNN_PROBE_EVERY, KNN_SUBSET,
-    LESION_CROP_MODE, OUT_DIR, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START,
+    GATE_EPOCH, GATE_MARGINE, OUT_DIR, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START,
     SSL_EPOCHS, SSL_LR, SSL_WARMUP_EPOCHS, SSL_WEIGHT_DECAY, TILE_SIZE,
 )
 from network import bbox_to_token_mask, build_ijepa, count_params
@@ -43,7 +43,7 @@ def extract_for_probe(model, loader, max_items=KNN_SUBSET):
     PERCHE' LA MASCHERA. La versione precedente mediava tutti i 196 token
     dell'immagine. Funzionava per caso: col vecchio crop 'relative' la
     lesione occupava sempre un terzo esatto del riquadro, quindi la media
-    portava comunque segnale. Con LESION_CROP_MODE='fixed' la lesione e' 8-20
+    portava comunque segnale. Col crop a finestra fissa la lesione e' 8-20
     token su 196 e la media e' dominata dallo sfondo: rimisurando i
     checkpoint esistenti il 22 ago, tutti crollavano a ridosso del pavimento
     (0.27-0.28 contro 0.2530) mentre gli stessi encoder rendono 0.7415 a
@@ -178,6 +178,7 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
         tb = None
 
     start_epoch, gstep = 0, 0
+    knn_ref = None
     if resume:
         ckpt = load_checkpoint(run_name, map_location=DEVICE)
         if ckpt:
@@ -186,7 +187,20 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             scheduler.load_state_dict(ckpt["scheduler"])
             start_epoch, gstep = ckpt["epoch"] + 1, ckpt["gstep"]
             monitor.history = ckpt.get("monitor", [])
+            knn_ref = ckpt.get("knn_ref")
             print(f"Ripreso dall'epoca {start_epoch}")
+
+    # RIFERIMENTO: la sonda k-NN sull'encoder non ancora addestrato. E' il
+    # "modello casuale" - la cosa da battere. Misurarlo QUI, con lo stesso
+    # protocollo usato dopo, e' l'unico modo per sapere se il pre-training
+    # aggiunge o toglie. Costa una manciata di secondi.
+    if knn_ref is None:
+        print(""
+              "Riferimento (encoder casuale, pesi non addestrati):")
+        knn_ref = run_probe(model, records, splits)[1]
+    print(f"Da battere: macro-F1 k-NN = {knn_ref:.4f}"
+          f"   (cancello: se a {GATE_EPOCH} epoche non e' superato, ci si ferma)")
+    knn_best = 0.0
 
     for epoch in range(start_epoch, epochs):
         t_epoca = time.time()
@@ -260,6 +274,18 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             tb.add_scalar("sistema/learning_rate", scheduler.get_last_lr()[0], epoch)
             tb.flush()
 
+        if knn is not None:
+            knn_best = max(knn_best, knn[1])
+            delta = knn[1] - knn_ref
+            print(f"            [cancello] k-NN {knn[1]:.4f} vs casuale {knn_ref:.4f}"
+                  f"  -> {delta:+.4f}   miglior finora {knn_best:.4f}")
+            if epoch + 1 >= GATE_EPOCH and knn_best < knn_ref - GATE_MARGINE:
+                print(f"  CANCELLO: dopo {epoch+1} epoche la sonda non ha mai")
+                print(f"  superato l'encoder casuale ({knn_best:.4f} < {knn_ref:.4f}).")
+                print("  Il pre-training sta DEGRADANDO le rappresentazioni: ci si")
+                print("  ferma qui invece di consumare le epoche restanti.")
+                break
+
         if monitor.is_collapsing():
             print("\n  COLLASSO RILEVATO. Non insistete: cambiate qualcosa.")
             print("  Ordine di intervento suggerito:")
@@ -273,7 +299,7 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             "optimizer": optimizer.state_dict(),
             "scheduler": scheduler.state_dict(),
             "epoch": epoch, "gstep": gstep, "variant": variant,
-            "monitor": monitor.history,
+            "monitor": monitor.history, "knn_ref": knn_ref,
         }, run_name)
 
     if tb is not None:
