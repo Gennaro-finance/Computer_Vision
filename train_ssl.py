@@ -19,7 +19,7 @@ import torch
 from data import LesionCropDataset, TileDataset, load_splits, make_loader, parse_annotations
 from globals import (
     AMP, CKPT_DIR, GRAD_CLIP, MONITOR_SAMPLES, NUM_CLASSES, amp_dtype, DEFAULT_VARIANT, DEVICE, FIG_DIR, KNN_PROBE_EVERY, KNN_SUBSET,
-    GATE_EPOCH, GATE_MARGINE, OUT_DIR, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START,
+    GATE_CROLLO, GATE_EPOCH, GATE_MARGINE, GATE_SONDE_SOTTO, OUT_DIR, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START,
     SSL_EPOCHS, SSL_LR, SSL_WARMUP_EPOCHS, SSL_WEIGHT_DECAY, TILE_SIZE,
 )
 import network
@@ -233,6 +233,7 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
     print(f"Da battere: macro-F1 k-NN = {knn_ref:.4f}"
           f"   (cancello: se a {GATE_AT} epoche non e' superato, ci si ferma)")
     knn_best = 0.0
+    sotto = 0
 
     for epoch in range(start_epoch, epochs):
         t_epoca = time.time()
@@ -307,13 +308,51 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             tb.flush()
 
         if knn is not None:
+            # CHECKPOINT MIGLIORE, tenuto a parte.
+            # Il checkpoint normale viene sovrascritto a ogni epoca: se la
+            # sonda peggiora - e in questo progetto peggiora sempre, da un
+            # certo punto in poi - alla fine resta salvato l'encoder PEGGIORE
+            # e quello buono e' perduto. Successo il 22 ago: la sonda
+            # migliore era all'epoca 10 (0.7067) ma sul disco e' rimasta
+            # l'epoca 39 (0.4280).
+            #
+            # Il modello che si consegna e' questo, non l'ultimo: nulla nel
+            # brief chiede di addestrare fino all'ultima epoca, e scegliere
+            # sulla base di una sonda misurata sul VALIDATION e' un criterio
+            # di selezione onesto, da dichiarare in presentazione.
+            if knn[1] > knn_best:
+                save_checkpoint({
+                    "model": model.state_dict(), "epoch": epoch,
+                    "gstep": gstep, "variant": variant,
+                    "knn_f1": knn[1], "knn_ref": knn_ref,
+                    "lr": LR, "ema_start": EMA_START,
+                    "predictor_dim": network.PREDICTOR_DIM,
+                }, run_name + "_best")
+                print(f"            [migliore] nuovo record {knn[1]:.4f} "
+                      f"all'epoca {epoch}: salvato {run_name}_best")
             knn_best = max(knn_best, knn[1])
             delta = knn[1] - knn_ref
+            soglia = knn_ref - GATE_MARGINE
+
+            # Si giudica la sonda CORRENTE, non la migliore mai vista.
+            # La versione precedente confrontava knn_best con la soglia: una
+            # sola sonda fortunata all'inizio disarmava il cancello per
+            # sempre. Successo il 22 ago - k-NN 0.7067 all'epoca 10, poi
+            # 0.6520, 0.5548, 0.4280 - e il run e' proseguito verso altre
+            # 4.7 ore di degrado con il cancello che taceva, perche' il
+            # massimo storico restava sopra la soglia.
+            sotto = sotto + 1 if knn[1] < soglia else 0
             print(f"            [cancello] k-NN {knn[1]:.4f} vs casuale {knn_ref:.4f}"
-                  f"  -> {delta:+.4f}   miglior finora {knn_best:.4f}")
-            if epoch + 1 >= GATE_AT and knn_best < knn_ref - GATE_MARGINE:
-                print(f"  CANCELLO: dopo {epoch+1} epoche la sonda non ha mai")
-                print(f"  superato l'encoder casuale ({knn_best:.4f} < {knn_ref:.4f}).")
+                  f"  -> {delta:+.4f}   miglior finora {knn_best:.4f}"
+                  f"   sonde sotto di fila: {sotto}")
+
+            crollo = knn[1] < knn_ref - GATE_CROLLO * GATE_MARGINE
+            if epoch + 1 >= GATE_AT and (sotto >= GATE_SONDE_SOTTO or crollo):
+                motivo = (f"crollo netto ({delta:+.4f}, oltre {GATE_CROLLO} margini)"
+                          if crollo else
+                          f"{sotto} sonde consecutive sotto il riferimento")
+                print(f"  CANCELLO all'epoca {epoch+1}: {motivo}.")
+                print(f"  Sonda {knn[1]:.4f} contro encoder casuale {knn_ref:.4f}.")
                 print("  Il pre-training sta DEGRADANDO le rappresentazioni: ci si")
                 print("  ferma qui invece di consumare le epoche restanti.")
                 break
