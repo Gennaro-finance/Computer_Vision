@@ -22,7 +22,16 @@ from globals import (
     GATE_EPOCH, GATE_MARGINE, OUT_DIR, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START,
     SSL_EPOCHS, SSL_LR, SSL_WARMUP_EPOCHS, SSL_WEIGHT_DECAY, TILE_SIZE,
 )
+import network
 from network import bbox_to_token_mask, build_ijepa, count_params
+
+# Sovrascrivibili da riga di comando: sono i parametri che si esplorano per
+# uscire dal collasso, e vanno cambiati senza toccare globals.py, che
+# descrive la configurazione di riferimento.
+EMA_START = SSL_EMA_START
+EMA_END = SSL_EMA_END
+LR = SSL_LR
+GATE_AT = GATE_EPOCH
 from utils import (
     AverageMeter, CollapseMonitor, knn_probe, load_checkpoint, save_checkpoint,
     set_seed,
@@ -30,9 +39,14 @@ from utils import (
 
 
 def ema_momentum(step, total_steps):
-    """Momentum EMA con schedule da SSL_EMA_START a SSL_EMA_END (coseno)."""
+    """Momentum EMA con schedule da EMA_START a EMA_END (coseno).
+
+    EMA_START e' la leva principale contro il collasso: piu' e' alto, piu'
+    il target encoder e' lento, e piu' e' difficile per il context encoder
+    inseguirlo fino alla soluzione costante.
+    """
     p = min(step / max(total_steps, 1), 1.0)
-    return SSL_EMA_END - (SSL_EMA_END - SSL_EMA_START) * (math.cos(math.pi * p) + 1) / 2
+    return EMA_END - (EMA_END - EMA_START) * (math.cos(math.pi * p) + 1) / 2
 
 
 @torch.no_grad()
@@ -137,12 +151,14 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
 
     model = build_ijepa(variant).to(DEVICE)
     print(f"{variant}: {count_params(model)/1e6:.2f}M parametri addestrabili")
+    print(f"[iperparametri] lr={LR:.2e} ema={EMA_START}->{EMA_END} "
+          f"predictor_dim={network.PREDICTOR_DIM}")
 
     # In I-JEPA si ottimizzano context encoder e predictor: il target
     # encoder segue per EMA (obiettivo 1 del brief) e non riceve gradienti,
     # quindi si prendono solo i parametri che li richiedono.
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.AdamW(params, lr=SSL_LR, weight_decay=SSL_WEIGHT_DECAY)
+    optimizer = torch.optim.AdamW(params, lr=LR, weight_decay=SSL_WEIGHT_DECAY)
 
     total_steps = max(epochs * len(loader), 1)
     warmup = SSL_WARMUP_EPOCHS * len(loader)
@@ -199,7 +215,7 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
               "Riferimento (encoder casuale, pesi non addestrati):")
         knn_ref = run_probe(model, records, splits)[1]
     print(f"Da battere: macro-F1 k-NN = {knn_ref:.4f}"
-          f"   (cancello: se a {GATE_EPOCH} epoche non e' superato, ci si ferma)")
+          f"   (cancello: se a {GATE_AT} epoche non e' superato, ci si ferma)")
     knn_best = 0.0
 
     for epoch in range(start_epoch, epochs):
@@ -279,7 +295,7 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             delta = knn[1] - knn_ref
             print(f"            [cancello] k-NN {knn[1]:.4f} vs casuale {knn_ref:.4f}"
                   f"  -> {delta:+.4f}   miglior finora {knn_best:.4f}")
-            if epoch + 1 >= GATE_EPOCH and knn_best < knn_ref - GATE_MARGINE:
+            if epoch + 1 >= GATE_AT and knn_best < knn_ref - GATE_MARGINE:
                 print(f"  CANCELLO: dopo {epoch+1} epoche la sonda non ha mai")
                 print(f"  superato l'encoder casuale ({knn_best:.4f} < {knn_ref:.4f}).")
                 print("  Il pre-training sta DEGRADANDO le rappresentazioni: ci si")
@@ -326,12 +342,23 @@ if __name__ == "__main__":
     ap.add_argument("--target-scale", type=float, nargs=2, default=None)
     ap.add_argument("--predictor-dim", type=int, default=None)
     ap.add_argument("--workers", type=int, default=None)
+    ap.add_argument("--lr", type=float, default=None)
+    ap.add_argument("--ema-start", type=float, default=None,
+                    help="momentum EMA iniziale: piu' alto = target piu' lento = meno collasso")
+    ap.add_argument("--gate-epoch", type=int, default=None,
+                    help="epoche dopo cui fermarsi se la sonda non batte l'encoder casuale")
     a = ap.parse_args()
 
     # Si scrivono nei moduli che li leggono a ogni chiamata, cosi' l'override
     # vale per l'intero run senza duplicare la configurazione.
     import network
     import data as data_mod
+    if a.lr is not None:
+        LR = a.lr
+    if a.ema_start is not None:
+        EMA_START = a.ema_start
+    if a.gate_epoch is not None:
+        GATE_AT = a.gate_epoch
     if a.context_scale:
         network.CONTEXT_SCALE = tuple(a.context_scale)
     if a.target_scale:
