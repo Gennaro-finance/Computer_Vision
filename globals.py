@@ -41,10 +41,25 @@ SEED = 42
 # Su Windows ogni worker e' un processo nuovo che re-importa il modulo, quindi
 # l'avvio costa; con persistent_workers=True lo si paga una volta sola.
 # Se DataLoader da' problemi su Windows, scendete a 0.
-# 16 e non 8: la macchina ha 32 core logici e con 8 worker la GPU restava al
-# 77%, cioe' aspettava i dati. Se lanciate PIU' run in parallelo, dividete
-# questo numero fra loro.
-NUM_WORKERS = 16
+# 12 e non 16, ed e' una scelta HARDWARE, non di prestazioni.
+#
+# La macchina e' un portatile (i9-13980HX + RTX 4080 Laptop, alimentatore
+# 330 W) e il 21 ago ha subito TRE spegnimenti improvvisi - eventi
+# Kernel-Power 41 alle 16:46, 20:34 e 23:55 - tutti durante nostri
+# addestramenti. Con 16 worker che decodificano JPEG su 24 core piu' la GPU
+# sotto carico, i picchi di assorbimento e le temperature superano quello che
+# il sistema regge in modo continuativo.
+#
+# 12 worker costano circa il 30% di tempo in piu' per epoca, ma un run di 8
+# ore che si spegne a meta' costa molto di piu'. Se lanciate piu' run in
+# parallelo, dividete questo numero fra loro.
+NUM_WORKERS = 12
+
+# Guardiano termico: prima di ogni epoca si legge la temperatura della GPU e
+# se supera questa soglia si aspetta che scenda. Costa nulla quando le
+# temperature sono normali. A 0 il controllo e' disattivato.
+TEMP_MAX_GPU = 78
+TEMP_PAUSA_S = 45
 
 
 def amp_dtype():
@@ -150,10 +165,15 @@ SSL_SCALE_JITTER = (0.6, 1.6)
 # presentazione l'11 settembre.
 #
 # Decodificando una volta e ricavando CROPS_PER_ITEM crop, il costo per tile
-# scende a ~52/K + 18 ms. K=4 lascia comunque 32 immagini DISTINTE in un
-# batch da 128 tile: si guadagna un fattore ~3 senza schiacciare la varieta'
-# del batch, che nel self-supervised conta.
-CROPS_PER_ITEM = 4
+# scende a ~52/K + 18 ms.
+#
+# RIPORTATO A 1 il 22 ago. K=4 dava il caricamento 6.6x piu' veloce, ma con
+# un effetto collaterale che non era stato dichiarato: un batch da 128 tile
+# conteneva solo 32 immagini DISTINTE. Nel self-supervised la varieta' del
+# batch non e' un dettaglio, e quel compromesso poteva essere una delle
+# ragioni per cui il pre-training rendeva poco. Con K=1 il batch torna a 128
+# immagini diverse, al costo di ~70 ms per tile.
+CROPS_PER_ITEM = 1
 
 # Griglia deterministica: serve solo quando volete risultati riproducibili
 # tile per tile (diagnostica, figure), non per il training.
@@ -274,10 +294,10 @@ SSL_BATCH_SIZE = 128   # su 12 GB con bf16 ci sta; scendete a 64 se OOM
 # coseno medio 0.97 -> 0.64 rispetto all'init) ma troppo lentamente, e il run
 # veniva interrotto all'epoca 15. Dividere il LR per 3 rallenta proprio la
 # fuga dal collasso, quindi si resta a meta' strada invece che a 5e-5.
-SSL_LR = 1e-4              # era 1.5e-4
+SSL_LR = 1.5e-4            # valore ORIGINALE del progetto, ripristinato
 SSL_WEIGHT_DECAY = 0.04
 SSL_WARMUP_EPOCHS = 15
-SSL_EMA_START = 0.999      # era 0.996 - EMA piu' lenta, target si muove meno
+SSL_EMA_START = 0.996      # valore ORIGINALE del progetto, ripristinato
 SSL_EMA_END = 1.0
 AMP = True
 
@@ -286,7 +306,7 @@ AMP = True
 # distribuirsi come una gaussiana isotropa (vedi network.sigreg_loss).
 # Si somma alla loss I-JEPA, non la sostituisce - l'obiettivo 1 del brief
 # (EMA + predictor) resta soddisfatto alla lettera. lambda=0.0 disattiva.
-SIGREG_LAMBDA = 1.0
+SIGREG_LAMBDA = 0.0
 SIGREG_PROJECTIONS = 64
 
 # ------------------------------------------- monitoraggio del collasso

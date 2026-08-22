@@ -38,6 +38,56 @@ class AverageMeter:
 # -------------------------------------------------------------- checkpoint
 # Il pre-training SSL supera facilmente le 12 h di una sessione Kaggle
 # (300 epoche ~ 6 h, 600 ~ 12.5 h). Il resume non e' opzionale.
+def temperatura_gpu():
+    """
+    Temperatura GPU in gradi, o None se non leggibile.
+
+    Serve al guardiano termico: la macchina e' un portatile e il 21 ago si e'
+    spenta di colpo tre volte durante i nostri addestramenti (Kernel-Power
+    41). Non potendo leggere la temperatura della CPU senza privilegi, si usa
+    quella della GPU come indicatore del carico termico complessivo.
+    """
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=10)
+        return int(out.stdout.strip().splitlines()[0])
+    except Exception:
+        return None
+
+
+def attendi_raffreddamento(soglia=None, pausa=None, verbose=True):
+    """
+    Se la GPU e' sopra soglia, aspetta che scenda prima di proseguire.
+
+    Costa nulla quando le temperature sono normali: una lettura di
+    nvidia-smi per epoca. Meglio perdere qualche minuto che perdere un run
+    di otto ore per uno spegnimento.
+    """
+    from globals import TEMP_MAX_GPU, TEMP_PAUSA_S
+    soglia = TEMP_MAX_GPU if soglia is None else soglia
+    pausa = TEMP_PAUSA_S if pausa is None else pausa
+    if not soglia:
+        return
+    import time as _t
+    attese = 0
+    while True:
+        t = temperatura_gpu()
+        if t is None or t < soglia:
+            if attese and verbose:
+                print(f"    [termico] ripresa a {t} C dopo {attese*pausa}s", flush=True)
+            return
+        if verbose and attese == 0:
+            print(f"    [termico] GPU a {t} C, soglia {soglia}: pausa", flush=True)
+        _t.sleep(pausa)
+        attese += 1
+        if attese * pausa > 900:      # oltre 15 min si prosegue comunque
+            if verbose:
+                print("    [termico] non scende, proseguo", flush=True)
+            return
+
+
 def save_checkpoint(state: dict, name: str) -> str:
     """
     Salvataggio ATOMICO: prima su file temporaneo, poi rinomina.
