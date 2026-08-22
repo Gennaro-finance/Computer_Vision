@@ -44,7 +44,8 @@ from utils import load_checkpoint, save_json, set_seed
 # 1. Caching dei latenti - si fa una volta
 # ==========================================================================
 @torch.no_grad()
-def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, arm="ijepa"):
+def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, arm="ijepa",
+                  layers=None, ckpt_tag=""):
     """
     Estrae e salva i token dell'encoder congelato per tutte le lesioni.
 
@@ -56,13 +57,35 @@ def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, arm="ijepa"):
     Il braccio 'imagenet' non e' opzionale: e' il confronto che fa o rompe
     la storia del progetto, ed e' il piu' economico dei tre.
     """
+    # `layers` concatena piu' profondita' del ViT invece del solo ultimo
+    # blocco. Misurato il 21 ago: le feature dell'ultimo blocco sono le piu'
+    # COMPRESSE, e con una sonda lineare - che e' cio' che fa la testa - un
+    # blocco intermedio rende molto di piu'. Il protocollo va tenuto IDENTICO
+    # su tutti i bracci, altrimenti si confrontano i protocolli di estrazione
+    # invece degli encoder.
     records = parse_annotations(verbose=False)
     splits = load_splits()
 
-    if arm == "ijepa":
-        ckpt = load_checkpoint(f"ijepa_{variant}", map_location=DEVICE)
+    if arm == "lejepa":
+        ckpt = load_checkpoint(f"lejepa_{variant}_pred48", map_location=DEVICE)
         if ckpt is None:
-            raise FileNotFoundError("Nessun checkpoint SSL. Lanciate train_ssl.py")
+            raise FileNotFoundError("Nessun checkpoint LeJEPA. Lanciate "
+                                    "train_ssl.py --arch lejepa")
+        import network as _net
+        _net.PREDICTOR_DIM = 48       # il checkpoint ha il predictor stretto
+        model = build_ijepa(ckpt.get("variant", variant), arch="lejepa").to(DEVICE)
+        model.load_state_dict(ckpt["model"])
+    elif arm == "ijepa":
+        # ckpt_tag sceglie QUALE run usare: gli esperimenti sul pre-training
+        # producono checkpoint distinti (pred48, base100...) e il braccio
+        # deve puntare a quello migliore, non al primo che c'e'.
+        nome = f"ijepa_{variant}{('_' + ckpt_tag) if ckpt_tag else ''}"
+        ckpt = load_checkpoint(nome, map_location=DEVICE)
+        if ckpt is None:
+            raise FileNotFoundError(f"Nessun checkpoint {nome}. Lanciate train_ssl.py")
+        import network as _net
+        if ckpt_tag == "pred48":
+            _net.PREDICTOR_DIM = 48
         model = build_ijepa(ckpt.get("variant", variant)).to(DEVICE)
         model.load_state_dict(ckpt["model"])
     elif arm == "random":
@@ -80,34 +103,40 @@ def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, arm="ijepa"):
     for split, ids in splits.items():
         ds = LesionCropDataset(records, ids)
         loader = make_loader(ds, batch_size=batch_size)
-        toks, masks, labels = [], [], []
+        toks, masks, labels, geoms = [], [], [], []
 
         for batch in loader:
-            t = model.encode(batch["image"].to(DEVICE))
+            t = model.encode(batch["image"].to(DEVICE), return_layers=layers)
             m = bbox_to_token_mask(batch["bbox"].to(DEVICE), model.grid)
             toks.append(t.half().cpu())
             masks.append(m.cpu())
             labels.append(batch["label"])
+            geoms.append(batch["geom"])
 
         out[split] = {
             "tokens": torch.cat(toks),
             "mask": torch.cat(masks),
             "labels": torch.cat(labels),
+            "geom": torch.cat(geoms),
         }
         c = class_counts(out[split]["labels"])
         print(f"  {split:6s}: {len(ds):5d} lesioni  token={tuple(out[split]['tokens'].shape)}  "
               f"PAI3/4/5 = {c.int().tolist()}")
 
-    path = os.path.join(CACHE_DIR, f"latents_{arm}_{variant}.pt")
-    torch.save({"data": out, "embed_dim": model.embed_dim, "grid": model.grid}, path)
+    dim = out["train"]["tokens"].shape[-1]
+    suffisso = "" if layers is None else "_L" + "-".join(map(str, layers))
+    path = os.path.join(CACHE_DIR, f"latents_{arm}_{variant}{suffisso}.pt")
+    torch.save({"data": out, "embed_dim": dim, "grid": model.grid,
+                "layers": layers}, path)
     size_mb = os.path.getsize(path) / 1e6
     print(f"\nLatenti salvati: {path} ({size_mb:.0f} MB)")
     print("Da qui in poi ogni esperimento sullo sbilanciamento gira in secondi.")
     return path
 
 
-def load_latents(variant=DEFAULT_VARIANT, arm="ijepa"):
-    path = os.path.join(CACHE_DIR, f"latents_{arm}_{variant}.pt")
+def load_latents(variant=DEFAULT_VARIANT, arm="ijepa", layers=None):
+    suffisso = "" if layers is None else "_L" + "-".join(map(str, layers))
+    path = os.path.join(CACHE_DIR, f"latents_{arm}_{variant}{suffisso}.pt")
     if not os.path.isfile(path):
         raise FileNotFoundError(f"{path} mancante. Lanciate --cache")
     return torch.load(path, map_location="cpu", weights_only=False)
@@ -117,7 +146,7 @@ def load_latents(variant=DEFAULT_VARIANT, arm="ijepa"):
 # 2. Training della testa sui latenti cachati
 # ==========================================================================
 def train_head(cached, method="none", head_type="flat", seed=0,
-               epochs=HEAD_EPOCHS, verbose=False, bts_alpha=0.5):
+               epochs=HEAD_EPOCHS, verbose=False, bts_alpha=0.5, use_geom=False):
     """
     Addestra attention pooling + testa sui latenti congelati.
 
@@ -131,7 +160,8 @@ def train_head(cached, method="none", head_type="flat", seed=0,
     tr, va = data["train"], data["val"]
     train_labels = tr["labels"]
 
-    clf = LesionClassifier(dim, grid, head_type).to(DEVICE)
+    gdim = tr["geom"].shape[1] if (use_geom and "geom" in tr) else 0
+    clf = LesionClassifier(dim, grid, head_type, geom_dim=gdim).to(DEVICE)
     opt = torch.optim.AdamW(clf.parameters(), lr=HEAD_LR, weight_decay=HEAD_WEIGHT_DECAY)
 
     n = len(train_labels)
@@ -146,6 +176,7 @@ def train_head(cached, method="none", head_type="flat", seed=0,
     # train split. Interpolare campioni di validation nel train falsifica
     # tutto, ed e' un errore che non si vede nelle metriche.
     tr_tokens, tr_mask, tr_labels_ep = tr["tokens"], tr["mask"], train_labels
+    tr_geom = tr.get("geom")
     if method == "latent_smote":
         tr_tokens, tr_mask, tr_labels_ep = latent_smote_tokens(
             tr["tokens"], tr["mask"], train_labels, seed=seed
@@ -162,6 +193,8 @@ def train_head(cached, method="none", head_type="flat", seed=0,
         tr_tokens = tr_tokens.to(DEVICE)
         tr_mask = tr_mask.to(DEVICE)
         tr_labels_ep = tr_labels_ep.to(DEVICE)
+        if gdim:
+            tr_geom = tr_geom.to(DEVICE)
     except torch.cuda.OutOfMemoryError:
         torch.cuda.empty_cache()
 
@@ -179,23 +212,33 @@ def train_head(cached, method="none", head_type="flat", seed=0,
             tok = tr_tokens[idx].float()
             msk = tr_mask[idx]
             y = tr_labels_ep[idx]
+            gm = tr_geom[idx] if gdim else None
 
             if method == "balanced_tokens":
+                # La geometria segue le viste: ogni vista e' la STESSA
+                # lesione, quindi eredita la sua bbox.
+                n0 = tok.shape[0]
                 tok, msk, y = balanced_token_sampling(
                     tok, msk, y, bts_counts, generator=bts_gen, alpha=bts_alpha
                 )
+                if gdim:
+                    rip = tok.shape[0] // n0 if tok.shape[0] % n0 == 0 else None
+                    gm = (gm.repeat_interleave(rip, 0) if rip
+                          else gm[:tok.shape[0]])
 
             tok, msk, y = tok.to(DEVICE), msk.to(DEVICE), y.to(DEVICE)
+            if gdim:
+                gm = gm.to(DEVICE)
 
             opt.zero_grad(set_to_none=True)
-            logits, _, _ = clf(tok, token_mask=msk)
+            logits, _, _ = clf(tok, token_mask=msk, geom=gm)
             loss = compute_loss(logits, y, method, head_type, train_labels)
             loss.backward()
             opt.step()
 
         if (epoch + 1) % 10 == 0 or epoch == epochs - 1:
             from evaluation import evaluate_split
-            m = evaluate_split(clf, va, head_type)
+            m = evaluate_split(clf, va, head_type, use_geom=bool(gdim))
             if m["macro_f1"] > best["val_f1"]:
                 best = {"val_f1": m["macro_f1"], "epoch": epoch,
                         "state": {k: v.detach().cpu().clone()
@@ -323,7 +366,12 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", action="store_true")
     ap.add_argument("--sweep-alpha", action="store_true")
-    ap.add_argument("--arm", default="ijepa", choices=["ijepa", "imagenet", "random"])
+    ap.add_argument("--arm", default="ijepa",
+                    choices=["ijepa", "imagenet", "random", "lejepa"])
+    ap.add_argument("--layers", type=int, nargs="+", default=None,
+                    help="blocchi da concatenare, es. --layers 2 7 11")
+    ap.add_argument("--ckpt-tag", default="",
+                    help="quale run SSL usare per il braccio ijepa (es. pred48)")
     ap.add_argument("--variant", default=DEFAULT_VARIANT)
     ap.add_argument("--method", default="none", choices=IMBALANCE_METHODS)
     ap.add_argument("--head", default="flat", choices=HEAD_TYPES)
@@ -331,7 +379,8 @@ if __name__ == "__main__":
     a = ap.parse_args()
 
     if a.cache:
-        cache_latents(a.variant, arm=a.arm)
+        cache_latents(a.variant, arm=a.arm, layers=a.layers,
+                      ckpt_tag=a.ckpt_tag)
     elif a.sweep_alpha:
         sweep_alpha(a.variant, a.arm)
     elif a.grid:

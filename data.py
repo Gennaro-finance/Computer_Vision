@@ -27,8 +27,9 @@ from globals import (
     CROPS_PER_IMAGE, DATA_ROOT, DIR_ANNOTATIONS, DIR_AUGMENTED, DIR_ORIGINAL, EXPECTED_COUNTS,
     EXPECTED_TOTAL_IMAGES, EXPECTED_TOTAL_LESIONS, GRADE_TO_IDX,
     MIN_TOKENS_PER_LESION, NUM_WORKERS, PAI_GRADES, PATCH_SIZE, RESIZE_H,
-    CROPS_PER_ITEM, RESIZE_W, SEED, SPLIT_FRACTIONS, SPLIT_JSON,
-    SSL_SCALE_JITTER, TILE_MIN_FOREGROUND, TILE_SIZE, TILE_STRIDE,
+    CROPS_PER_ITEM, LESION_CROP_MODE, LESION_CROP_PIXELS, RESIZE_W, SEED, SSL_AUG,
+    SPLIT_FRACTIONS, SPLIT_JSON, SSL_SCALE_JITTER, TILE_MIN_FOREGROUND,
+    TILE_SIZE, TILE_STRIDE,
 )
 from utils import load_json, save_json
 
@@ -437,6 +438,59 @@ def tile_positions(width, height, size=TILE_SIZE, stride=TILE_STRIDE):
     return [(x, y) for y in ys for x in xs]
 
 
+def _augmenta(arr, forte=True):
+    """
+    Augmentation per i tile del pre-training.
+
+    Con 'forte' si applicano trasformazioni fotometriche e geometriche che
+    una panoramica puo' realisticamente subire. La lista NON e' generica: il
+    flip verticale e le distorsioni di colore sono esclusi apposta perche'
+    anatomicamente impossibili su una radiografia, e insegnare invarianze
+    false e' peggio che non aumentare affatto.
+
+    Vedi SSL_AUG in globals.py per il perche' l'augmentation debole era il
+    problema.
+    """
+    if random.random() < 0.5:                      # flip orizzontale
+        arr = arr[:, ::-1].copy()
+
+    if not forte:
+        return np.clip(arr * random.uniform(0.85, 1.15), 0, 1)
+
+    # rotazione lieve: il paziente non e' mai posizionato identico
+    if random.random() < 0.7:
+        ang = random.uniform(-12, 12)
+        im = Image.fromarray((arr * 255).astype(np.uint8))
+        arr = np.asarray(im.rotate(ang, resample=Image.BILINEAR,
+                                   fillcolor=int(arr.mean() * 255)),
+                         dtype=np.float32) / 255.0
+
+    # luminosita' ed esposizione
+    arr = arr * random.uniform(0.75, 1.25)
+    # contrasto attorno alla media locale
+    if random.random() < 0.8:
+        mu = arr.mean()
+        arr = mu + (arr - mu) * random.uniform(0.7, 1.4)
+    # gamma: simula curve di sviluppo diverse
+    if random.random() < 0.6:
+        arr = np.clip(arr, 1e-4, None) ** random.uniform(0.7, 1.4)
+    # rumore: dose radiante variabile
+    if random.random() < 0.5:
+        arr = arr + np.random.normal(0, random.uniform(0.01, 0.05), arr.shape)
+    # sfocatura da movimento, con un box filter separabile (economico)
+    if random.random() < 0.25:
+        k = random.choice([3, 5])
+        pad = k // 2
+        a = np.pad(arr, pad, mode="edge")
+        acc = np.zeros_like(arr)
+        for dy in range(k):
+            for dx in range(k):
+                acc += a[dy:dy + arr.shape[0], dx:dx + arr.shape[1]]
+        arr = acc / (k * k)
+
+    return np.clip(arr, 0, 1).astype(np.float32)
+
+
 class TileDataset(Dataset):
     """
     Tile a risoluzione nativa per il pre-training SSL.
@@ -503,9 +557,7 @@ class TileDataset(Dataset):
                 break
 
         if self.augment:
-            if random.random() < 0.5:
-                arr = arr[:, ::-1].copy()
-            arr = np.clip(arr * random.uniform(0.85, 1.15), 0, 1)
+            arr = _augmenta(arr, forte=(SSL_AUG == "forte"))
 
         # le radiografie sono in scala di grigi: replichiamo su 3 canali per
         # restare compatibili con backbone standard
@@ -541,9 +593,13 @@ class LesionCropDataset(Dataset):
     """
 
     def __init__(self, records, image_ids, size=TILE_SIZE, context_factor=3.0,
-                 augment=False):
+                 augment=False, mode=None, crop_pixels=None):
         keep = set(image_ids)
         self.size, self.cf, self.augment = size, context_factor, augment
+        # 'fixed' preserva la dimensione apparente della lesione, 'relative'
+        # la normalizza via. Vedi LESION_CROP_MODE in globals.py.
+        self.mode = LESION_CROP_MODE if mode is None else mode
+        self.crop_px = LESION_CROP_PIXELS if crop_pixels is None else crop_pixels
         self.items = [
             {"image_id": r["image_id"], "image_path": r["image_path"],
              "lesion_idx": j, **l}
@@ -557,7 +613,13 @@ class LesionCropDataset(Dataset):
     def __getitem__(self, i):
         it = self.items[i]
         cx, cy = (it["xmin"] + it["xmax"]) / 2, (it["ymin"] + it["ymax"]) / 2
-        half = max(it["xmax"] - it["xmin"], it["ymax"] - it["ymin"]) * self.cf / 2
+        if self.mode == "fixed":
+            # Finestra costante in pixel NATIVI: il fattore di scala e' lo
+            # stesso per tutte le lesioni, quindi una lesione grande resta
+            # grande nell'immagine data alla rete.
+            half = self.crop_px / 2
+        else:
+            half = max(it["xmax"] - it["xmin"], it["ymax"] - it["ymin"]) * self.cf / 2
 
         with Image.open(it["image_path"]) as im:
             im = im.convert("L")
@@ -567,8 +629,6 @@ class LesionCropDataset(Dataset):
             crop = im.crop((x0, y0, x1, y1)).resize((self.size, self.size), Image.BILINEAR)
 
         arr = np.asarray(crop, dtype=np.float32) / 255.0
-        if self.augment and random.random() < 0.5:
-            arr = arr[:, ::-1].copy()
 
         # bbox riportata nelle coordinate del crop ridimensionato
         sx = self.size / max(x1 - x0, 1)
@@ -578,10 +638,32 @@ class LesionCropDataset(Dataset):
             (it["xmax"] - x0) * sx, (it["ymax"] - y0) * sy,
         ], dtype=torch.float32).clamp(0, self.size)
 
+        # Il flip DEVE specchiare anche la bbox. Prima non lo faceva: con
+        # augment=True meta' dei campioni aveva la maschera dei token sulla
+        # posizione speculare della lesione. Nessun chiamante passava
+        # augment=True, quindi i risultati non ne erano affetti, ma era una
+        # mina innescata.
+        if self.augment and random.random() < 0.5:
+            arr = arr[:, ::-1].copy()
+            bbox = torch.tensor([self.size - bbox[2], bbox[1],
+                                 self.size - bbox[0], bbox[3]])
+
+        # Geometria della bbox in pixel NATIVI, normalizzata. E' il segnale
+        # piu' predittivo del dataset (due soglie sul lato danno macro-F1
+        # 0.7567) e con il crop 'relative' andava perduto. Il Task dice
+        # "using the provided bounding box coordinates": e' un input fornito.
+        w_nat = it["xmax"] - it["xmin"]
+        h_nat = it["ymax"] - it["ymin"]
+        geom = torch.tensor([w_nat / 200.0, h_nat / 200.0,
+                             max(w_nat, h_nat) / 200.0,
+                             (w_nat * h_nat) ** 0.5 / 200.0],
+                            dtype=torch.float32)
+
         x3 = torch.from_numpy(arr)[None].repeat(3, 1, 1)
         return {
             "image": (x3 - 0.5) / 0.5,
             "bbox": bbox,
+            "geom": geom,
             "label": GRADE_TO_IDX[it["grade"]],
             "image_id": it["image_id"],
             "lesion_idx": it["lesion_idx"],

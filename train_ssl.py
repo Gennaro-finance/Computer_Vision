@@ -93,11 +93,11 @@ def run_probe(model, records, splits):
 
 
 def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
-          resume=False, smoke=False, tag=""):
+          resume=False, smoke=False, tag="", arch="ijepa"):
     set_seed()
     # Il tag tiene separati i checkpoint di run paralleli: senza, due varianti
     # lanciate insieme si sovrascrivono a vicenda lo stesso file.
-    run_name = f"ijepa_{variant}{('_' + tag) if tag else ''}"
+    run_name = f"{arch}_{variant}{('_' + tag) if tag else ''}"
 
     records = parse_annotations(verbose=False)
     splits = load_splits()
@@ -117,10 +117,14 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
           f"({len(train_ds)} item x {k} crop per decodifica)")
     print(f"Step per epoca: {len(loader)}  (batch = {max(batch_size // k, 1)} img x {k} = {max(batch_size // k, 1) * k} tile)")
 
-    model = build_ijepa(variant).to(DEVICE)
+    model = build_ijepa(variant, arch=arch).to(DEVICE)
     print(f"{variant}: {count_params(model)/1e6:.2f}M parametri addestrabili")
 
-    params = list(model.context_encoder.parameters()) + list(model.predictor.parameters())
+    # In I-JEPA si ottimizzano context encoder e predictor: il target
+    # encoder segue per EMA e non deve ricevere gradienti. In LeJEPA c'e' un
+    # solo encoder e va ottimizzato tutto, quindi si prendono direttamente i
+    # parametri che richiedono gradiente.
+    params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(params, lr=SSL_LR, weight_decay=SSL_WEIGHT_DECAY)
 
     total_steps = max(epochs * len(loader), 1)
@@ -253,6 +257,8 @@ if __name__ == "__main__":
     ap.add_argument("--sigreg-lambda", type=float, default=None)
     ap.add_argument("--predictor-dim", type=int, default=None)
     ap.add_argument("--workers", type=int, default=None)
+    ap.add_argument("--arch", default="ijepa", choices=["ijepa", "lejepa"],
+                    help="ijepa = obiettivo 1; lejepa = braccio di confronto (ref [2])")
     a = ap.parse_args()
 
     # Si scrivono nei moduli che li leggono a ogni chiamata, cosi' l'override
@@ -270,7 +276,7 @@ if __name__ == "__main__":
     if a.workers is not None:
         data_mod.NUM_WORKERS = a.workers
 
-    print(f"[config] tag={a.tag or '-'} context={network.CONTEXT_SCALE} "
+    print(f"[config] arch={a.arch} tag={a.tag or '-'} context={network.CONTEXT_SCALE} "
           f"target={network.TARGET_SCALE} sigreg_lambda={network.SIGREG_LAMBDA} "
           f"predictor_dim={network.PREDICTOR_DIM} workers={data_mod.NUM_WORKERS}")
-    train(a.variant, a.epochs, a.batch_size, a.resume, a.smoke, a.tag)
+    train(a.variant, a.epochs, a.batch_size, a.resume, a.smoke, a.tag, a.arch)

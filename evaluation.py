@@ -106,7 +106,8 @@ def ordinal_mae(y_true, y_pred):
 # Valutazione di un modello
 # ==========================================================================
 @torch.no_grad()
-def evaluate_split(clf, split_data, head_type="flat", batch_size=256):
+def evaluate_split(clf, split_data, head_type="flat", batch_size=256,
+                   use_geom=False):
     """Valuta la testa su uno split di latenti cachati."""
     clf.eval()
     tokens, mask, labels = split_data["tokens"], split_data["mask"], split_data["labels"]
@@ -115,7 +116,9 @@ def evaluate_split(clf, split_data, head_type="flat", batch_size=256):
     for i in range(0, len(labels), batch_size):
         tok = tokens[i:i + batch_size].float().to(DEVICE)
         msk = mask[i:i + batch_size].to(DEVICE)
-        logits, _, _ = clf(tok, token_mask=msk)
+        gm = (split_data["geom"][i:i + batch_size].to(DEVICE)
+              if use_geom else None)
+        logits, _, _ = clf(tok, token_mask=msk, geom=gm)
 
         if head_type == "ordinal":
             cum = torch.sigmoid(logits)                    # (B, K-1)
