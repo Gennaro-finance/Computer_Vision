@@ -32,11 +32,9 @@ from globals import (
 )
 from imbalance import (
     balanced_sampler_weights, balanced_token_sampling, class_counts,
-    compute_loss, latent_smote_tokens,
+    compute_loss,
 )
-from network import (
-    FrozenImageNetEncoder, LesionClassifier, bbox_to_token_mask, build_ijepa,
-)
+from network import LesionClassifier, bbox_to_token_mask, build_ijepa
 from utils import load_checkpoint, save_json, set_seed
 
 
@@ -44,58 +42,34 @@ from utils import load_checkpoint, save_json, set_seed
 # 1. Caching dei latenti - si fa una volta
 # ==========================================================================
 @torch.no_grad()
-def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, arm="ijepa",
-                  layers=None, ckpt_tag=""):
+def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
+                  ckpt_tag="", arm="ijepa"):
     """
     Estrae e salva i token dell'encoder congelato per tutte le lesioni.
 
-    `arm` seleziona il braccio di confronto (sez.9 dell'analisi):
-      'ijepa'    -> il vostro encoder pre-addestrato in-domain
-      'imagenet' -> ViT/ResNet pre-addestrato su ImageNet  [DA IMPLEMENTARE]
-      'random'   -> pesi casuali: il pavimento assoluto
-
-    Il braccio 'imagenet' non e' opzionale: e' il confronto che fa o rompe
-    la storia del progetto, ed e' il piu' economico dei tre.
+    L'encoder e' quello pre-addestrato da train_ssl.py e resta CONGELATO:
+    l'obiettivo 2 del brief chiede esplicitamente di valutare le
+    rappresentazioni "frozen", quindi qui non si aggiorna nessun peso del
+    backbone - si estraggono e basta.
     """
     # `layers` concatena piu' profondita' del ViT invece del solo ultimo
     # blocco. Misurato il 21 ago: le feature dell'ultimo blocco sono le piu'
     # COMPRESSE, e con una sonda lineare - che e' cio' che fa la testa - un
     # blocco intermedio rende molto di piu'. Il protocollo va tenuto IDENTICO
-    # su tutti i bracci, altrimenti si confrontano i protocolli di estrazione
-    # invece degli encoder.
+    # su tutte le configurazioni dell'ablation, altrimenti si confrontano i
+    # protocolli di estrazione invece dei metodi.
     records = parse_annotations(verbose=False)
     splits = load_splits()
 
-    if arm == "lejepa":
-        ckpt = load_checkpoint(f"lejepa_{variant}_pred48", map_location=DEVICE)
-        if ckpt is None:
-            raise FileNotFoundError("Nessun checkpoint LeJEPA. Lanciate "
-                                    "train_ssl.py --arch lejepa")
-        import network as _net
-        _net.PREDICTOR_DIM = 48       # il checkpoint ha il predictor stretto
-        model = build_ijepa(ckpt.get("variant", variant), arch="lejepa").to(DEVICE)
-        model.load_state_dict(ckpt["model"])
-    elif arm == "ijepa":
-        # ckpt_tag sceglie QUALE run usare: gli esperimenti sul pre-training
-        # producono checkpoint distinti (pred48, base100...) e il braccio
-        # deve puntare a quello migliore, non al primo che c'e'.
-        nome = f"ijepa_{variant}{('_' + ckpt_tag) if ckpt_tag else ''}"
-        ckpt = load_checkpoint(nome, map_location=DEVICE)
-        if ckpt is None:
-            raise FileNotFoundError(f"Nessun checkpoint {nome}. Lanciate train_ssl.py")
-        import network as _net
-        if ckpt_tag == "pred48":
-            _net.PREDICTOR_DIM = 48
-        model = build_ijepa(ckpt.get("variant", variant)).to(DEVICE)
-        model.load_state_dict(ckpt["model"])
-    elif arm == "random":
-        model = build_ijepa(variant).to(DEVICE)
-    elif arm == "imagenet":
-        # Braccio critico della sez.9: ViT-B/16 ImageNet congelato, stessa
-        # griglia 14x14 del nostro ViT, quindi il confronto e' alla pari.
-        model = FrozenImageNetEncoder().to(DEVICE)
-    else:
-        raise ValueError(arm)
+    # ckpt_tag sceglie QUALE run di pre-training usare: gli esperimenti
+    # producono checkpoint distinti e il downstream deve puntare a quello
+    # voluto, non al primo che c'e'.
+    nome = f"ijepa_{variant}{('_' + ckpt_tag) if ckpt_tag else ''}"
+    ckpt = load_checkpoint(nome, map_location=DEVICE)
+    if ckpt is None:
+        raise FileNotFoundError(f"Nessun checkpoint {nome}. Lanciate train_ssl.py")
+    model = build_ijepa(ckpt.get("variant", variant)).to(DEVICE)
+    model.load_state_dict(ckpt["model"])
 
     model.eval()
     out = {}
@@ -177,12 +151,6 @@ def train_head(cached, method="none", head_type="flat", seed=0,
     # tutto, ed e' un errore che non si vede nelle metriche.
     tr_tokens, tr_mask, tr_labels_ep = tr["tokens"], tr["mask"], train_labels
     tr_geom = tr.get("geom")
-    if method == "latent_smote":
-        tr_tokens, tr_mask, tr_labels_ep = latent_smote_tokens(
-            tr["tokens"], tr["mask"], train_labels, seed=seed
-        )
-        n = len(tr_labels_ep)
-        order_fn = lambda: torch.randperm(n)
 
     # I token dello split stanno sulla GPU UNA VOLTA SOLA, non batch per
     # batch. La griglia dell'obiettivo 4 sono 6 metodi x 2 teste x N_SEEDS =
@@ -368,8 +336,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", action="store_true")
     ap.add_argument("--sweep-alpha", action="store_true")
-    ap.add_argument("--arm", default="ijepa",
-                    choices=["ijepa", "imagenet", "random", "lejepa"])
+    ap.add_argument("--arm", default="ijepa", choices=["ijepa"])
     ap.add_argument("--layers", type=int, nargs="+", default=None,
                     help="blocchi da concatenare, es. --layers 2 7 11")
     ap.add_argument("--ckpt-tag", default="",

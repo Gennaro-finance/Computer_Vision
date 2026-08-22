@@ -8,8 +8,7 @@ latent space".
 --------------------------------------------------------------------------
 LA NOVITA' E' VOSTRA. Qui trovate:
   - le baseline complete e funzionanti (CE, pesata, focal, oversampling)
-  - la baseline scomoda, SMOTE latente, come TODO strutturato
-  - la novita' proposta, `balanced_tokens`, come TODO con il ragionamento
+  - la novita' proposta, `balanced_token_sampling`
 
 Lo sbilanciamento e' 7:1, non 100:1. E' serio ma non estremo, quindi le
 baseline standard funzioneranno decentemente e la vostra novita' deve
@@ -36,18 +35,6 @@ def inverse_frequency_weights(labels, num_classes=NUM_CLASSES):
     c = class_counts(labels, num_classes).clamp(min=1)
     w = c.sum() / (num_classes * c)
     return w / w.mean()
-
-
-def ldam_margins(labels, num_classes=NUM_CLASSES, max_margin=0.5):
-    """
-    Margini in stile LDAM: delta_c proporzionale a n_c^(-1/4).
-
-    Non e' la novita' (e' del 2019), ma e' il termine di confronto corretto
-    se la vostra novita' agisce sui margini nello spazio latente.
-    """
-    c = class_counts(labels, num_classes).clamp(min=1)
-    m = c.pow(-0.25)
-    return m / m.max() * max_margin
 
 
 # ==========================================================================
@@ -101,119 +88,6 @@ def balanced_sampler_weights(labels, num_classes=NUM_CLASSES):
     """Pesi per WeightedRandomSampler: oversampling della minoritaria."""
     c = class_counts(labels, num_classes).clamp(min=1)
     return (1.0 / c)[labels.long()]
-
-
-# ==========================================================================
-# BASELINE SCOMODA - SMOTE latente
-# ==========================================================================
-def _smote_pairs(feats_c, k, n_new, gen):
-    """
-    Sceglie (ancora, vicino, lambda) per n_new campioni sintetici.
-
-    Isolato dal resto perche' lo usano sia la versione su vettori sia quella
-    sui token: la logica dei vicini e' la stessa, cambia solo cosa si
-    interpola.
-    """
-    n = feats_c.shape[0]
-    # k vicini ESCLUSO se stesso: con topk(k+1) il primo e' sempre il punto
-    # stesso (distanza 0), quindi si scarta la colonna 0.
-    kk = min(k + 1, n)
-    d = torch.cdist(feats_c, feats_c)
-    nn_idx = d.topk(kk, largest=False).indices[:, 1:]   # (n, kk-1)
-    if nn_idx.shape[1] == 0:                            # classe con 1 solo campione
-        nn_idx = torch.zeros(n, 1, dtype=torch.long)
-
-    anchors = torch.randint(0, n, (n_new,), generator=gen)
-    picks = torch.randint(0, nn_idx.shape[1], (n_new,), generator=gen)
-    neighbors = nn_idx[anchors, picks]
-    lam = torch.rand(n_new, generator=gen)
-    return anchors, neighbors, lam
-
-
-def latent_smote(features, labels, num_classes=NUM_CLASSES, k=5, seed=0):
-    """
-    SMOTE nello spazio latente - la baseline che vi mette alla prova.
-
-    Con l'encoder congelato i vostri campioni SONO vettori di feature, quindi
-    SMOTE si applica direttamente nello spazio latente, senza generare pixel:
-
-      1. per ogni classe minoritaria, trovare i k vicini piu' prossimi
-         all'interno della stessa classe
-      2. generare campioni sintetici interpolando:
-             x_new = x_i + lambda * (x_vicino - x_i),  lambda ~ U(0,1)
-      3. generarne quanti bastano a pareggiare la classe maggioritaria
-
-    Perche' conta: e' notoriamente forte e costa venti righe. Se la vostra
-    novita' non la batte, dovete saperlo PRIMA della presentazione, non
-    durante le domande. Riportare onestamente "la nostra novita' pareggia
-    SMOTE latente ma non lo supera" e' molto meglio che ometterlo - se lo
-    omettete, sara' la prima cosa che vi chiedono.
-
-    ATTENZIONE al leakage: generate i sintetici SOLO dal train split. Se
-    interpolate campioni di validation nel train, i risultati sono falsi.
-
-    Ritorna: (features_aumentate, labels_aumentate)
-    """
-    gen = torch.Generator().manual_seed(seed)
-    feats = features.float()
-    counts = class_counts(labels, num_classes)
-    target = int(counts.max().item())
-
-    extra_f, extra_y = [], []
-    for c in range(num_classes):
-        sel = (labels == c).nonzero(as_tuple=True)[0]
-        n_new = target - sel.numel()
-        if sel.numel() < 2 or n_new <= 0:
-            continue
-        fc = feats[sel]
-        a, nb, lam = _smote_pairs(fc, k, n_new, gen)
-        extra_f.append(fc[a] + lam[:, None] * (fc[nb] - fc[a]))
-        extra_y.append(torch.full((n_new,), c, dtype=labels.dtype))
-
-    if not extra_f:
-        return features, labels
-    return (torch.cat([feats] + extra_f), torch.cat([labels] + extra_y))
-
-
-def latent_smote_tokens(tokens, token_mask, labels, num_classes=NUM_CLASSES,
-                        k=5, seed=0, max_per_class=None):
-    """
-    SMOTE applicato alle MAPPE DI TOKEN, non ai vettori gia' aggregati.
-
-    Perche' questa variante esiste: la testa del progetto lavora su token
-    (B, T, D) piu' maschera, non su un vettore per lesione. Riducendo tutto a
-    un vettore prima di SMOTE si cambierebbe l'architettura solo per una
-    baseline, e il confronto con la novita' non sarebbe piu' alla pari.
-    Qui i vicini si cercano sui token aggregati (media mascherata, che e'
-    la stessa cosa che vede il pooling) ma si interpolano le mappe intere;
-    la maschera dell'ancora viene mantenuta, cosi' la geometria resta
-    plausibile invece di mescolare due bbox diverse.
-
-    Ritorna: (tokens_aumentati, mask_aumentata, labels_aumentate)
-    """
-    gen = torch.Generator().manual_seed(seed)
-    m = token_mask.float().unsqueeze(-1)
-    pooled = (tokens.float() * m).sum(1) / m.sum(1).clamp(min=1)
-
-    counts = class_counts(labels, num_classes)
-    target = int(counts.max().item())
-    if max_per_class is not None:
-        target = min(target, max_per_class)
-
-    tk, mk, yk = [tokens], [token_mask], [labels]
-    for c in range(num_classes):
-        sel = (labels == c).nonzero(as_tuple=True)[0]
-        n_new = target - sel.numel()
-        if sel.numel() < 2 or n_new <= 0:
-            continue
-        a, nb, lam = _smote_pairs(pooled[sel], k, n_new, gen)
-        ta, tb = tokens[sel][a].float(), tokens[sel][nb].float()
-        new = ta + lam[:, None, None] * (tb - ta)
-        tk.append(new.to(tokens.dtype))
-        mk.append(token_mask[sel][a])
-        yk.append(torch.full((n_new,), c, dtype=labels.dtype))
-
-    return torch.cat(tk), torch.cat(mk), torch.cat(yk)
 
 
 # ==========================================================================
@@ -380,7 +254,6 @@ if __name__ == "__main__":
     print("Distribuzione:", class_counts(labels).tolist())
     print(f"Sbilanciamento max:min = {3691/521:.2f} : 1")
     print("Pesi inverse-frequency:", [round(v, 3) for v in inverse_frequency_weights(labels).tolist()])
-    print("Margini LDAM           :", [round(v, 3) for v in ldam_margins(labels).tolist()])
 
     logits = torch.randn(8, 3)
     t = torch.randint(0, 3, (8,))

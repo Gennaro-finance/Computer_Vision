@@ -62,7 +62,7 @@ def main():
     ap.add_argument("--context-scale", type=float, nargs=2, default=None)
     ap.add_argument("--tag", default="")
     ap.add_argument("--skip-ssl", action="store_true")
-    ap.add_argument("--arms", nargs="+", default=["ijepa", "imagenet", "random"])
+    ap.add_argument("--arms", nargs="+", default=["ijepa"])
     # Senza questo, la pipeline "in un comando" rigenerava tutto col
     # protocollo a singolo layer, producendo in silenzio numeri diversi da
     # quelli degli esperimenti. Il default replica il protocollo in uso.
