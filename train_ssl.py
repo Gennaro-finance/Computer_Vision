@@ -206,6 +206,22 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             knn_ref = ckpt.get("knn_ref")
             print(f"Ripreso dall'epoca {start_epoch}")
 
+            # Se il checkpoint e' stato scritto con iperparametri diversi da
+            # quelli attivi ora, si RIFIUTA di proseguire: continuare
+            # silenziosamente produrrebbe un run ibrido, impossibile da
+            # descrivere in presentazione.
+            atteso = {"lr": LR, "ema_start": EMA_START,
+                      "predictor_dim": network.PREDICTOR_DIM}
+            diverso = {k: (ckpt[k], v) for k, v in atteso.items()
+                       if k in ckpt and ckpt[k] != v}
+            if diverso:
+                print("ERRORE: il checkpoint usa iperparametri diversi da questi.")
+                for k, (era, ora) in diverso.items():
+                    print(f"  {k}: checkpoint={era}  riga di comando={ora}")
+                print("Rilanciate con gli stessi valori, oppure senza --resume")
+                print("e con un --tag nuovo per iniziare un run separato.")
+                raise SystemExit(1)
+
     # RIFERIMENTO: la sonda k-NN sull'encoder non ancora addestrato. E' il
     # "modello casuale" - la cosa da battere. Misurarlo QUI, con lo stesso
     # protocollo usato dopo, e' l'unico modo per sapere se il pre-training
@@ -316,6 +332,14 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             "scheduler": scheduler.state_dict(),
             "epoch": epoch, "gstep": gstep, "variant": variant,
             "monitor": monitor.history, "knn_ref": knn_ref,
+            # Gli iperparametri passati da riga di comando vanno nel
+            # checkpoint: senza, un --resume che dimentica --ema-start
+            # ripartirebbe con un valore DIVERSO e il run cambierebbe
+            # regime a meta' senza dirlo. E' lo stesso tipo di confusione
+            # dello scheduler troncato di agosto, che aveva nascosto per
+            # giorni il vero effetto di una configurazione.
+            "lr": LR, "ema_start": EMA_START,
+            "predictor_dim": network.PREDICTOR_DIM,
         }, run_name)
 
     if tb is not None:

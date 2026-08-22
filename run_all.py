@@ -61,6 +61,9 @@ def main():
     ap.add_argument("--batch-size", type=int, default=128)
     ap.add_argument("--context-scale", type=float, nargs=2, default=None)
     ap.add_argument("--tag", default="")
+    ap.add_argument("--lr", type=float, default=None)
+    ap.add_argument("--ema-start", type=float, default=None)
+    ap.add_argument("--predictor-dim", type=int, default=None)
     ap.add_argument("--skip-ssl", action="store_true")
     # Senza questo, la pipeline "in un comando" rigenerava tutto col
     # protocollo a singolo layer, producendo in silenzio numeri diversi da
@@ -82,13 +85,27 @@ def main():
             args += ["--context-scale", str(a.context_scale[0]), str(a.context_scale[1])]
         if a.tag:
             args += ["--tag", a.tag]
+        # Gli iperparametri scelti dallo sweep anti-collasso viaggiano con
+        # la pipeline: senza, run_all lancerebbe il pre-training con i
+        # default di globals.py, cioe' proprio la configurazione che
+        # collassa (ema 0.996 -> k-NN 0.4354 contro 0.7030 del casuale).
+        for flag, val in (("--lr", a.lr), ("--ema-start", a.ema_start),
+                          ("--predictor-dim", a.predictor_dim)):
+            if val is not None:
+                args += [flag, str(val)]
         if not stadio("1/5 pre-training SSL", args, "01_ssl.log"):
             print("\nSSL fallito: gli stadi successivi userebbero un encoder non valido.")
             return 1
 
     # --- 2. caching
+    # Il tag deve arrivare fin qui: lo stadio 1 salva in
+    # ijepa_{variant}_{tag}.pt, e senza --ckpt-tag il caching cercherebbe
+    # ijepa_{variant}.pt - un checkpoint diverso, o inesistente. La catena
+    # si romperebbe a meta' notte, o peggio userebbe l'encoder sbagliato
+    # senza dirlo.
     stadio("2/5 caching latenti",
            ["train_downstream.py", "--cache", "--variant", a.variant]
+           + (["--ckpt-tag", a.tag] if a.tag else [])
            + (["--layers"] + [str(x) for x in a.layers] if a.layers else []),
            "02_cache.log")
 
