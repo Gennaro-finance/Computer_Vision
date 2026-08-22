@@ -1,0 +1,38 @@
+[
+  {
+    "nome": "ema999",
+    "ema": 0.999,
+    "lr": 5e-05,
+    "pred_dim": 192,
+    "riferimento": 0.703,
+    "knn": [
+      0.7002,
+      0.7002
+    ],
+    "minuti": 14.7
+  },
+  {
+    "nome": "ema9995",
+    "ema": 0.9995,
+    "lr": 5e-05,
+    "pred_dim": 192,
+    "riferimento": 0.703,
+    "knn": [
+      0.7093,
+      0.7093
+    ],
+    "minuti": 14.7
+  },
+  {
+    "nome": "pred384",
+    "ema": 0.999,
+    "lr": 0.00015,
+    "pred_dim": 384,
+    "riferimento": 0.703,
+    "knn": [
+      0.6657,
+      0.6628
+    ],
+    "minuti": 16.0
+  }
+]

@@ -136,6 +136,39 @@ def effective_rank(embeddings: torch.Tensor) -> float:
 
 
 @torch.no_grad()
+def effective_rank_centered(embeddings: torch.Tensor) -> float:
+    """
+    Rango effettivo DOPO aver tolto la media. Da leggere insieme, non al
+    posto, a effective_rank().
+
+    PERCHE' SERVIVANO ENTRAMBI. La versione non centrata e' corretta per
+    quello che dichiara - vede il collasso costante - ma non distingue
+    "tutti gli embedding identici" da "embedding diversi che condividono
+    una grande componente media". Negli embedding di un ViT la seconda e'
+    la norma: misurato il 22 ago sull'encoder CASUALE, quello che ottiene
+    k-NN macro-F1 0.7030 ed e' il miglior estrattore che abbiamo, la norma
+    del vettore medio e' il 98.2% della norma media dei vettori. Risultato:
+    rango non centrato 1.07 su 384, std 0.008 contro 0.051 "sano".
+
+    Cioe' il monitor dichiarava COLLASSO TOTALE sull'encoder che funziona
+    meglio di tutti. Ogni allarme di collasso letto finora andava riletto
+    con questa correzione: non misurava la salute del modello.
+
+    Il rango centrato misura la diversita' RESIDUA, che e' quella che porta
+    informazione. Sullo stesso encoder casuale vale 1.68: basso davvero, ma
+    non e' una patologia - il segnale del problema e' quasi
+    unidimensionale (estensione della radiotrasparenza), ed e' proprio quel
+    poco che basta a fare 0.70 di macro-F1.
+    """
+    z = embeddings.float()
+    z = z - z.mean(dim=0, keepdim=True)
+    z = torch.nn.functional.normalize(z, dim=-1)
+    second_moment = (z.T @ z) / max(z.shape[0], 1)
+    eigvals = torch.linalg.eigvalsh(second_moment.double()).clamp(min=0)
+    s1, s2 = eigvals.sum(), (eigvals ** 2).sum()
+    return float(s1 ** 2 / s2) if s2 > 0 else 1.0
+
+
 def rank_reference(n_samples: int, dim: int, seed: int = 0) -> float:
     """
     Rango effettivo di embedding perfettamente sani, con QUELLO stesso numero
@@ -205,6 +238,7 @@ class CollapseMonitor:
 
     def __init__(self, std_floor=1e-3, rank_ratio_floor=None, min_epoch=None):
         self.history = []
+        self.iniziale = None
 
         # ATTENZIONE alla std: rileva SOLO il collasso costante, cioe' tutti
         # gli embedding identici. Misurato su casi noti a 384 dimensioni
@@ -252,21 +286,31 @@ class CollapseMonitor:
         n, d = embeddings.shape[0], embeddings.shape[-1]
         std = embedding_std(embeddings)
         rank = effective_rank(embeddings)
+        rank_c = effective_rank_centered(embeddings)
         rif = rank_reference(n, d)
         ratio = rank / rif if rif > 0 else 0.0
 
+        # Riferimento onesto: il modello all'inizio del run, non un gaussiano
+        # isotropo. L'isotropo e' irraggiungibile per un ViT (vedi
+        # effective_rank_centered), quindi "% del sano" verso l'isotropo dava
+        # sempre ~0% e non distingueva nulla.
+        if self.iniziale is None:
+            self.iniziale = {"eff_rank": rank, "eff_rank_c": rank_c, "std": std}
+
         entry = {"epoch": epoch, "loss": float(loss), "std": std,
-                 "eff_rank": rank, "rank_ref": rif, "rank_ratio": ratio,
+                 "eff_rank": rank, "eff_rank_centrato": rank_c,
+                 "rank_ref": rif, "rank_ratio": ratio,
                  "n": n, "dim": d}
         if knn is not None:
             entry["knn_acc"], entry["knn_f1"] = knn
         self.history.append(entry)
 
-        flag = ""
-        if std < self.std_floor or ratio < self.rank_ratio_floor:
-            flag = "   <-- COLLASSO"
+        # COLLASSO COSTANTE: l'unica cosa che la std sa davvero rilevare.
+        flag = "   <-- COLLASSO COSTANTE" if std < self.std_floor else ""
+        vs = rank_c / self.iniziale["eff_rank_c"] if self.iniziale["eff_rank_c"] else 1.0
         print(f"  [monitor] ep{epoch:03d} loss={loss:.4f} std={std:.5f} "
-              f"rango={rank:.0f}/{rif:.0f} ({ratio:.0%} del sano){flag}")
+              f"rango={rank:.2f} centrato={rank_c:.2f} "
+              f"({vs:.2f}x l'iniziale){flag}")
         return entry
 
     def is_collapsing(self, patience=None):
@@ -290,9 +334,17 @@ class CollapseMonitor:
             return False
         recent = self.history[-patience:]
 
-        degradati = all(e["std"] < self.std_floor
-                        or e["rank_ratio"] < self.rank_ratio_floor
-                        for e in recent)
+        # SOLO il collasso costante. Il criterio sul rapporto verso un
+        # gaussiano isotropo e' stato tolto: misurato il 22 ago, l'encoder
+        # casuale - il miglior estrattore che abbiamo, k-NN 0.7030 - sta a
+        # 1.07/280 cioe' 0.4%, ben sotto qualunque soglia sensata. Quel
+        # criterio era vero SEMPRE, quindi avrebbe interrotto anche i run
+        # sani appena passato COLLAPSE_MIN_EPOCH.
+        #
+        # Il giudizio su "il pre-training sta aiutando o no" spetta al
+        # cancello sulla sonda k-NN in train_ssl.py, che confronta con
+        # l'encoder casuale misurato con lo stesso protocollo.
+        degradati = all(e["std"] < self.std_floor for e in recent)
         if not degradati:
             return False
 
@@ -301,7 +353,7 @@ class CollapseMonitor:
         # meta' della finestra con la seconda: serve un miglioramento netto
         # (>5%) di almeno uno dei due segnali, non il rumore di un'epoca.
         meta = max(len(recent) // 2, 1)
-        for chiave in ("rank_ratio", "std"):
+        for chiave in ("eff_rank_centrato", "std"):
             prima = sum(e[chiave] for e in recent[:meta]) / meta
             dopo = sum(e[chiave] for e in recent[meta:]) / max(len(recent) - meta, 1)
             if dopo > prima * 1.05:
