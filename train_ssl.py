@@ -15,6 +15,7 @@ import os
 import time
 
 import torch
+from sklearn.linear_model import LogisticRegression
 
 from data import LesionCropDataset, TileDataset, load_splits, make_loader, parse_annotations
 from globals import (
@@ -22,6 +23,7 @@ from globals import (
     GATE_CROLLO, GATE_EPOCH, GATE_MARGINE, GATE_SONDE_SOTTO, OUT_DIR, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START,
     SSL_EPOCHS, SSL_LR, SSL_WARMUP_EPOCHS, SSL_WEIGHT_DECAY, TILE_SIZE,
 )
+from evaluation import confusion_matrix, macro_f1
 import network
 from network import bbox_to_token_mask, build_ijepa, count_params
 
@@ -84,13 +86,46 @@ def extract_for_probe(model, loader, max_items=KNN_SUBSET):
     return torch.cat(feats), torch.cat(labels)
 
 
+def probe_lineare(ftr, ltr, fva, lva):
+    """
+    Sonda LINEARE: una direzione APPRESA nello spazio delle feature.
+
+    E' la sonda che conta, e sostituisce il k-NN come criterio di giudizio.
+
+    PERCHE' IL k-NN ERA LA MISURA SBAGLIATA. Il k-NN classifica per
+    DISTANZA euclidea, quindi premia una geometria precisa: che i vicini
+    piu' prossimi abbiano lo stesso grado. Un addestramento puo' conservare
+    tutta l'informazione e cambiare la geometria - riallocando la varianza
+    su direzioni che servono al compito di pre-training - e il k-NN crolla
+    lo stesso.
+
+    E' esattamente cio' che succede qui. Misurato il 22 ago sul checkpoint
+    dell'epoca 40, contro l'encoder casuale:
+
+        informazione presente (R^2 di una regressione lineare)
+          intensita' media nella lesione   0.991 -> 0.992
+          log area della bbox              0.886 -> 0.884
+        lettura della stessa rappresentazione
+          k-NN     (distanza)              0.7299 -> 0.5422
+          lineare  (appresa)               0.7212 -> 0.7329
+
+    L'informazione e' intatta. Solo la distanza euclidea smette di
+    rifletterla. E il downstream di questo progetto NON usa distanze: usa
+    attention pooling piu' una testa addestrata, cioe' una lettura appresa.
+    Il k-NN misurava quindi una proprieta' che al progetto non serve, e ha
+    fatto interrompere run che stavano migliorando.
+    """
+    mu, sd = ftr.mean(0), ftr.std(0) + 1e-8
+    ztr, zva = ((ftr - mu) / sd).numpy(), ((fva - mu) / sd).numpy()
+    clf = LogisticRegression(max_iter=2000, C=1.0, class_weight="balanced")
+    clf.fit(ztr, ltr.numpy())
+    return macro_f1(confusion_matrix(lva.numpy(), clf.predict(zva)))
+
+
 def run_probe(model, records, splits):
     """
-    k-NN probe: il segnale d'allarme piu' onesto.
-
-    Se dopo ~100 epoche resta al livello della classe maggioritaria (0.612),
-    il pre-training non sta imparando niente di utile. Meglio scoprirlo ora
-    che il 5 settembre.
+    Sonda di monitoraggio. Riporta ENTRAMBE le letture e giudica sulla
+    lineare: vedi probe_lineare() per il perche'.
     """
     # num_workers=0: loader usa e getta. Con i worker persistenti, e' il
     # break dentro extract_for_probe a lasciarli vivi, e a ogni probe se ne
@@ -102,6 +137,7 @@ def run_probe(model, records, splits):
     ftr, ltr = extract_for_probe(model, tr)
     fva, lva = extract_for_probe(model, va)
     acc, f1 = knn_probe(ftr, ltr, fva, lva)
+    f1_lin = probe_lineare(ftr, ltr, fva, lva)
 
     # I riferimenti si MISURANO sulle etichette di validazione, non si
     # assumono: sono cio' che otterrebbe un modello che predice SEMPRE la
@@ -118,10 +154,10 @@ def run_probe(model, records, splits):
     # davvero risultava "al livello del caso" mentre la macro-F1 saliva.
     f1_maggioritaria = (2 * quota / (1 + quota)) / NUM_CLASSES
 
-    verdict = "OK" if f1 > f1_maggioritaria * 1.10 else "<-- AL LIVELLO DEL CASO"
-    print(f"  [k-NN probe] acc={acc:.4f} macroF1={f1:.4f}  "
-          f"(costante: acc={quota:.4f} macroF1={f1_maggioritaria:.4f}) {verdict}")
-    return acc, f1
+    verdict = "OK" if f1_lin > f1_maggioritaria * 1.10 else "<-- AL LIVELLO DEL CASO"
+    print(f"  [sonda] lineare={f1_lin:.4f}  k-NN={f1:.4f}  "
+          f"(costante {f1_maggioritaria:.4f}) {verdict}")
+    return f1_lin, f1   # (criterio, diagnostica)
 
 
 def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
@@ -229,8 +265,8 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
     if knn_ref is None:
         print(""
               "Riferimento (encoder casuale, pesi non addestrati):")
-        knn_ref = run_probe(model, records, splits)[1]
-    print(f"Da battere: macro-F1 k-NN = {knn_ref:.4f}"
+        knn_ref = run_probe(model, records, splits)[0]
+    print(f"Da battere: macro-F1 della sonda LINEARE = {knn_ref:.4f}"
           f"   (cancello: se a {GATE_AT} epoche non e' superato, ci si ferma)")
     knn_best = 0.0
     sotto = 0
@@ -301,8 +337,8 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
                 if isinstance(v, (int, float)):
                     tb.add_scalar(f"monitor/{k}", v, epoch)
             if knn is not None:
-                tb.add_scalar("knn/acc", knn[0], epoch)
-                tb.add_scalar("knn/macro_f1", knn[1], epoch)
+                tb.add_scalar("sonda/lineare", knn[0], epoch)
+                tb.add_scalar("sonda/knn", knn[1], epoch)
             tb.add_scalar("sistema/epoca_secondi", dt, epoch)
             tb.add_scalar("sistema/learning_rate", scheduler.get_last_lr()[0], epoch)
             tb.flush()
@@ -320,18 +356,19 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             # brief chiede di addestrare fino all'ultima epoca, e scegliere
             # sulla base di una sonda misurata sul VALIDATION e' un criterio
             # di selezione onesto, da dichiarare in presentazione.
-            if knn[1] > knn_best:
+            if knn[0] > knn_best:
                 save_checkpoint({
                     "model": model.state_dict(), "epoch": epoch,
                     "gstep": gstep, "variant": variant,
-                    "knn_f1": knn[1], "knn_ref": knn_ref,
+                    "probe_lineare": knn[0], "probe_knn": knn[1],
+                    "probe_ref": knn_ref,
                     "lr": LR, "ema_start": EMA_START,
                     "predictor_dim": network.PREDICTOR_DIM,
                 }, run_name + "_best")
-                print(f"            [migliore] nuovo record {knn[1]:.4f} "
+                print(f"            [migliore] nuovo record {knn[0]:.4f} "
                       f"all'epoca {epoch}: salvato {run_name}_best")
-            knn_best = max(knn_best, knn[1])
-            delta = knn[1] - knn_ref
+            knn_best = max(knn_best, knn[0])
+            delta = knn[0] - knn_ref
             soglia = knn_ref - GATE_MARGINE
 
             # Si giudica la sonda CORRENTE, non la migliore mai vista.
@@ -341,18 +378,18 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             # 0.6520, 0.5548, 0.4280 - e il run e' proseguito verso altre
             # 4.7 ore di degrado con il cancello che taceva, perche' il
             # massimo storico restava sopra la soglia.
-            sotto = sotto + 1 if knn[1] < soglia else 0
-            print(f"            [cancello] k-NN {knn[1]:.4f} vs casuale {knn_ref:.4f}"
+            sotto = sotto + 1 if knn[0] < soglia else 0
+            print(f"            [cancello] lineare {knn[0]:.4f} vs casuale {knn_ref:.4f}"
                   f"  -> {delta:+.4f}   miglior finora {knn_best:.4f}"
                   f"   sonde sotto di fila: {sotto}")
 
-            crollo = knn[1] < knn_ref - GATE_CROLLO * GATE_MARGINE
+            crollo = knn[0] < knn_ref - GATE_CROLLO * GATE_MARGINE
             if epoch + 1 >= GATE_AT and (sotto >= GATE_SONDE_SOTTO or crollo):
                 motivo = (f"crollo netto ({delta:+.4f}, oltre {GATE_CROLLO} margini)"
                           if crollo else
                           f"{sotto} sonde consecutive sotto il riferimento")
                 print(f"  CANCELLO all'epoca {epoch+1}: {motivo}.")
-                print(f"  Sonda {knn[1]:.4f} contro encoder casuale {knn_ref:.4f}.")
+                print(f"  Sonda lineare {knn[0]:.4f} contro encoder casuale {knn_ref:.4f}.")
                 print("  Il pre-training sta DEGRADANDO le rappresentazioni: ci si")
                 print("  ferma qui invece di consumare le epoche restanti.")
                 break
