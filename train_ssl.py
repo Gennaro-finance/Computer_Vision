@@ -19,7 +19,7 @@ import torch
 from data import LesionCropDataset, TileDataset, load_splits, make_loader, parse_annotations
 from globals import (
     AMP, CKPT_DIR, GRAD_CLIP, MONITOR_SAMPLES, NUM_CLASSES, amp_dtype, DEFAULT_VARIANT, DEVICE, FIG_DIR, KNN_PROBE_EVERY, KNN_SUBSET,
-    SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START, SSL_EPOCHS,
+    LESION_CROP_MODE, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START, SSL_EPOCHS,
     SSL_LR, SSL_WARMUP_EPOCHS, SSL_WEIGHT_DECAY, TILE_SIZE,
 )
 from network import build_ijepa, count_params
@@ -90,6 +90,48 @@ def run_probe(model, records, splits):
     print(f"  [k-NN probe] acc={acc:.4f} macroF1={f1:.4f}  "
           f"(costante: acc={quota:.4f} macroF1={f1_maggioritaria:.4f}) {verdict}")
     return acc, f1
+
+
+def probe_only(variant=DEFAULT_VARIANT, tag="", arch="ijepa"):
+    """
+    Rimisura la sonda k-NN su un checkpoint gia' addestrato, senza allenare.
+
+    PERCHE' ESISTE. run_probe costruisce le sue feature con
+    LesionCropDataset, quindi ogni numero di sonda prodotto prima di
+    LESION_CROP_MODE='fixed' e' stato misurato attraverso il crop che
+    annullava la scala della lesione - cioe' la caratteristica piu'
+    predittiva del grado PAI (lato mediano 57/81/126 px per PAI 3/4/5).
+    Quei verdetti non dicono quanto vale l'encoder: dicono quanto vale
+    l'encoder visto da una lente che aveva gia' cancellato il segnale.
+
+    La prova che erano sbagliati e' gia' agli atti: l'encoder che la sonda
+    dava per fermo alla maggioritaria rende macro-F1 0.7415 a valle appena
+    il crop e' corretto, contro 0.5302 con quello vecchio.
+
+    Costa minuti e non tocca i pesi: va rilanciata sui checkpoint esistenti
+    PRIMA di decidere se un altro pre-training serve davvero, e verso dove.
+    """
+    set_seed()
+    run_name = f"{arch}_{variant}{('_' + tag) if tag else ''}"
+
+    ckpt = load_checkpoint(run_name, map_location=DEVICE)
+    if ckpt is None:
+        raise FileNotFoundError(
+            f"Nessun checkpoint '{run_name}' in {CKPT_DIR}. I .pt sono "
+            f"gitignored: o lo generate qui, o ve lo fate passare da chi ha "
+            f"lanciato il run."
+        )
+
+    model = build_ijepa(ckpt.get("variant", variant), arch=arch).to(DEVICE)
+    model.load_state_dict(ckpt["model"])
+
+    print(f"Checkpoint: {run_name}  (epoca {ckpt.get('epoch', '?')})")
+    print(f"Crop del downstream: LESION_CROP_MODE={LESION_CROP_MODE!r}"
+          f"{'  <-- scala preservata' if LESION_CROP_MODE == 'fixed' else '  <-- scala ANNULLATA, il numero non vale'}")
+
+    records = parse_annotations(verbose=False)
+    splits = load_splits()
+    return run_probe(model, records, splits)
 
 
 def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
@@ -246,6 +288,9 @@ if __name__ == "__main__":
     ap.add_argument("--epochs", type=int, default=SSL_EPOCHS)
     ap.add_argument("--batch-size", type=int, default=SSL_BATCH_SIZE)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--probe-only", action="store_true",
+                    help="carica il checkpoint e rimisura SOLO la sonda k-NN, "
+                         "senza allenare: serve a rileggere i run fatti col crop rotto")
     ap.add_argument("--smoke", action="store_true")
     # Override per gli esperimenti in parallelo. Restano fuori da globals.py
     # apposta: globals descrive la configurazione di riferimento, questi
@@ -279,4 +324,7 @@ if __name__ == "__main__":
     print(f"[config] arch={a.arch} tag={a.tag or '-'} context={network.CONTEXT_SCALE} "
           f"target={network.TARGET_SCALE} sigreg_lambda={network.SIGREG_LAMBDA} "
           f"predictor_dim={network.PREDICTOR_DIM} workers={data_mod.NUM_WORKERS}")
-    train(a.variant, a.epochs, a.batch_size, a.resume, a.smoke, a.tag, a.arch)
+    if a.probe_only:
+        probe_only(a.variant, a.tag, a.arch)
+    else:
+        train(a.variant, a.epochs, a.batch_size, a.resume, a.smoke, a.tag, a.arch)
