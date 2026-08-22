@@ -21,12 +21,36 @@ from globals import NUM_CLASSES, OUT_DIR, PAI_GRADES
 ARMS = ["ijepa", "imagenet", "random"]
 
 
-def carica(arm, variant="vit_small"):
-    p = os.path.join(OUT_DIR, f"results_{arm}_{variant}.json")
-    if not os.path.isfile(p):
-        return None
+def carica(arm, variant="vit_small", layers=None):
+    """
+    Carica i risultati di un braccio.
+
+    ATTENZIONE al suffisso: da quando l'estrazione puo' concatenare piu'
+    profondita', run_grid salva in results_{arm}_{variant}_L2-7-11.json.
+    Cercando solo il nome senza suffisso, questo verificatore leggeva i
+    risultati VECCHI - quelli misurati coi crop che annullavano la scala -
+    e li presentava come correnti. Un fallimento silenzioso: nessun errore,
+    solo numeri superati spacciati per attuali.
+
+    Senza `layers` si prende il file piu' RECENTE fra quelli disponibili per
+    quel braccio, e si dichiara quale.
+    """
+    import glob
+    if layers is not None:
+        suff = "_L" + "-".join(map(str, layers))
+        p = os.path.join(OUT_DIR, f"results_{arm}_{variant}{suff}.json")
+        if not os.path.isfile(p):
+            return None
+    else:
+        cand = glob.glob(os.path.join(OUT_DIR, f"results_{arm}_{variant}*.json"))
+        if not cand:
+            return None
+        p = max(cand, key=os.path.getmtime)
     with open(p, encoding="utf-8") as f:
-        return json.load(f)
+        rows = json.load(f)
+    for r in rows:
+        r["_file"] = os.path.basename(p)
+    return rows
 
 
 def pavimento_macro_f1(quota_maggioritaria, k=NUM_CLASSES):
@@ -60,6 +84,7 @@ def tabella(variant="vit_small"):
         if not rows:
             print(f"{arm:9s} (nessun risultato)")
             continue
+        print(f"{arm:9s} <- {rows[0].get('_file','?')}")
         for r in rows:
             m, h, f1, sd, a, b, c, r5, p5, kp = riga(r)
             tutte.append((arm, r))

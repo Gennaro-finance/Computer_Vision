@@ -63,6 +63,10 @@ def main():
     ap.add_argument("--tag", default="")
     ap.add_argument("--skip-ssl", action="store_true")
     ap.add_argument("--arms", nargs="+", default=["ijepa", "imagenet", "random"])
+    # Senza questo, la pipeline "in un comando" rigenerava tutto col
+    # protocollo a singolo layer, producendo in silenzio numeri diversi da
+    # quelli degli esperimenti. Il default replica il protocollo in uso.
+    ap.add_argument("--layers", type=int, nargs="+", default=[2, 7, 11])
     a = ap.parse_args()
 
     t0 = time.time()
@@ -86,19 +90,22 @@ def main():
     # --- 2. caching
     for arm in a.arms:
         stadio(f"2/5 caching latenti [{arm}]",
-               ["train_downstream.py", "--cache", "--arm", arm, "--variant", a.variant],
+               ["train_downstream.py", "--cache", "--arm", arm, "--variant", a.variant]
+               + (["--layers"] + [str(x) for x in a.layers] if a.layers else []),
                f"02_cache_{arm}.log")
 
     # --- 3. griglie
     for arm in a.arms:
         stadio(f"3/5 griglia sbilanciamento [{arm}]",
-               ["train_downstream.py", "--grid", "--arm", arm, "--variant", a.variant],
+               ["train_downstream.py", "--grid", "--arm", arm, "--variant", a.variant]
+               + (["--layers"] + [str(x) for x in a.layers] if a.layers else []),
                f"03_grid_{arm}.log")
 
     # --- 4. ablation della novita'
     stadio("4/5 ablation alpha (novita')",
            ["train_downstream.py", "--sweep-alpha", "--arm", "ijepa",
-            "--variant", a.variant],
+            "--variant", a.variant]
+           + (["--layers"] + [str(x) for x in a.layers] if a.layers else []),
            "04_sweep_alpha.log")
 
     # --- 5. verifica
