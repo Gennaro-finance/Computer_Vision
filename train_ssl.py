@@ -301,6 +301,18 @@ if __name__ == "__main__":
     ap.add_argument("--target-scale", type=float, nargs=2, default=None)
     ap.add_argument("--sigreg-lambda", type=float, default=None)
     ap.add_argument("--predictor-dim", type=int, default=None)
+    ap.add_argument("--scale-jitter", type=float, nargs=2, default=None,
+                    metavar=("MIN", "MAX"),
+                    help="banda del jitter di scala nel TileDataset. La "
+                         "giustificazione del default (0.6 1.6) era allineare "
+                         "il pre-training all'ingrandimento variabile del "
+                         "downstream - ma quel downstream era LESION_CROP_MODE "
+                         "'relative', che ora e' 'fixed' a scala 1.0. Con il "
+                         "crop corretto quella banda insegna un'invarianza alla "
+                         "scala che cancella proprio il segnale del grado PAI "
+                         "(lato 57/81/126 px). '--scale-jitter 1.0 1.0' la "
+                         "spegne: e' l'ablation che verifica se il jitter "
+                         "tiene giu' il braccio JEPA.")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--arch", default="ijepa", choices=["ijepa", "lejepa"],
                     help="ijepa = obiettivo 1; lejepa = braccio di confronto (ref [2])")
@@ -318,12 +330,18 @@ if __name__ == "__main__":
         network.SIGREG_LAMBDA = a.sigreg_lambda
     if a.predictor_dim is not None:
         network.PREDICTOR_DIM = a.predictor_dim
+    if a.scale_jitter is not None:
+        # data.py legge SSL_SCALE_JITTER come globale del modulo a ogni crop
+        # (data.py:544), quindi riassegnarlo qui vale per l'intero run senza
+        # toccare globals.py - stessa logica degli altri override.
+        data_mod.SSL_SCALE_JITTER = tuple(a.scale_jitter)
     if a.workers is not None:
         data_mod.NUM_WORKERS = a.workers
 
     print(f"[config] arch={a.arch} tag={a.tag or '-'} context={network.CONTEXT_SCALE} "
           f"target={network.TARGET_SCALE} sigreg_lambda={network.SIGREG_LAMBDA} "
-          f"predictor_dim={network.PREDICTOR_DIM} workers={data_mod.NUM_WORKERS}")
+          f"predictor_dim={network.PREDICTOR_DIM} scale_jitter={data_mod.SSL_SCALE_JITTER} "
+          f"workers={data_mod.NUM_WORKERS}")
     if a.probe_only:
         probe_only(a.variant, a.tag, a.arch)
     else:
