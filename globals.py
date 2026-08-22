@@ -56,7 +56,6 @@ SEED = 42
 NUM_WORKERS = 12
 
 
-
 def amp_dtype():
     """
     Precisione mista da usare.
@@ -131,24 +130,6 @@ TILE_SIZE = 224
 # self-supervised e' un vantaggio, non un compromesso.
 CROPS_PER_IMAGE = 8
 
-# MISURATO il 20 ago, ed e' la ragione per cui questa costante esiste.
-#
-# Il pre-training ritagliava 224x224 a risoluzione nativa e basta: ingrandimento
-# sempre 1.0x. Il downstream invece ritaglia max(bbox)*context_factor px e poi
-# RIDIMENSIONA a 224, quindi lavora a un ingrandimento variabile: con lato bbox
-# mediano di 64 px e context_factor 3.0 la mediana e' 1.17x, con code da 0.69x
-# a 1.59x, e il 67% delle lesioni viene ingrandito.
-#
-# L'encoder veniva quindi addestrato su UNA scala e usato su un intervallo di
-# scale mai visto: uno spostamento di dominio fra i due stadi del progetto,
-# ed e' il motivo per cui le rappresentazioni rendevano meno di quanto
-# dovessero nel downstream.
-#
-# Qui si campiona il lato del crop come 224 * s con s in questo intervallo e
-# poi si ridimensiona a 224: l'ingrandimento risultante e' 1/s, cioe' da 0.63x
-# a 1.67x, che copre la distribuzione del downstream.
-SSL_SCALE_JITTER = (0.6, 1.6)
-
 # Quanti crop ricavare da UNA SOLA decodifica dell'immagine.
 #
 # MISURATO il 20 ago: un item del TileDataset costa ~70 ms, di cui ~52 ms
@@ -169,31 +150,6 @@ SSL_SCALE_JITTER = (0.6, 1.6)
 # immagini diverse, al costo di ~70 ms per tile.
 CROPS_PER_ITEM = 1
 
-# Griglia deterministica: serve solo quando volete risultati riproducibili
-# tile per tile (diagnostica, figure), non per il training.
-# Intensita' dell'augmentation nel pre-training.
-#
-# PERCHE' ESISTE. Fino al 21 ago il TileDataset applicava soltanto flip
-# orizzontale al 50% e luminosita' +-15%. Con 2.746 immagini di training -
-# lo 0,3% dei dati di I-JEPA originale - l'augmentation e' il sostituto piu'
-# diretto dei dati che mancano, e cinque ablation avevano gia' indicato la
-# quantita' di dati come vincolo. Era la leva piu' ovvia, ed era spenta.
-#
-# 'debole' e' il comportamento originale, tenuto per l'ablation.
-# 'forte' aggiunge trasformazioni che una radiografia panoramica puo'
-# realisticamente subire: rotazione lieve (posizionamento del paziente),
-# contrasto e gamma (esposizione e sviluppo), rumore (dose), sfocatura
-# (movimento). NON si usano flip verticali ne' distorsioni di colore:
-# sarebbero anatomicamente impossibili e insegnerebbero invarianze false.
-# TENUTA A 'debole', cioe' il comportamento originale. La versione 'forte' e'
-# implementata e verificata (aumenta del 35% la varieta' fra versioni diverse
-# dello stesso tile) ma NON e' attiva, per una ragione di metodo: I-JEPA
-# rivendica come proprio punto di forza il NON dipendere da augmentation
-# costruite a mano - l'invarianza deve emergere dal masking. Attivarla e' una
-# deviazione dalla ref [1] del brief, difendibile solo dichiarandola e
-# motivandola col regime di dati. Resta disponibile come riga di ablation.
-SSL_AUG = "debole"
-
 TILE_STRIDE = 168
 TILE_MIN_FOREGROUND = 0.15  # scarta i tile quasi tutti neri (bordi radiografia)
 
@@ -202,28 +158,6 @@ TILE_MIN_FOREGROUND = 0.15  # scarta i tile quasi tutti neri (bordi radiografia)
 RESIZE_H, RESIZE_W = 224, 224
 
 PATCH_SIZE = 16
-
-# ---------------------------------------------- scala dei crop di lesione
-# LA SECONDA DECISIONE PIU' IMPORTANTE, e ci era sfuggita fino al 21 ago.
-#
-# LesionCropDataset ritagliava una finestra di lato CONTEXT_FACTOR volte la
-# bbox e la ridimensionava a TILE_SIZE. Effetto collaterale: il fattore di
-# scala varia da lesione a lesione ESATTAMENTE in modo da annullare la
-# differenza di dimensione. Una lesione da 57 px e una da 126 px arrivavano
-# alla rete con la stessa dimensione apparente.
-#
-# Misurato sul train, lato mediano della bbox per grado:
-#     PAI 3   57 px      PAI 4   81 px      PAI 5  126 px
-# Due sole soglie su quel numero danno macro-F1 0.7567 e kappa 0.7779 sul
-# test, senza alcuna rete. Il grado PAI E' in larga parte l'estensione
-# della radiotrasparenza, e la
-# normalizzazione la cancellava prima che la rete vedesse l'immagine.
-#
-# 'fixed'  ritaglia una finestra di LATO COSTANTE in pixel nativi: una
-#          lesione grande appare grande, la scala e' preservata.
-# 'relative' e' il comportamento precedente, tenuto per l'ablation: serve a
-#          mostrare col confronto quanto costa normalizzare via la scala.
-LESION_CROP_MODE = "fixed"
 # 224 e non di piu', ed e' MISURATO. Il ridimensionamento da crop nativo a
 # TILE_SIZE riduce la lesione in token, e il progetto si e' dato
 # MIN_TOKENS_PER_LESION = 4.0 come soglia (sez.2 dell'analisi). Lato della
@@ -234,14 +168,13 @@ LESION_CROP_MODE = "fixed"
 #      288   0.778     2.8     3.9     6.1        76%
 #      384   0.583     2.1     3.0     4.6        90%
 #
-# A 224 la scala e' 1.0: NESSUN ricampionamento. Oltre al fatto che
-# massimizza i token, questo mette i crop del downstream nella stessa
-# distribuzione di scala dei tile del pre-training (224 nativi con
-# SSL_SCALE_JITTER), quindi non reintroduce il disallineamento fra i due
-# stadi che avevamo corretto.
+# A 224 la scala e' 1.0: NESSUN ricampionamento. Oltre a massimizzare i
+# token, questo mette i crop del downstream ESATTAMENTE nella stessa scala
+# dei tile del pre-training, che sono anch'essi 224 px nativi non
+# ridimensionati: i due stadi vedono il mondo con lo stesso ingrandimento.
 #
 # LIMITE DA DICHIARARE: le PAI 3 restano a ~3.6 token, sotto la soglia di 4.
-# E' inerente - quelle lesioni sono piccole - e l'alternativa ('relative')
+# E' inerente - quelle lesioni sono piccole - e il ritaglio relativo
 # dava 4.7 token a tutte al prezzo di cancellare la dimensione, che e' il
 # segnale piu' predittivo del dataset.
 LESION_CROP_PIXELS = 224
@@ -311,6 +244,20 @@ GRAD_CLIP = 3.0
 # Ogni 10 e non 20: e' il segnale d'allarme piu' onesto ed e' il criterio del
 # gate, ma nei run del 19 ago non e' MAI stato eseguito perche' i run morivano
 # all'epoca 15. Costa secondi, tenetelo fitto finche' il gate non e' passato.
+# CANCELLO ANTI-SPRECO
+#
+# Il pre-training va giudicato mentre gira, non dopo. Prima di toccare i
+# pesi si misura la sonda k-NN sull'encoder APPENA INIZIALIZZATO: quello e'
+# il "modello casuale", ed e' il riferimento da battere. Se dopo
+# GATE_EPOCH epoche la sonda non ha mai superato quel valore, il
+# pre-training sta PEGGIORANDO le rappresentazioni e si ferma da solo,
+# invece di consumare 8 ore per confermarlo.
+#
+# Il margine evita di fermarsi per rumore: la sonda oscilla di ~0.01 fra
+# epoche adiacenti.
+GATE_EPOCH = 40
+GATE_MARGINE = 0.01
+
 KNN_PROBE_EVERY = 10
 KNN_K = 20
 KNN_SUBSET = 1500

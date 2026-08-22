@@ -35,8 +35,11 @@ plt.rcParams.update({
 })
 
 
-def _carica(arm):
-    p = os.path.join(OUT_DIR, f"results_{arm}_vit_small.json")
+def _carica():
+    import glob
+    cand = sorted(glob.glob(os.path.join(OUT_DIR, "results_vit_small*.json")),
+                  key=os.path.getmtime)
+    p = cand[-1] if cand else ""
     if not os.path.isfile(p):
         return None
     with open(p, encoding="utf-8") as f:
@@ -114,13 +117,13 @@ def fig_confusioni():
 
     # Le due estremita' dell'ablation dell'obiettivo 4: la cross-entropy
     # semplice contro la novita' proposta, a encoder identico e congelato.
-    casi = [("ijepa", "none", "flat", "CE semplice"),
-            ("ijepa", "balanced_tokens", "ordinal", "balanced token sampling")]
+    casi = [("none", "flat", "CE semplice"),
+            ("balanced_tokens", "ordinal", "balanced token sampling")]
 
     fig, axes = plt.subplots(1, len(casi), figsize=(10.5, 4.6))
-    for ax, (arm, method, head, titolo) in zip(axes, casi):
+    for ax, (method, head, titolo) in zip(axes, casi):
         try:
-            cached = load_latents("vit_small", arm)
+            cached = load_latents("vit_small")
         except FileNotFoundError:
             ax.axis("off")
             continue
