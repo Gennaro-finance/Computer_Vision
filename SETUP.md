@@ -151,14 +151,25 @@ diretto stabile):
 Scaricate l'archivio e scompattatelo in:
 
 ```
-cv-periapical-jepa\data\periapical\
+data\periapical\
     Original JPG Images\
+    Image Annots\                 <- NON "Image Annotations"
     Augmentation JPG Images\      <- presente ma NON usata, vedi sotto
-    Image Annotations\
 ```
 
-`globals.py` cerca esattamente questi nomi di cartella. Se l'archivio li
-nomina diversamente, aggiustate `DIR_ORIGINAL` / `DIR_ANNOTATIONS`.
+**Attenzione al nome della cartella delle annotazioni.** L'archivio Mendeley
+la chiama `Image Annots`, non `Image Annotations` come lascerebbe pensare la
+descrizione del dataset. `globals.py` cerca esattamente questi nomi.
+
+Dentro lo zip le tre cartelle stanno annidate sotto
+`Periapical Dataset/Periapical Lesions/`. Non serve spostarle a mano:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\estrai_dataset.ps1
+```
+
+trova lo zip nei Download, estrae solo le due cartelle che servono e le mette
+al posto giusto.
 
 > **Perché la cartella di augmentation non si usa.** Contiene 17.004 immagini
 > derivate dalle 3.926 originali per scaling, mirroring e flipping. Splittarle
