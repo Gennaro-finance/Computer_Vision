@@ -22,7 +22,7 @@ from globals import (
     LESION_CROP_MODE, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START, SSL_EPOCHS,
     SSL_LR, SSL_WARMUP_EPOCHS, SSL_WEIGHT_DECAY, TILE_SIZE,
 )
-from network import build_ijepa, count_params
+from network import bbox_to_token_mask, build_ijepa, count_params
 from utils import (
     AverageMeter, CollapseMonitor, knn_probe, load_checkpoint, save_checkpoint,
     set_seed,
@@ -37,13 +37,31 @@ def ema_momentum(step, total_steps):
 
 @torch.no_grad()
 def extract_for_probe(model, loader, max_items=KNN_SUBSET):
-    """Feature medie sui token + etichette, per il k-NN probe."""
+    """
+    Feature aggregate sui token DENTRO LA BBOX, piu' le etichette.
+
+    PERCHE' LA MASCHERA. La versione precedente mediava tutti i 196 token
+    dell'immagine. Funzionava per caso: col vecchio crop 'relative' la
+    lesione occupava sempre un terzo esatto del riquadro, quindi la media
+    portava comunque segnale. Con LESION_CROP_MODE='fixed' la lesione e' 8-20
+    token su 196 e la media e' dominata dallo sfondo: rimisurando i
+    checkpoint esistenti il 22 ago, tutti crollavano a ridosso del pavimento
+    (0.27-0.28 contro 0.2530) mentre gli stessi encoder rendono 0.7415 a
+    valle, dove l'attention pooling usa la bbox.
+
+    Non era l'encoder a essere peggiorato: era la sonda a misurare
+    prevalentemente osso sano. Qui si aggrega come fa il downstream, cosi'
+    la sonda torna a essere un anticipo di quel numero e non di altro.
+    """
     model.eval()
     feats, labels = [], []
     n = 0
     for batch in loader:
         tokens = model.encode(batch["image"].to(DEVICE))
-        feats.append(tokens.mean(dim=1).float().cpu())
+        msk = bbox_to_token_mask(batch["bbox"].to(DEVICE), model.grid)
+        w = msk.float().unsqueeze(-1)
+        pooled = (tokens * w).sum(1) / w.sum(1).clamp(min=1)
+        feats.append(pooled.float().cpu())
         labels.append(batch["label"])
         n += tokens.shape[0]
         if n >= max_items:
