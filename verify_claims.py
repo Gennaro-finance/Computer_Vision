@@ -18,7 +18,7 @@ import numpy as np
 
 from globals import NUM_CLASSES, OUT_DIR, PAI_GRADES
 
-ARMS = ["ijepa", "imagenet", "random"]
+ARMS = ["ijepa"]
 
 
 def carica(arm, variant="vit_small", layers=None):

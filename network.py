@@ -7,11 +7,6 @@ Obiettivo 1 del brief, alla lettera: "a Context Encoder, a Target Encoder
 updated via Exponential Moving Average (EMA), and a shallow Predictor
 network". E' quello che c'e' qui.
 
-Nota strategica: LeJEPA (ref [2] del vostro brief) rimuove esattamente questi
-componenti - niente EMA, niente stop-gradient, niente teacher-student - e li
-sostituisce con SIGReg. Implementate I-JEPA come primario per soddisfare
-l'obiettivo 1, e tenete SIGReg come braccio di confronto E come assicurazione
-sul collasso. Vedi il segnaposto in fondo al file.
 """
 
 import copy
@@ -23,8 +18,8 @@ import torch.nn.functional as F
 
 from globals import (
     ATTN_POOL_HEADS, CONTEXT_SCALE, NUM_CLASSES, NUM_TARGET_BLOCKS,
-    PATCH_SIZE, PREDICTOR_DEPTH, PREDICTOR_DIM, PREDICTOR_HEADS, SIGREG_LAMBDA,
-    SIGREG_PROJECTIONS, TARGET_ASPECT, TARGET_SCALE, TILE_SIZE, VIT_VARIANTS,
+    PATCH_SIZE, PREDICTOR_DEPTH, PREDICTOR_DIM, PREDICTOR_HEADS,
+    TARGET_ASPECT, TARGET_SCALE, TILE_SIZE, VIT_VARIANTS,
 )
 
 
@@ -249,8 +244,8 @@ class IJEPA(nn.Module):
 
     Il target encoder e' una copia dei pesi del context encoder aggiornata per
     media mobile esponenziale e MAI dai gradienti - e' il meccanismo che
-    impedisce la soluzione banale, ed e' anche il pezzo piu' fragile fuori dal
-    regime di iperparametri di ImageNet. Monitorate il collasso (utils.py).
+    impedisce la soluzione banale, ed e' anche il pezzo piu' fragile: fuori
+    dal suo regime di iperparametri collassa. Monitoratelo (utils.py).
     """
 
     def __init__(self, variant="vit_tiny", img_size=TILE_SIZE, patch_size=PATCH_SIZE):
@@ -308,15 +303,6 @@ class IJEPA(nn.Module):
 
         loss = loss / len(tgt_blocks)
 
-        # Assicurazione sul collasso (vedi ANALISI_PROGETTO_8.md sez.3 e 5):
-        # vincola gli embedding del context encoder - quello che riceve i
-        # gradienti - a restare isotropi. A differenza di EMA/predictor, che
-        # prevengono il collasso solo indirettamente bilanciando le due reti,
-        # SIGReg lo penalizza direttamente: una rappresentazione collassata ha
-        # varianza ~0 in ogni proiezione, che e' lontanissima da una N(0,1).
-        if SIGREG_LAMBDA > 0:
-            ctx_pooled = ctx_tokens.mean(dim=1)
-            loss = loss + SIGREG_LAMBDA * sigreg_loss(ctx_pooled, SIGREG_PROJECTIONS)
 
         return loss, full.mean(dim=1).detach()
 
@@ -324,163 +310,6 @@ class IJEPA(nn.Module):
     def encode(self, images, return_layers=None):
         """Encoder congelato per il downstream: token del target encoder."""
         return self.target_encoder(images, return_layers=return_layers)
-
-
-# ==========================================================================
-# 4a. LeJEPA - braccio alternativo autorizzato dal Task
-# ==========================================================================
-class LeJEPA(nn.Module):
-    """
-    LeJEPA: un solo encoder, niente EMA, niente stop-gradient.
-
-    Il Task lo nomina per esteso - "a self-supervised Vision-JEPA (e.g.,
-    I-JEPA or LeJEPA)" - ed e' la ref [2] del brief. NON sostituisce IJEPA:
-    l'obiettivo 1 richiede context encoder + target encoder EMA + predictor,
-    e quello resta il metodo principale. Questo e' il braccio di confronto.
-
-    PERCHE' PROVARLO, sui nostri numeri. I-JEPA impedisce il collasso con
-    l'asimmetria fra due reti e l'EMA. LeJEPA sostiene che quel meccanismo
-    e' instabile fuori dal regime di iperparametri per cui e' stato tarato,
-    e lo rimpiazza con un vincolo esplicito sulla distribuzione degli
-    embedding (SIGReg). Il nostro regime e' lontanissimo da quello di
-    riferimento - 2.746 immagini contro 1,28 M - e il pre-training risulta
-    peggiore di un encoder casuale: e' esattamente il caso che LeJEPA
-    dichiara di indirizzare.
-
-    DIFFERENZE STRUTTURALI da IJEPA, tutte volute:
-      - un solo encoder, usato sia per il contesto sia per i target
-      - i target NON sono staccati dal grafo: il gradiente ci passa
-      - nessun momentum da programmare
-      - l'unico iperparametro di trade-off e' lambda
-
-    Senza stop-gradient la soluzione banale (tutti gli embedding uguali)
-    sarebbe raggiungibile a costo zero: e' SIGReg, e solo lui, a impedirla.
-    Per questo qui lambda non e' un termine ausiliario opzionale come in
-    IJEPA, ma il meccanismo portante: a lambda=0 questo modello collassa.
-    """
-
-    def __init__(self, variant="vit_tiny", img_size=TILE_SIZE,
-                 patch_size=PATCH_SIZE, sigreg_lambda=None):
-        super().__init__()
-        cfg = VIT_VARIANTS[variant]
-        self.encoder = VisionTransformer(img_size, patch_size, **cfg)
-        self.predictor = Predictor(cfg["embed_dim"],
-                                   num_patches=self.encoder.num_patches)
-        self.grid = self.encoder.grid
-        self.embed_dim = cfg["embed_dim"]
-        self.sigreg_lambda = (SIGREG_LAMBDA if sigreg_lambda is None
-                              else sigreg_lambda)
-
-    def update_target(self, momentum: float):
-        """Niente EMA: esiste solo per restare compatibile col ciclo di train_ssl."""
-        return
-
-    def forward(self, images, generator=None):
-        b = images.shape[0]
-        device = images.device
-
-        ctx_idx, tgt_blocks = sample_masks(self.grid, generator=generator)
-        ctx_idx = ctx_idx.to(device)[None].expand(b, -1)
-
-        ctx_tokens = self.encoder(images, ctx_idx)
-
-        # Stesso encoder, e con gradiente: e' il punto di LeJEPA.
-        full = self.encoder(images)
-        full = F.layer_norm(full, (full.shape[-1],))
-
-        loss = images.new_zeros(())
-        for tgt in tgt_blocks:
-            tgt_idx = tgt.to(device)[None].expand(b, -1)
-            target = torch.gather(
-                full, 1, tgt_idx.unsqueeze(-1).expand(-1, -1, full.shape[-1])
-            )
-            pred = self.predictor(ctx_tokens, ctx_idx, tgt_idx)
-            loss = loss + F.smooth_l1_loss(pred, target)
-        loss = loss / len(tgt_blocks)
-
-        # Qui SIGReg non e' un extra: e' l'unica cosa che impedisce il
-        # collasso, quindi si applica sugli embedding che finiscono nella
-        # loss predittiva, non su una loro variante.
-        loss = loss + self.sigreg_lambda * sigreg_loss(full.mean(dim=1),
-                                                       SIGREG_PROJECTIONS)
-        return loss, full.mean(dim=1).detach()
-
-    @torch.no_grad()
-    def encode(self, images, return_layers=None):
-        """Encoder congelato per il downstream."""
-        return self.encoder(images, return_layers=return_layers)
-
-
-# ==========================================================================
-# 4b. Braccio di confronto: encoder ImageNet congelato
-# ==========================================================================
-class FrozenImageNetEncoder(nn.Module):
-    """
-    ViT-B/16 pre-addestrato su ImageNet, congelato ed esposto con la STESSA
-    interfaccia di IJEPA (encode / grid / embed_dim).
-
-    E' il braccio 2 della sez.9 dell'analisi, quello definito "critico e non
-    negoziabile": se il JEPA in-domain su ~4k immagini non batte il transfer
-    da ImageNet, quello E' il risultato del progetto e va detto. Senza questo
-    confronto, un numero come "Macro-F1 0.62" non dimostra niente, ed e' la
-    prima domanda che arriva in sede d'esame.
-
-    Il patch da 16 su tile da 224 da' la stessa griglia 14x14 del nostro ViT,
-    quindi bbox_to_token_mask e l'attention pooling funzionano identici e il
-    confronto e' davvero alla pari: cambia l'encoder, nient'altro.
-    """
-
-    def __init__(self, img_size=TILE_SIZE, patch_size=PATCH_SIZE):
-        super().__init__()
-        from torchvision.models import ViT_B_16_Weights, vit_b_16
-
-        weights = ViT_B_16_Weights.IMAGENET1K_V1
-        self.net = vit_b_16(weights=weights)
-        self.net.eval()
-        for p in self.net.parameters():
-            p.requires_grad = False
-
-        self.grid = img_size // patch_size
-        self.embed_dim = self.net.hidden_dim
-
-        # I tile arrivano da data.py in [-1, 1] (grayscale replicato su 3
-        # canali). Il ViT di torchvision vuole invece le statistiche di
-        # ImageNet: si torna in [0, 1] e si ri-normalizza. Saltare questo
-        # passaggio non da' errore, da' solo feature peggiori - cioe'
-        # sabotarebbe silenziosamente proprio il braccio di confronto.
-        t = weights.transforms()
-        self.register_buffer("mean", torch.tensor(t.mean).view(1, 3, 1, 1), persistent=False)
-        self.register_buffer("std", torch.tensor(t.std).view(1, 3, 1, 1), persistent=False)
-
-    @torch.no_grad()
-    def encode(self, images, return_layers=None):
-        """
-        `return_layers` concatena piu' profondita', come per il nostro ViT.
-        Serve perche' il confronto fra bracci resti alla pari: se il JEPA
-        usa piu' layer e ImageNet solo l'ultimo, non si confrontano piu' gli
-        encoder ma i protocolli di estrazione.
-        """
-        x = (images * 0.5 + 0.5 - self.mean) / self.std
-        x = self.net._process_input(x)
-        cls = self.net.class_token.expand(x.shape[0], -1, -1)
-        x = torch.cat([cls, x], dim=1)
-
-        if return_layers is None:
-            return self.net.encoder(x)[:, 1:]
-
-        # torchvision tiene i blocchi in encoder.layers; qui si replica il
-        # percorso a mano per poter intercettare le profondita' intermedie.
-        x = self.net.encoder.dropout(x + self.net.encoder.pos_embedding)
-        blocchi = self.net.encoder.layers
-        ultimo = len(blocchi) - 1
-        voluti = set(return_layers)
-        out = []
-        for i, blk in enumerate(blocchi):
-            x = blk(x)
-            if i in voluti:
-                y = self.net.encoder.ln(x) if i == ultimo else x
-                out.append(y[:, 1:])
-        return torch.cat(out, dim=-1)
 
 
 # ==========================================================================
@@ -592,8 +421,8 @@ class LesionClassifier(nn.Module):
     `geom_dim` aggiunge alla rappresentazione aggregata la GEOMETRIA della
     bbox in pixel nativi (larghezza, altezza, lato massimo, radice
     dell'area). Non e' un abbellimento: misurato il 21 ago, due sole soglie
-    sul lato della bbox danno macro-F1 0.7567 e kappa 0.7779 sul test, piu'
-    di qualunque encoder provato, ImageNet compreso (0.7101). Il grado PAI
+    sul lato della bbox danno macro-F1 0.7567 e kappa 0.7779 sul test, senza
+    usare nessuna rete. Il grado PAI
     e' in larga parte l'estensione della radiotrasparenza, e i lati mediani
     per classe sono 57 / 81 / 126 px: quasi separabili da soli.
 
@@ -629,64 +458,8 @@ class LesionClassifier(nn.Module):
         return self.head(pooled), pooled, attn
 
 
-# ==========================================================================
-# 6. Braccio di confronto LeJEPA / SIGReg
-# ==========================================================================
-def sigreg_loss(embeddings, num_projections=64):
-    """
-    SIGReg (Sketched Isotropic Gaussian Regularization), da LeJEPA
-    (Balestriero & LeCun, 2025 - ref [2] del brief).
-
-    Si campionano `num_projections` direzioni casuali unitarie in R^D, si
-    proiettano gli embedding su ciascuna (-> distribuzioni 1-D), e si misura
-    la discrepanza di ognuna da una N(0,1) con il criterio di
-    Cramer-von Mises: CDF empirica dei valori proiettati vs CDF della
-    gaussiana standard. E' l'approssimazione descritta nello schema
-    originale (un'alternativa a Epps-Pulley/funzione caratteristica),
-    scelta perche' e' differenziabile via erf ed economica.
-
-    Una rappresentazione collassata ha varianza ~0 in ogni proiezione: la
-    sua CDF empirica e' quasi un gradino attorno alla media, lontanissima
-    dalla CDF di una N(0,1). Il criterio la penalizza forte, il che e'
-    esattamente perche' funziona da assicurazione sul collasso (vedi
-    ANALISI_PROGETTO_8.md sez.3 e 5) oltre che da braccio di confronto
-    LeJEPA nell'ablation.
-
-    embeddings: (B, D). Richiede B >= 2 (la CDF empirica non e' definita
-    per un solo campione).
-
-    Scorciatoia legittima per validare l'implementazione: `pip install
-    lejepa` espone la loss ufficiale come riferimento. Consegnare solo
-    quella al posto dell'obiettivo 1 no.
-    """
-    b, d = embeddings.shape
-    device = embeddings.device
-
-    directions = F.normalize(torch.randn(d, num_projections, device=device), dim=0)
-    proj = embeddings.float() @ directions   # (B, P)
-
-    sorted_proj, _ = torch.sort(proj, dim=0)
-    normal = torch.distributions.Normal(0.0, 1.0)
-    cdf = normal.cdf(sorted_proj)            # (B, P)
-
-    ranks = torch.arange(1, b + 1, device=device, dtype=cdf.dtype).unsqueeze(1)
-    empirical_cdf = (2 * ranks - 1) / (2 * b)
-
-    cvm = ((cdf - empirical_cdf) ** 2).sum(dim=0) + 1.0 / (12 * b)
-    return cvm.mean()
-
-
-def build_ijepa(variant="vit_tiny", arch="ijepa"):
-    """
-    `arch` sceglie il braccio SSL: 'ijepa' e' il metodo principale richiesto
-    dall'obiettivo 1, 'lejepa' il braccio di confronto nominato dal Task.
-    Il default non cambia, cosi' tutto il codice esistente resta valido.
-    """
-    if arch == "lejepa":
-        return LeJEPA(variant)
-    if arch == "ijepa":
-        return IJEPA(variant)
-    raise ValueError(f"arch sconosciuta: {arch}")
+def build_ijepa(variant="vit_tiny"):
+    return IJEPA(variant)
 
 
 def count_params(m):

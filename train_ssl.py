@@ -110,54 +110,12 @@ def run_probe(model, records, splits):
     return acc, f1
 
 
-def probe_only(variant=DEFAULT_VARIANT, tag="", arch="ijepa"):
-    """
-    Rimisura la sonda k-NN su un checkpoint gia' addestrato, senza allenare.
-
-    PERCHE' ESISTE. run_probe costruisce le sue feature con
-    LesionCropDataset, quindi ogni numero di sonda prodotto prima di
-    LESION_CROP_MODE='fixed' e' stato misurato attraverso il crop che
-    annullava la scala della lesione - cioe' la caratteristica piu'
-    predittiva del grado PAI (lato mediano 57/81/126 px per PAI 3/4/5).
-    Quei verdetti non dicono quanto vale l'encoder: dicono quanto vale
-    l'encoder visto da una lente che aveva gia' cancellato il segnale.
-
-    La prova che erano sbagliati e' gia' agli atti: l'encoder che la sonda
-    dava per fermo alla maggioritaria rende macro-F1 0.7415 a valle appena
-    il crop e' corretto, contro 0.5302 con quello vecchio.
-
-    Costa minuti e non tocca i pesi: va rilanciata sui checkpoint esistenti
-    PRIMA di decidere se un altro pre-training serve davvero, e verso dove.
-    """
-    set_seed()
-    run_name = f"{arch}_{variant}{('_' + tag) if tag else ''}"
-
-    ckpt = load_checkpoint(run_name, map_location=DEVICE)
-    if ckpt is None:
-        raise FileNotFoundError(
-            f"Nessun checkpoint '{run_name}' in {CKPT_DIR}. I .pt sono "
-            f"gitignored: o lo generate qui, o ve lo fate passare da chi ha "
-            f"lanciato il run."
-        )
-
-    model = build_ijepa(ckpt.get("variant", variant), arch=arch).to(DEVICE)
-    model.load_state_dict(ckpt["model"])
-
-    print(f"Checkpoint: {run_name}  (epoca {ckpt.get('epoch', '?')})")
-    print(f"Crop del downstream: LESION_CROP_MODE={LESION_CROP_MODE!r}"
-          f"{'  <-- scala preservata' if LESION_CROP_MODE == 'fixed' else '  <-- scala ANNULLATA, il numero non vale'}")
-
-    records = parse_annotations(verbose=False)
-    splits = load_splits()
-    return run_probe(model, records, splits)
-
-
 def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
-          resume=False, smoke=False, tag="", arch="ijepa"):
+          resume=False, smoke=False, tag=""):
     set_seed()
     # Il tag tiene separati i checkpoint di run paralleli: senza, due varianti
     # lanciate insieme si sovrascrivono a vicenda lo stesso file.
-    run_name = f"{arch}_{variant}{('_' + tag) if tag else ''}"
+    run_name = f"ijepa_{variant}{('_' + tag) if tag else ''}"
 
     records = parse_annotations(verbose=False)
     splits = load_splits()
@@ -177,13 +135,12 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
           f"({len(train_ds)} item x {k} crop per decodifica)")
     print(f"Step per epoca: {len(loader)}  (batch = {max(batch_size // k, 1)} img x {k} = {max(batch_size // k, 1) * k} tile)")
 
-    model = build_ijepa(variant, arch=arch).to(DEVICE)
+    model = build_ijepa(variant).to(DEVICE)
     print(f"{variant}: {count_params(model)/1e6:.2f}M parametri addestrabili")
 
     # In I-JEPA si ottimizzano context encoder e predictor: il target
-    # encoder segue per EMA e non deve ricevere gradienti. In LeJEPA c'e' un
-    # solo encoder e va ottimizzato tutto, quindi si prendono direttamente i
-    # parametri che richiedono gradiente.
+    # encoder segue per EMA (obiettivo 1 del brief) e non riceve gradienti,
+    # quindi si prendono solo i parametri che li richiedono.
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(params, lr=SSL_LR, weight_decay=SSL_WEIGHT_DECAY)
 
@@ -232,11 +189,6 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             print(f"Ripreso dall'epoca {start_epoch}")
 
     for epoch in range(start_epoch, epochs):
-        # Guardiano termico DISATTIVATO: la macchina e' stata messa su profilo
-        # prestazioni massime, che alza i limiti di potenza e la velocita' delle
-        # ventole. Le funzioni restano in utils.py (attendi_raffreddamento) e si
-        # riattivano rimettendo la chiamata qui, se dovessero tornare gli
-        # spegnimenti improvvisi visti il 21 ago.
         t_epoca = time.time()
         model.train()
         meter = AverageMeter()
@@ -306,10 +258,6 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
                 tb.add_scalar("knn/macro_f1", knn[1], epoch)
             tb.add_scalar("sistema/epoca_secondi", dt, epoch)
             tb.add_scalar("sistema/learning_rate", scheduler.get_last_lr()[0], epoch)
-            from utils import temperatura_gpu
-            tgpu = temperatura_gpu()
-            if tgpu is not None:
-                tb.add_scalar("sistema/gpu_temp_C", tgpu, epoch)
             tb.flush()
 
         if monitor.is_collapsing():
@@ -318,7 +266,6 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             print("   1. abbassare il learning rate (fattore 3)")
             print("   2. alzare SSL_EMA_START verso 0.999")
             print("   3. ridurre la capacita' del predictor (e' troppo forte)")
-            print("   4. passare al braccio SIGReg (network.sigreg_loss)")
             break
 
         save_checkpoint({
@@ -343,9 +290,6 @@ if __name__ == "__main__":
     ap.add_argument("--epochs", type=int, default=SSL_EPOCHS)
     ap.add_argument("--batch-size", type=int, default=SSL_BATCH_SIZE)
     ap.add_argument("--resume", action="store_true")
-    ap.add_argument("--probe-only", action="store_true",
-                    help="carica il checkpoint e rimisura SOLO la sonda k-NN, "
-                         "senza allenare: serve a rileggere i run fatti col crop rotto")
     ap.add_argument("--smoke", action="store_true")
     # Override per gli esperimenti in parallelo. Restano fuori da globals.py
     # apposta: globals descrive la configurazione di riferimento, questi
@@ -354,23 +298,8 @@ if __name__ == "__main__":
     ap.add_argument("--context-scale", type=float, nargs=2, default=None,
                     help="es. 0.4 0.7 - contesto piu' piccolo = compito piu' difficile")
     ap.add_argument("--target-scale", type=float, nargs=2, default=None)
-    ap.add_argument("--sigreg-lambda", type=float, default=None)
     ap.add_argument("--predictor-dim", type=int, default=None)
-    ap.add_argument("--scale-jitter", type=float, nargs=2, default=None,
-                    metavar=("MIN", "MAX"),
-                    help="banda del jitter di scala nel TileDataset. La "
-                         "giustificazione del default (0.6 1.6) era allineare "
-                         "il pre-training all'ingrandimento variabile del "
-                         "downstream - ma quel downstream era LESION_CROP_MODE "
-                         "'relative', che ora e' 'fixed' a scala 1.0. Con il "
-                         "crop corretto quella banda insegna un'invarianza alla "
-                         "scala che cancella proprio il segnale del grado PAI "
-                         "(lato 57/81/126 px). '--scale-jitter 1.0 1.0' la "
-                         "spegne: e' l'ablation che verifica se il jitter "
-                         "tiene giu' il braccio JEPA.")
     ap.add_argument("--workers", type=int, default=None)
-    ap.add_argument("--arch", default="ijepa", choices=["ijepa", "lejepa"],
-                    help="ijepa = obiettivo 1; lejepa = braccio di confronto (ref [2])")
     a = ap.parse_args()
 
     # Si scrivono nei moduli che li leggono a ogni chiamata, cosi' l'override
@@ -381,23 +310,12 @@ if __name__ == "__main__":
         network.CONTEXT_SCALE = tuple(a.context_scale)
     if a.target_scale:
         network.TARGET_SCALE = tuple(a.target_scale)
-    if a.sigreg_lambda is not None:
-        network.SIGREG_LAMBDA = a.sigreg_lambda
     if a.predictor_dim is not None:
         network.PREDICTOR_DIM = a.predictor_dim
-    if a.scale_jitter is not None:
-        # data.py legge SSL_SCALE_JITTER come globale del modulo a ogni crop
-        # (data.py:544), quindi riassegnarlo qui vale per l'intero run senza
-        # toccare globals.py - stessa logica degli altri override.
-        data_mod.SSL_SCALE_JITTER = tuple(a.scale_jitter)
     if a.workers is not None:
         data_mod.NUM_WORKERS = a.workers
 
-    print(f"[config] arch={a.arch} tag={a.tag or '-'} context={network.CONTEXT_SCALE} "
-          f"target={network.TARGET_SCALE} sigreg_lambda={network.SIGREG_LAMBDA} "
-          f"predictor_dim={network.PREDICTOR_DIM} scale_jitter={data_mod.SSL_SCALE_JITTER} "
+    print(f"[config] tag={a.tag or '-'} context={network.CONTEXT_SCALE} "
+          f"target={network.TARGET_SCALE} predictor_dim={network.PREDICTOR_DIM} "
           f"workers={data_mod.NUM_WORKERS}")
-    if a.probe_only:
-        probe_only(a.variant, a.tag, a.arch)
-    else:
-        train(a.variant, a.epochs, a.batch_size, a.resume, a.smoke, a.tag, a.arch)
+    train(a.variant, a.epochs, a.batch_size, a.resume, a.smoke, a.tag)

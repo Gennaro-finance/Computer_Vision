@@ -52,48 +52,6 @@ def _salva(fig, nome):
 
 
 # ==========================================================================
-# 1. I tre bracci di confronto
-# ==========================================================================
-def fig_bracci():
-    """
-    La figura che risponde alla domanda del brief: il pre-training
-    in-domain batte le alternative? Si riporta anche il PAVIMENTO, cioe' la
-    macro-F1 di un modello che predice sempre la maggioritaria, perche'
-    senza quel riferimento nessuno dei numeri significa qualcosa.
-    """
-    bracci = [("imagenet", "ImageNet\ncongelato"), ("random", "ViT casuale\ncongelato"),
-              ("ijepa", "JEPA in-domain\ncongelato")]
-    nomi, medie, errori = [], [], []
-    for arm, etichetta in bracci:
-        rows = _carica(arm)
-        if not rows:
-            continue
-        r = next(x for x in rows if x["method"] == "none" and x["head"] == "flat")
-        nomi.append(etichetta)
-        medie.append(r["macro_f1_mean"])
-        errori.append(r["macro_f1_std"])
-
-    fig, ax = plt.subplots(figsize=(7, 4.2))
-    x = np.arange(len(nomi))
-    ax.bar(x, medie, yerr=errori, capsize=6, width=.55,
-           color=[BLU, GRIGIO, ARANCIO], edgecolor="black", linewidth=.8)
-    ax.axhline(0.2589, ls="--", c="black", lw=1.2)
-    ax.text(len(nomi) - .45, 0.2589 + .012,
-            "pavimento: predire sempre PAI 3 (0.259)", ha="right", fontsize=9)
-
-    for i, (m, e) in enumerate(zip(medie, errori)):
-        ax.text(i, m + e + .015, f"{m:.4f}", ha="center", fontweight="bold")
-
-    ax.set_xticks(x, nomi)
-    ax.set_ylabel("Macro-F1 sul test (5 seed)")
-    ax.set_ylim(0, max(medie) * 1.25)
-    ax.set_title("Encoder congelato + stessa testa: cambia solo il pre-training",
-                 fontsize=11.5)
-    ax.grid(axis="y", alpha=.25)
-    return _salva(fig, "fig1_bracci")
-
-
-# ==========================================================================
 # 2. Ablation della novita': la curva dose-risposta
 # ==========================================================================
 def fig_alpha():
@@ -154,8 +112,10 @@ def fig_confusioni():
     from evaluation import evaluate_split
     from train_downstream import load_latents, train_head
 
-    casi = [("imagenet", "focal", "flat", "ImageNet congelato + focal"),
-            ("ijepa", "balanced_tokens", "ordinal", "JEPA in-domain + novita'")]
+    # Le due estremita' dell'ablation dell'obiettivo 4: la cross-entropy
+    # semplice contro la novita' proposta, a encoder identico e congelato.
+    casi = [("ijepa", "none", "flat", "CE semplice"),
+            ("ijepa", "balanced_tokens", "ordinal", "balanced token sampling")]
 
     fig, axes = plt.subplots(1, len(casi), figsize=(10.5, 4.6))
     for ax, (arm, method, head, titolo) in zip(axes, casi):
@@ -247,7 +207,6 @@ def fig_pretraining():
 if __name__ == "__main__":
     os.makedirs(FIG_DIR, exist_ok=True)
     print("Figure generate:")
-    fig_bracci()
     fig_alpha()
     fig_pretraining()
     fig_confusioni()

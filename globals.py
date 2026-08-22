@@ -55,11 +55,6 @@ SEED = 42
 # parallelo, dividete questo numero fra loro.
 NUM_WORKERS = 12
 
-# Guardiano termico: prima di ogni epoca si legge la temperatura della GPU e
-# se supera questa soglia si aspetta che scenda. Costa nulla quando le
-# temperature sono normali. A 0 il controllo e' disattivato.
-TEMP_MAX_GPU = 78
-TEMP_PAUSA_S = 45
 
 
 def amp_dtype():
@@ -145,10 +140,9 @@ CROPS_PER_IMAGE = 8
 # a 1.59x, e il 67% delle lesioni viene ingrandito.
 #
 # L'encoder veniva quindi addestrato su UNA scala e usato su un intervallo di
-# scale mai visto. E' uno spostamento di dominio fra i due stadi, e spiega
-# strutturalmente perche' il transfer da ImageNet vinceva: quel modello e'
-# addestrato con RandomResizedCrop su scale molto variabili, quindi la
-# variazione di scala non lo disturba.
+# scale mai visto: uno spostamento di dominio fra i due stadi del progetto,
+# ed e' il motivo per cui le rappresentazioni rendevano meno di quanto
+# dovessero nel downstream.
 #
 # Qui si campiona il lato del crop come 224 * s con s in questo intervallo e
 # poi si ridimensiona a 224: l'ingrandimento risultante e' 1/s, cioe' da 0.63x
@@ -221,8 +215,8 @@ PATCH_SIZE = 16
 # Misurato sul train, lato mediano della bbox per grado:
 #     PAI 3   57 px      PAI 4   81 px      PAI 5  126 px
 # Due sole soglie su quel numero danno macro-F1 0.7567 e kappa 0.7779 sul
-# test - piu' di qualunque nostro modello, ImageNet compreso (0.7101).
-# Il grado PAI E' in larga parte l'estensione della radiotrasparenza, e la
+# test, senza alcuna rete. Il grado PAI E' in larga parte l'estensione
+# della radiotrasparenza, e la
 # normalizzazione la cancellava prima che la rete vedesse l'immagine.
 #
 # 'fixed'  ritaglia una finestra di LATO COSTANTE in pixel nativi: una
@@ -301,13 +295,6 @@ SSL_EMA_START = 0.996      # valore ORIGINALE del progetto, ripristinato
 SSL_EMA_END = 1.0
 AMP = True
 
-# SIGReg (LeJEPA, Balestriero & LeCun 2025) come ASSICURAZIONE sul collasso:
-# termine aggiuntivo che vincola gli embedding del context encoder a
-# distribuirsi come una gaussiana isotropa (vedi network.sigreg_loss).
-# Si somma alla loss I-JEPA, non la sostituisce - l'obiettivo 1 del brief
-# (EMA + predictor) resta soddisfatto alla lettera. lambda=0.0 disattiva.
-SIGREG_LAMBDA = 0.0
-SIGREG_PROJECTIONS = 64
 
 # ------------------------------------------- monitoraggio del collasso
 # E' il modo in cui questo progetto fallisce, e fallisce SILENZIOSAMENTE:
@@ -380,7 +367,6 @@ IMBALANCE_METHODS = [
     "class_weighted",   # CE pesata
     "focal",            # focal loss
     "oversample",       # oversampling della minoritaria
-    "latent_smote",     # SMOTE nello spazio latente - la baseline scomoda
     "balanced_tokens",  # NOVITA' proposta
 ]
 FOCAL_GAMMA = 2.0
