@@ -253,7 +253,7 @@ def train_head(cached, method="none", head_type="flat", seed=0,
 
 
 def run_grid(variant=DEFAULT_VARIANT, arm="ijepa", methods=None, heads=None,
-             seeds=None):
+             seeds=None, layers=None):
     """
     Griglia completa: metodo x tipo di testa x seed.
 
@@ -262,7 +262,7 @@ def run_grid(variant=DEFAULT_VARIANT, arm="ijepa", methods=None, heads=None,
     """
     from evaluation import evaluate_split
 
-    cached = load_latents(variant, arm)
+    cached = load_latents(variant, arm, layers=layers)
     methods = methods or IMBALANCE_METHODS
     heads = heads or HEAD_TYPES
     seeds = seeds or list(range(N_SEEDS))
@@ -301,14 +301,15 @@ def run_grid(variant=DEFAULT_VARIANT, arm="ijepa", methods=None, heads=None,
               f"  kappa={agg['quadratic_kappa_mean']:.4f}")
 
     if rows:
-        path = os.path.join(OUT_DIR, f"results_{arm}_{variant}.json")
+        suff = "" if layers is None else "_L" + "-".join(map(str, layers))
+        path = os.path.join(OUT_DIR, f"results_{arm}_{variant}{suff}.json")
         save_json(rows, path)
         print(f"\nRisultati in {path}")
     return rows
 
 
 def sweep_alpha(variant=DEFAULT_VARIANT, arm="ijepa", alphas=None, heads=None,
-                seeds=None):
+                seeds=None, layers=None):
     """
     Ablation su alpha della novita' - richiesto dall'obiettivo 4.
 
@@ -324,7 +325,7 @@ def sweep_alpha(variant=DEFAULT_VARIANT, arm="ijepa", alphas=None, heads=None,
     """
     from evaluation import evaluate_split
 
-    cached = load_latents(variant, arm)
+    cached = load_latents(variant, arm, layers=layers)
     alphas = alphas or [0.0, 0.25, 0.5, 0.75, 1.0]
     heads = heads or HEAD_TYPES
     seeds = seeds or list(range(N_SEEDS))
@@ -356,7 +357,8 @@ def sweep_alpha(variant=DEFAULT_VARIANT, arm="ijepa", alphas=None, heads=None,
               f"  recall5={agg['recall_pai5_mean']:.4f}+-{agg['recall_pai5_std']:.4f}"
               f"  prec5={agg['precision_pai5_mean']:.3f}")
 
-    path = os.path.join(OUT_DIR, f"sweep_alpha_{arm}_{variant}.json")
+    suff = "" if layers is None else "_L" + "-".join(map(str, layers))
+    path = os.path.join(OUT_DIR, f"sweep_alpha_{arm}_{variant}{suff}.json")
     save_json(rows, path)
     print(f"\nRisultati in {path}")
     return rows
@@ -382,9 +384,9 @@ if __name__ == "__main__":
         cache_latents(a.variant, arm=a.arm, layers=a.layers,
                       ckpt_tag=a.ckpt_tag)
     elif a.sweep_alpha:
-        sweep_alpha(a.variant, a.arm)
+        sweep_alpha(a.variant, a.arm, layers=a.layers)
     elif a.grid:
-        run_grid(a.variant, a.arm)
+        run_grid(a.variant, a.arm, layers=a.layers)
     else:
         from evaluation import evaluate_split, print_report
         cached = load_latents(a.variant, a.arm)

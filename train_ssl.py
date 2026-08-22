@@ -160,6 +160,11 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             print(f"Ripreso dall'epoca {start_epoch}")
 
     for epoch in range(start_epoch, epochs):
+        # Guardiano termico DISATTIVATO: la macchina e' stata messa su profilo
+        # prestazioni massime, che alza i limiti di potenza e la velocita' delle
+        # ventole. Le funzioni restano in utils.py (attendi_raffreddamento) e si
+        # riattivano rimettendo la chiamata qui, se dovessero tornare gli
+        # spegnimenti improvvisi visti il 21 ago.
         t_epoca = time.time()
         model.train()
         meter = AverageMeter()
