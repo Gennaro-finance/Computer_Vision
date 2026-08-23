@@ -361,6 +361,11 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
     print(f"{variant}: {count_params(model)/1e6:.2f}M parametri addestrabili")
     print(f"[iperparametri] lr={LR:.2e} ema={EMA_START}->{EMA_END} "
           f"predictor_dim={network.PREDICTOR_DIM}")
+    if network.MASK_RATIO is not None:
+        _c, _b = network.sample_masks(TILE_SIZE // 16)
+        print(f"[mascheramento] richiesto {network.MASK_RATIO}, blocchi "
+              f"{network.BLOCK_SCALE} -> contesto {_c.numel()} patch, "
+              f"{len(_b)} blocchi (paper: 90 patch, 4 blocchi)")
 
     # In I-JEPA si ottimizzano context encoder e predictor: il target
     # encoder segue per EMA (obiettivo 1 del brief) e non riceve gradienti,
@@ -660,6 +665,12 @@ if __name__ == "__main__":
     ap.add_argument("--lr", type=float, default=None)
     ap.add_argument("--ema-start", type=float, default=None,
                     help="momentum EMA iniziale: piu' alto = target piu' lento = meno collasso")
+    ap.add_argument("--mask-ratio", type=float, nargs=2, default=None,
+                    help="es. 0.75 0.85 - rapporto mascherato CONTROLLATO. "
+                         "Senza, vale quello del paper: 53.8%%")
+    ap.add_argument("--block-scale", type=float, nargs=2, default=None,
+                    help="taglia dei blocchi. Grandi = meno blocchi = stesso "
+                         "costo per passo a parita' di rapporto")
     ap.add_argument("--gate-epoch", type=int, default=None,
                     help="epoche dopo cui fermarsi se la sonda non batte l'encoder casuale")
     a = ap.parse_args()
@@ -678,6 +689,10 @@ if __name__ == "__main__":
         network.CONTEXT_SCALE = tuple(a.context_scale)
     if a.target_scale:
         network.TARGET_SCALE = tuple(a.target_scale)
+    if a.mask_ratio:
+        network.MASK_RATIO = tuple(a.mask_ratio)
+    if a.block_scale:
+        network.BLOCK_SCALE = tuple(a.block_scale)
     if a.predictor_dim is not None:
         network.PREDICTOR_DIM = a.predictor_dim
     if a.workers is not None:
