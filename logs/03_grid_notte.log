@@ -1,0 +1,12 @@
+  none             flat     macroF1=0.7631+-0.0068  F1(3/4/5)=0.888/0.636/0.766  recall5=0.7196  prec5=0.820  kappa=0.7902
+  none             ordinal  macroF1=0.7631+-0.0058  F1(3/4/5)=0.894/0.625/0.771  recall5=0.7464  prec5=0.800  kappa=0.7950
+  class_weighted   flat     macroF1=0.7562+-0.0046  F1(3/4/5)=0.870/0.628/0.770  recall5=0.7750  prec5=0.766  kappa=0.7746
+  class_weighted   ordinal  macroF1=0.7458+-0.0072  F1(3/4/5)=0.869/0.615/0.753  recall5=0.7929  prec5=0.718  kappa=0.7713
+  focal            flat     macroF1=0.7567+-0.0114  F1(3/4/5)=0.867/0.631/0.772  recall5=0.7946  prec5=0.753  kappa=0.7747
+  focal            ordinal  macroF1=0.7552+-0.0094  F1(3/4/5)=0.873/0.626/0.767  recall5=0.7607  prec5=0.776  kappa=0.7762
+  oversample       flat     macroF1=0.7546+-0.0082  F1(3/4/5)=0.869/0.629/0.766  recall5=0.7946  prec5=0.741  kappa=0.7749
+  oversample       ordinal  macroF1=0.7454+-0.0065  F1(3/4/5)=0.878/0.602/0.756  recall5=0.7929  prec5=0.724  kappa=0.7804
+  balanced_tokens  flat     macroF1=0.7594+-0.0073  F1(3/4/5)=0.871/0.629/0.778  recall5=0.7875  prec5=0.770  kappa=0.7787
+  balanced_tokens  ordinal  macroF1=0.7575+-0.0042  F1(3/4/5)=0.882/0.627/0.764  recall5=0.7661  prec5=0.763  kappa=0.7861
+
+Risultati in ./runs\results_vit_small_L2-7-11.json

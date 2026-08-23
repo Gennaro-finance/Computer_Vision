@@ -302,7 +302,11 @@ class CollapseMonitor:
                  "rank_ref": rif, "rank_ratio": ratio,
                  "n": n, "dim": d}
         if knn is not None:
-            entry["knn_acc"], entry["knn_f1"] = knn
+            # `knn` e' il pannello diagnostico completo (dict): si
+            # riversano tutte le voci numeriche, cosi' aggiungerne una in
+            # train_ssl.py non richiede di toccare anche questo file.
+            entry.update({k: v for k, v in knn.items()
+                          if isinstance(v, (int, float))})
         self.history.append(entry)
 
         # COLLASSO COSTANTE: l'unica cosa che la std sa davvero rilevare.

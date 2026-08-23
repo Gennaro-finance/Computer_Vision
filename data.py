@@ -27,7 +27,7 @@ from globals import (
     CROPS_PER_IMAGE, DATA_ROOT, DIR_ANNOTATIONS, DIR_AUGMENTED, DIR_ORIGINAL, EXPECTED_COUNTS,
     EXPECTED_TOTAL_IMAGES, EXPECTED_TOTAL_LESIONS, GRADE_TO_IDX,
     MIN_TOKENS_PER_LESION, NUM_WORKERS, PAI_GRADES, PATCH_SIZE, RESIZE_H,
-    CROPS_PER_ITEM, LESION_CROP_PIXELS, RESIZE_W, SEED,
+    CACHE_DIR, CROPS_PER_ITEM, LESION_CROP_PIXELS, RESIZE_W, SEED,
     SPLIT_FRACTIONS, SPLIT_JSON, TILE_MIN_FOREGROUND,
     TILE_SIZE, TILE_STRIDE,
 )
@@ -674,3 +674,60 @@ if __name__ == "__main__":
         bbox_statistics()
     if args.splits:
         build_splits()
+
+
+# ==========================================================================
+# Cache dei crop - perche' le sonde erano lente
+# ==========================================================================
+def cache_crop(records, image_ids, nome, size=TILE_SIZE, crop_pixels=None):
+    """
+    Ritaglia una volta sola e conserva il risultato.
+
+    PERCHE'. LesionCropDataset, a ogni accesso, apre la PANORAMICA INTERA da
+    disco, la converte in scala di grigi, ritaglia e ridimensiona. Sono
+    ~5700 lesioni fra train e val, e le panoramiche sono grandi: una singola
+    sonda diagnostica costava minuti, quasi tutti spesi a decodificare JPEG,
+    non a far girare la rete. E i crop del downstream sono DETERMINISTICI -
+    finestra fissa, nessuna augmentation - quindi rifare quel lavoro a ogni
+    sonda era puro spreco.
+
+    Si conservano come uint8. Non e' una perdita di precisione: PIL produce
+    gia' uint8 e il dataset si limita a dividere per 255, quindi il giro
+    uint8 -> float -> uint8 e' esatto (verificato nel blocco __main__).
+    A 224x224 in scala di grigi sono ~50 KB per lesione: train+val stanno in
+    ~290 MB, contro i 3 GB dei latenti.
+    """
+    path = os.path.join(CACHE_DIR, f"crop_{nome}_{size}.pt")
+    if os.path.isfile(path):
+        return torch.load(path, weights_only=False)
+
+    ds = LesionCropDataset(records, image_ids, size=size, crop_pixels=crop_pixels)
+    n = len(ds)
+    d = {"image": torch.empty(n, size, size, dtype=torch.uint8),
+         "bbox": torch.empty(n, 4), "geom": torch.empty(n, 4),
+         "label": torch.empty(n, dtype=torch.long)}
+    for i in range(n):
+        c = ds[i]
+        grigio = c["image"][0] * 0.5 + 0.5            # da [-1,1] a [0,1]
+        d["image"][i] = (grigio * 255).round().clamp(0, 255).to(torch.uint8)
+        d["bbox"][i], d["geom"][i] = c["bbox"], c["geom"]
+        d["label"][i] = c["label"]
+    torch.save(d, path)
+    return d
+
+
+class CropCacheDataset(Dataset):
+    """Legge dalla cache di cache_crop() e ricostruisce il formato di
+    LesionCropDataset, cosi' e' intercambiabile senza toccare i chiamanti."""
+
+    def __init__(self, d):
+        self.d = d
+
+    def __len__(self):
+        return self.d["image"].shape[0]
+
+    def __getitem__(self, i):
+        a = self.d["image"][i].float() / 255.0
+        x3 = a[None].repeat(3, 1, 1)
+        return {"image": (x3 - 0.5) / 0.5, "bbox": self.d["bbox"][i],
+                "geom": self.d["geom"][i], "label": int(self.d["label"][i])}

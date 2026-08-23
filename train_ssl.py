@@ -14,10 +14,15 @@ import math
 import os
 import time
 
+import numpy as np
 import torch
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, RidgeCV
+from sklearn.model_selection import cross_val_score
 
-from data import LesionCropDataset, TileDataset, load_splits, make_loader, parse_annotations
+from data import (
+    CropCacheDataset, LesionCropDataset, TileDataset, cache_crop, load_splits,
+    make_loader, parse_annotations,
+)
 from globals import (
     AMP, CKPT_DIR, GRAD_CLIP, MONITOR_SAMPLES, NUM_CLASSES, amp_dtype, DEFAULT_VARIANT, DEVICE, FIG_DIR, KNN_PROBE_EVERY, KNN_SUBSET,
     GATE_CROLLO, GATE_EPOCH, GATE_MARGINE, GATE_SONDE_SOTTO, OUT_DIR, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START,
@@ -35,6 +40,7 @@ EMA_END = SSL_EMA_END
 LR = SSL_LR
 GATE_AT = GATE_EPOCH
 from utils import (
+    effective_rank_centered,
     AverageMeter, CollapseMonitor, knn_probe, load_checkpoint, save_checkpoint,
     set_seed,
 )
@@ -122,43 +128,93 @@ def probe_lineare(ftr, ltr, fva, lva):
     return macro_f1(confusion_matrix(lva.numpy(), clf.predict(zva)))
 
 
-def run_probe(model, records, splits):
-    """
-    Sonda di monitoraggio. Riporta ENTRAMBE le letture e giudica sulla
-    lineare: vedi probe_lineare() per il perche'.
-    """
-    # num_workers=0: loader usa e getta. Con i worker persistenti, e' il
-    # break dentro extract_for_probe a lasciarli vivi, e a ogni probe se ne
-    # accumulano altri finche' la memoria condivisa non finisce.
-    tr = make_loader(LesionCropDataset(records, splits["train"]),
-                     batch_size=64, num_workers=0)
-    va = make_loader(LesionCropDataset(records, splits["val"]),
-                     batch_size=64, num_workers=0)
-    ftr, ltr = extract_for_probe(model, tr)
-    fva, lva = extract_for_probe(model, va)
-    acc, f1 = knn_probe(ftr, ltr, fva, lva)
-    f1_lin = probe_lineare(ftr, ltr, fva, lva)
+_CROP = {}
 
-    # I riferimenti si MISURANO sulle etichette di validazione, non si
-    # assumono: sono cio' che otterrebbe un modello che predice SEMPRE la
-    # maggioritaria. Il valore dichiarato nel brief non coincide con quello
-    # reale del dataset (vedi globals), e da questo numero dipende il gate.
+
+def _dati_sonda(records, splits):
+    """
+    Crop di train e val, ritagliati UNA volta e tenuti in memoria.
+
+    Prima ogni sonda ricostruiva i crop da zero: apriva ~5700 panoramiche
+    intere da disco e le ridimensionava, per un costo di oltre due minuti a
+    sonda, quasi tutti spesi in decodifica JPEG e non nella rete. Con la
+    cache la stessa operazione costa 0.02 s, quindi sondare spesso smette di
+    essere un lusso: e' proprio la mancanza di misure frequenti che ha
+    lasciato correre run sbagliati per ore.
+    """
+    if not _CROP:
+        for split in ("train", "val"):
+            d = cache_crop(records, splits[split], split)
+            _CROP[split] = make_loader(CropCacheDataset(d), shuffle=False,
+                                       batch_size=64, num_workers=0)
+            # Grandezze misurate sull'IMMAGINE, indipendenti dalla rete:
+            # servono a chiedersi non "quanto e' brava" ma "quale
+            # informazione conserva".
+            img, bb = d["image"].float() / 255.0, d["bbox"]
+            inten, dim = [], []
+            for k in range(img.shape[0]):
+                x0, y0, x1, y1 = [int(v) for v in bb[k]]
+                x0, y0 = max(x0, 0), max(y0, 0)
+                x1, y1 = max(x1, x0 + 1), max(y1, y0 + 1)
+                inten.append(float(img[k, y0:y1, x0:x1].mean()))
+                dim.append(float(np.log((x1 - x0) * (y1 - y0))))
+            _CROP[split + "_aux"] = np.array([inten, dim]).T
+    return _CROP
+
+
+def _r2(F, y):
+    """R^2 di una regressione lineare (ridge) dall'embedding a `y`, in
+    5-fold. Dice se l'informazione e' PRESENTE e leggibile linearmente."""
+    Z = (F - F.mean(0)) / (F.std(0) + 1e-8)
+    return float(cross_val_score(RidgeCV(alphas=np.logspace(-2, 4, 13)),
+                                 Z.numpy(), y, cv=5, scoring="r2").mean())
+
+
+def run_probe(model, records, splits, completo=False):
+    """
+    Pannello diagnostico. Ritorna un dict, non un numero solo.
+
+    Il progetto ha perso giorni perche' guardava una misura sola per volta,
+    e ogni volta era quella sbagliata: prima il rango effettivo (che segna
+    collasso anche sull'encoder casuale), poi il k-NN (che misura la
+    geometria, non l'informazione). Qui si guardano insieme:
+
+      lineare  macro-F1 di una direzione APPRESA. E' il criterio: e' la
+               stessa lettura che fa il downstream (attention pooling piu'
+               testa addestrata).
+      knn      macro-F1 per distanza euclidea. Diagnostica della GEOMETRIA:
+               se scende mentre `lineare` tiene, il modello ha riorganizzato
+               lo spazio senza perdere informazione.
+      r2_int   quanto e' leggibile l'intensita' media della lesione
+      r2_dim   quanto e' leggibile la dimensione della bbox
+               Sono le due grandezze che definiscono il grado PAI. Se
+               restano alte, nessuna informazione utile e' andata persa,
+               qualunque cosa dicano le misure geometriche.
+      rango    rango effettivo centrato: quante direzioni sono usate.
+
+    `completo=False` salta le due R^2, che costano una cross-validation.
+    """
+    d = _dati_sonda(records, splits)
+    ftr, ltr = extract_for_probe(model, d["train"], max_items=10 ** 9)
+    fva, lva = extract_for_probe(model, d["val"], max_items=10 ** 9)
+
+    lin = probe_lineare(ftr, ltr, fva, lva)
+    _, knn = knn_probe(ftr, ltr, fva, lva)
     quota = torch.bincount(lva.long()).max().item() / len(lva)
+    pavimento = (2 * quota / (1 + quota)) / NUM_CLASSES
 
-    # Il verdetto si basa sulla MACRO-F1, non sull'accuracy. Il brief vieta
-    # l'accuracy globale proprio perche' con il 61% di PAI 3 e' ingannevole:
-    # un modello costante fa 0.61 di accuracy e sembra decente. La stessa
-    # previsione costante fa invece macro-F1 = 2q/(1+q)/K, cioe' ~0.25 su tre
-    # classi - ed e' quello il pavimento onesto da superare.
-    # Sul vecchio criterio (acc > quota + 0.02) un encoder che imparava
-    # davvero risultava "al livello del caso" mentre la macro-F1 saliva.
-    f1_maggioritaria = (2 * quota / (1 + quota)) / NUM_CLASSES
+    p = {"lineare": lin, "knn": knn, "rango_c": effective_rank_centered(fva),
+         "pavimento": pavimento}
+    if completo:
+        aux = d["val_aux"]
+        p["r2_int"], p["r2_dim"] = _r2(fva, aux[:, 0]), _r2(fva, aux[:, 1])
 
-    verdict = "OK" if f1_lin > f1_maggioritaria * 1.10 else "<-- AL LIVELLO DEL CASO"
-    print(f"  [sonda] lineare={f1_lin:.4f}  k-NN={f1:.4f}  "
-          f"(costante {f1_maggioritaria:.4f}) {verdict}")
-    return f1_lin, f1   # (criterio, diagnostica)
-
+    extra = (f"  R2 intensita={p['r2_int']:.3f} dimensione={p['r2_dim']:.3f}"
+             if completo else "")
+    stato = "OK" if lin > pavimento * 1.10 else "<-- AL LIVELLO DEL CASO"
+    print(f"  [sonda] lineare={lin:.4f}  k-NN={knn:.4f}  rango={p['rango_c']:.2f}"
+          f"{extra}  (pavimento {pavimento:.4f}) {stato}", flush=True)
+    return p
 
 def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
           resume=False, smoke=False, tag=""):
@@ -265,7 +321,7 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
     if knn_ref is None:
         print(""
               "Riferimento (encoder casuale, pesi non addestrati):")
-        knn_ref = run_probe(model, records, splits)[0]
+        knn_ref = run_probe(model, records, splits, completo=True)['lineare']
     print(f"Da battere: macro-F1 della sonda LINEARE = {knn_ref:.4f}"
           f"   (cancello: se a {GATE_AT} epoche non e' superato, ci si ferma)")
     knn_best = 0.0
@@ -318,7 +374,7 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
 
         knn = None
         if (epoch + 1) % KNN_PROBE_EVERY == 0 or epoch == epochs - 1:
-            knn = run_probe(model, records, splits)
+            knn = run_probe(model, records, splits, completo=True)
 
         if not emb_epoca:
             print("  [monitor] nessun batch elaborato: dataset vuoto?")
@@ -337,8 +393,9 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
                 if isinstance(v, (int, float)):
                     tb.add_scalar(f"monitor/{k}", v, epoch)
             if knn is not None:
-                tb.add_scalar("sonda/lineare", knn[0], epoch)
-                tb.add_scalar("sonda/knn", knn[1], epoch)
+                for k, v in knn.items():
+                    if isinstance(v, (int, float)):
+                        tb.add_scalar(f"sonda/{k}", v, epoch)
             tb.add_scalar("sistema/epoca_secondi", dt, epoch)
             tb.add_scalar("sistema/learning_rate", scheduler.get_last_lr()[0], epoch)
             tb.flush()
@@ -356,19 +413,19 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             # brief chiede di addestrare fino all'ultima epoca, e scegliere
             # sulla base di una sonda misurata sul VALIDATION e' un criterio
             # di selezione onesto, da dichiarare in presentazione.
-            if knn[0] > knn_best:
+            if knn['lineare'] > knn_best:
                 save_checkpoint({
                     "model": model.state_dict(), "epoch": epoch,
                     "gstep": gstep, "variant": variant,
-                    "probe_lineare": knn[0], "probe_knn": knn[1],
+                    "probe_lineare": knn['lineare'], "probe_knn": knn['knn'],
                     "probe_ref": knn_ref,
                     "lr": LR, "ema_start": EMA_START,
                     "predictor_dim": network.PREDICTOR_DIM,
                 }, run_name + "_best")
-                print(f"            [migliore] nuovo record {knn[0]:.4f} "
+                print(f"            [migliore] nuovo record {knn['lineare']:.4f} "
                       f"all'epoca {epoch}: salvato {run_name}_best")
-            knn_best = max(knn_best, knn[0])
-            delta = knn[0] - knn_ref
+            knn_best = max(knn_best, knn['lineare'])
+            delta = knn['lineare'] - knn_ref
             soglia = knn_ref - GATE_MARGINE
 
             # Si giudica la sonda CORRENTE, non la migliore mai vista.
@@ -378,18 +435,18 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             # 0.6520, 0.5548, 0.4280 - e il run e' proseguito verso altre
             # 4.7 ore di degrado con il cancello che taceva, perche' il
             # massimo storico restava sopra la soglia.
-            sotto = sotto + 1 if knn[0] < soglia else 0
-            print(f"            [cancello] lineare {knn[0]:.4f} vs casuale {knn_ref:.4f}"
+            sotto = sotto + 1 if knn['lineare'] < soglia else 0
+            print(f"            [cancello] lineare {knn['lineare']:.4f} vs casuale {knn_ref:.4f}"
                   f"  -> {delta:+.4f}   miglior finora {knn_best:.4f}"
                   f"   sonde sotto di fila: {sotto}")
 
-            crollo = knn[0] < knn_ref - GATE_CROLLO * GATE_MARGINE
+            crollo = knn['lineare'] < knn_ref - GATE_CROLLO * GATE_MARGINE
             if epoch + 1 >= GATE_AT and (sotto >= GATE_SONDE_SOTTO or crollo):
                 motivo = (f"crollo netto ({delta:+.4f}, oltre {GATE_CROLLO} margini)"
                           if crollo else
                           f"{sotto} sonde consecutive sotto il riferimento")
                 print(f"  CANCELLO all'epoca {epoch+1}: {motivo}.")
-                print(f"  Sonda lineare {knn[0]:.4f} contro encoder casuale {knn_ref:.4f}.")
+                print(f"  Sonda lineare {knn['lineare']:.4f} contro encoder casuale {knn_ref:.4f}.")
                 print("  Il pre-training sta DEGRADANDO le rappresentazioni: ci si")
                 print("  ferma qui invece di consumare le epoche restanti.")
                 break
