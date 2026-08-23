@@ -25,7 +25,8 @@ from data import (
 )
 from globals import (
     AMP, CKPT_DIR, GRAD_CLIP, MONITOR_SAMPLES, NUM_CLASSES, amp_dtype, DEFAULT_VARIANT, DEVICE, FIG_DIR, KNN_PROBE_EVERY, KNN_SUBSET,
-    GATE_CROLLO, GATE_EPOCH, GATE_MARGINE, GATE_SONDE_SOTTO, OUT_DIR, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START,
+    DOWNSTREAM_SONDA_TRAIN, GATE_CROLLO, GATE_EPOCH, GATE_MARGINE,
+    GATE_SONDE_SOTTO, LAYERS_DOWNSTREAM, OUT_DIR, RESOCONTO_OGNI, SSL_BATCH_SIZE, SSL_EMA_END, SSL_EMA_START,
     SSL_EPOCHS, SSL_LR, SSL_WARMUP_EPOCHS, SSL_WEIGHT_DECAY, TILE_SIZE,
 )
 from evaluation import confusion_matrix, macro_f1
@@ -170,6 +171,121 @@ def _r2(F, y):
                                  Z.numpy(), y, cv=5, scoring="r2").mean())
 
 
+@torch.no_grad()
+def _token_multilayer(model, loader, cap):
+    """Token concatenati sulle profondita' del downstream, piu' maschera
+    bbox, etichette e geometria: lo stesso formato che cache_latents scrive
+    su disco, ma tenuto in memoria e su un sottoinsieme."""
+    T, M, Y, G = [], [], [], []
+    n = 0
+    for b in loader:
+        t = model.encode(b["image"].to(DEVICE), return_layers=LAYERS_DOWNSTREAM)
+        T.append(t.half().cpu())
+        M.append(bbox_to_token_mask(b["bbox"].to(DEVICE), model.grid).cpu())
+        Y.append(b["label"] if torch.is_tensor(b["label"])
+                 else torch.tensor(b["label"]))
+        G.append(b["geom"])
+        n += t.shape[0]
+        if n >= cap:
+            break
+    return {"tokens": torch.cat(T), "mask": torch.cat(M),
+            "labels": torch.cat(Y), "geom": torch.cat(G)}
+
+
+def sonda_downstream(model, records, splits, seed=0):
+    """
+    Il MODELLO VERO dell'obiettivo 2, non un surrogato.
+
+    Addestra attention pooling piu' testa sui token dell'encoder congelato,
+    esattamente come train_downstream.py, e valuta su VALIDATION.
+
+    ESISTE PERCHE' TUTTI I SURROGATI HANNO MENTITO. In quest'ordine:
+      rango effettivo  segnava collasso anche sull'encoder casuale, che e'
+                       il miglior estrattore che abbiamo
+      k-NN             misura la geometria: e' crollato di 0.17 mentre
+                       l'informazione restava intatta (R^2 0.99 / 0.88)
+      sonda lineare    guarda solo l'ultimo blocco e usa media invece di
+                       attention pooling. Sui due punti dove conosciamo
+                       entrambi i numeri ha il SEGNO INVERTITO rispetto al
+                       downstream: +0.0043 contro -0.0074.
+
+    Qui non c'e' surrogato: e' la stessa lettura che finisce in
+    presentazione. Si valuta su validation e MAI su test - scegliere il
+    checkpoint guardando il test sarebbe barare.
+    """
+    from train_downstream import train_head
+    from evaluation import evaluate_split
+
+    d = _dati_sonda(records, splits)
+    cached = {"data": {"train": _token_multilayer(model, d["train"],
+                                                  DOWNSTREAM_SONDA_TRAIN),
+                       "val": _token_multilayer(model, d["val"], 10 ** 9)},
+              "grid": model.grid}
+    cached["embed_dim"] = cached["data"]["train"]["tokens"].shape[-1]
+    clf, _ = train_head(cached, "none", "flat", seed=seed)
+    r = evaluate_split(clf, cached["data"]["val"], "flat")
+    del cached, clf
+    torch.cuda.empty_cache()
+    return r["macro_f1"], r.get("pr_auc_pai5", float("nan"))
+
+
+def stampa_resoconto(storico, rif, run_name, epoca, totale, rif_down=None):
+    """
+    Tabella riassuntiva di tutte le sonde fatte finora.
+
+    Un run da 300 epoche produce centinaia di righe di log, e la domanda
+    utile e' sempre la stessa: sta migliorando rispetto all'encoder casuale?
+    Qui la risposta si legge in una tabella sola, con i delta gia' fatti e
+    la TENDENZA delle ultime tre sonde - perche' il valore singolo oscilla
+    di ~0.01 e da solo non dice niente.
+
+    Si scrive anche su file, cosi' si puo' guardare senza aprire il log.
+    """
+    righe = []
+    righe.append("=" * 78)
+    righe.append(f"RESOCONTO - {run_name} - epoca {epoca}/{totale}")
+    righe.append(f"DA BATTERE - encoder casuale: downstream = "
+                 f"{rif_down if rif_down is not None else float('nan'):.4f}"
+                 f"   (sonda lineare {rif:.4f})")
+    righe.append("=" * 78)
+    righe.append(f"{'epoca':>6s} {'DOWNSTREAM':>11s} {'PR-AUC5':>8s} "
+                 f"{'lineare':>9s} {'k-NN':>8s} {'rango':>7s} "
+                 f"{'R2 int':>7s} {'R2 dim':>7s}")
+    for e in storico:
+        righe.append(f"{e['epoch']:6d} "
+                     f"{e.get('downstream', float('nan')):11.4f} "
+                     f"{e.get('pr_auc5', float('nan')):8.4f} "
+                     f"{e['lineare']:9.4f} {e['knn']:8.4f} "
+                     f"{e.get('rango_c', float('nan')):7.2f} "
+                     f"{e.get('r2_int', float('nan')):7.3f} "
+                     f"{e.get('r2_dim', float('nan')):7.3f}")
+
+    # La tendenza si legge sul DOWNSTREAM quando c'e', non sul surrogato.
+    con_d = [e for e in storico if "downstream" in e]
+    chiave, serie = ("downstream", con_d) if con_d else ("lineare", storico)
+    if len(serie) >= 3:
+        ultime = [e[chiave] for e in serie[-3:]]
+        pend = (ultime[-1] - ultime[0]) / 2
+        verso = ("in miglioramento" if pend > 0.002 else
+                 "in peggioramento" if pend < -0.002 else "stabile")
+        righe.append("")
+        righe.append(f"Tendenza sulle ultime 3 sonde ({chiave}): {verso} "
+                     f"({pend:+.4f} per sonda)")
+
+    migliore = max(serie, key=lambda e: e[chiave])
+    rifer = rif_down if chiave == "downstream" and rif_down is not None else rif
+    righe.append(f"Migliore finora ({chiave}): {migliore[chiave]:.4f} "
+                 f"all'epoca {migliore['epoch']}  "
+                 f"({migliore[chiave] - rifer:+.4f} vs casuale)")
+    righe.append("=" * 78)
+
+    testo = chr(10).join(righe)
+    print(testo, flush=True)
+    with open(os.path.join(OUT_DIR, f"resoconto_{run_name}.txt"), "w",
+              encoding="utf-8") as f:
+        f.write(testo + chr(10))
+
+
 def run_probe(model, records, splits, completo=False):
     """
     Pannello diagnostico. Ritorna un dict, non un numero solo.
@@ -287,6 +403,7 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
 
     start_epoch, gstep = 0, 0
     knn_ref = None
+    rif_down = None
     if resume:
         ckpt = load_checkpoint(run_name, map_location=DEVICE)
         if ckpt:
@@ -296,6 +413,7 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             start_epoch, gstep = ckpt["epoch"] + 1, ckpt["gstep"]
             monitor.history = ckpt.get("monitor", [])
             knn_ref = ckpt.get("knn_ref")
+            rif_down = ckpt.get("rif_down")
             print(f"Ripreso dall'epoca {start_epoch}")
 
             # Se il checkpoint e' stato scritto con iperparametri diversi da
@@ -318,14 +436,18 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
     # "modello casuale" - la cosa da battere. Misurarlo QUI, con lo stesso
     # protocollo usato dopo, e' l'unico modo per sapere se il pre-training
     # aggiunge o toglie. Costa una manciata di secondi.
-    if knn_ref is None:
+    if knn_ref is None or rif_down is None:
         print(""
               "Riferimento (encoder casuale, pesi non addestrati):")
         knn_ref = run_probe(model, records, splits, completo=True)['lineare']
+        rif_down, rif_pra = sonda_downstream(model, records, splits)
+        print(f"  [downstream] macroF1={rif_down:.4f}  PR-AUC5={rif_pra:.4f}"
+              f"   <- E' QUESTO il numero da battere", flush=True)
     print(f"Da battere: macro-F1 della sonda LINEARE = {knn_ref:.4f}"
           f"   (cancello: se a {GATE_AT} epoche non e' superato, ci si ferma)")
     knn_best = 0.0
     sotto = 0
+    sonde = []
 
     for epoch in range(start_epoch, epochs):
         t_epoca = time.time()
@@ -374,7 +496,20 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
 
         knn = None
         if (epoch + 1) % KNN_PROBE_EVERY == 0 or epoch == epochs - 1:
-            knn = run_probe(model, records, splits, completo=True)
+            pieno = (epoch + 1) % RESOCONTO_OGNI == 0 or epoch == epochs - 1
+            knn = run_probe(model, records, splits, completo=pieno)
+            # Il DOWNSTREAM VERO costa di piu', quindi si misura con la
+            # cadenza del resoconto e non a ogni sonda. E' pero' lui il
+            # criterio: vedi sonda_downstream().
+            if (epoch + 1) % RESOCONTO_OGNI == 0 or epoch == epochs - 1:
+                t0 = time.time()
+                dwn, pra = sonda_downstream(model, records, splits)
+                knn["downstream"], knn["pr_auc5"] = dwn, pra
+                print(f"  [downstream] macroF1={dwn:.4f}  PR-AUC5={pra:.4f}"
+                      f"   (riferimento casuale {rif_down:.4f}, "
+                      f"{dwn - rif_down:+.4f})   [{time.time()-t0:.0f}s]",
+                      flush=True)
+            sonde.append({**knn, "epoch": epoch})
 
         if not emb_epoca:
             print("  [monitor] nessun batch elaborato: dataset vuoto?")
@@ -401,55 +536,78 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             tb.flush()
 
         if knn is not None:
-            # CHECKPOINT MIGLIORE, tenuto a parte.
-            # Il checkpoint normale viene sovrascritto a ogni epoca: se la
-            # sonda peggiora - e in questo progetto peggiora sempre, da un
-            # certo punto in poi - alla fine resta salvato l'encoder PEGGIORE
-            # e quello buono e' perduto. Successo il 22 ago: la sonda
-            # migliore era all'epoca 10 (0.7067) ma sul disco e' rimasta
-            # l'epoca 39 (0.4280).
-            #
-            # Il modello che si consegna e' questo, non l'ultimo: nulla nel
-            # brief chiede di addestrare fino all'ultima epoca, e scegliere
-            # sulla base di una sonda misurata sul VALIDATION e' un criterio
-            # di selezione onesto, da dichiarare in presentazione.
-            if knn['lineare'] > knn_best:
-                save_checkpoint({
-                    "model": model.state_dict(), "epoch": epoch,
-                    "gstep": gstep, "variant": variant,
-                    "probe_lineare": knn['lineare'], "probe_knn": knn['knn'],
-                    "probe_ref": knn_ref,
-                    "lr": LR, "ema_start": EMA_START,
-                    "predictor_dim": network.PREDICTOR_DIM,
-                }, run_name + "_best")
-                print(f"            [migliore] nuovo record {knn['lineare']:.4f} "
-                      f"all'epoca {epoch}: salvato {run_name}_best")
-            knn_best = max(knn_best, knn['lineare'])
-            delta = knn['lineare'] - knn_ref
-            soglia = knn_ref - GATE_MARGINE
+            # Si giudica sul DOWNSTREAM quando c'e' - e' la lettura che
+            # finisce in presentazione. Nelle sonde intermedie, dove il
+            # downstream non e' stato misurato, si ripiega sulla lineare
+            # senza mai mescolare le due scale: il riferimento cambia
+            # insieme al criterio.
+            # Cancello e checkpoint migliore agiscono SOLO sulle sonde in
+            # cui il downstream e' stato misurato. Le sonde intermedie si
+            # stampano e basta: confrontarle con lo stesso `knn_best`
+            # mescolerebbe due scale diverse (~0.77 contro ~0.75) e
+            # produrrebbe record falsi o mancati.
+            nome_crit, criterio, riferimento = "downstream", None, rif_down
+            if "downstream" not in knn:
+                print(f"            [sonda intermedia] lineare "
+                      f"{knn['lineare']:.4f}  k-NN {knn['knn']:.4f} "
+                      f"(nessun giudizio: il criterio e' il downstream)")
+            else:
+                criterio = knn["downstream"]
 
-            # Si giudica la sonda CORRENTE, non la migliore mai vista.
-            # La versione precedente confrontava knn_best con la soglia: una
-            # sola sonda fortunata all'inizio disarmava il cancello per
-            # sempre. Successo il 22 ago - k-NN 0.7067 all'epoca 10, poi
-            # 0.6520, 0.5548, 0.4280 - e il run e' proseguito verso altre
-            # 4.7 ore di degrado con il cancello che taceva, perche' il
-            # massimo storico restava sopra la soglia.
-            sotto = sotto + 1 if knn['lineare'] < soglia else 0
-            print(f"            [cancello] lineare {knn['lineare']:.4f} vs casuale {knn_ref:.4f}"
-                  f"  -> {delta:+.4f}   miglior finora {knn_best:.4f}"
-                  f"   sonde sotto di fila: {sotto}")
+                # CHECKPOINT MIGLIORE, tenuto a parte.
+                # Il checkpoint normale viene sovrascritto a ogni epoca: se la
+                # sonda peggiora - e in questo progetto peggiora sempre, da un
+                # certo punto in poi - alla fine resta salvato l'encoder PEGGIORE
+                # e quello buono e' perduto. Successo il 22 ago: la sonda
+                # migliore era all'epoca 10 (0.7067) ma sul disco e' rimasta
+                # l'epoca 39 (0.4280).
+                #
+                # Il modello che si consegna e' questo, non l'ultimo: nulla nel
+                # brief chiede di addestrare fino all'ultima epoca, e scegliere
+                # sulla base di una sonda misurata sul VALIDATION e' un criterio
+                # di selezione onesto, da dichiarare in presentazione.
+                if criterio > knn_best:
+                    save_checkpoint({
+                        "model": model.state_dict(), "epoch": epoch,
+                        "gstep": gstep, "variant": variant,
+                        "downstream": knn.get("downstream"),
+                        "probe_lineare": knn['lineare'], "probe_knn": knn['knn'],
+                        "probe_ref": knn_ref, "rif_down": rif_down,
+                        "lr": LR, "ema_start": EMA_START,
+                        "predictor_dim": network.PREDICTOR_DIM,
+                    }, run_name + "_best")
+                    print(f"            [migliore] nuovo record {criterio:.4f} ({nome_crit}) "
+                          f"all'epoca {epoch}: salvato {run_name}_best")
+                knn_best = max(knn_best, criterio)
+                delta = criterio - riferimento
+                soglia = riferimento - GATE_MARGINE
 
-            crollo = knn['lineare'] < knn_ref - GATE_CROLLO * GATE_MARGINE
-            if epoch + 1 >= GATE_AT and (sotto >= GATE_SONDE_SOTTO or crollo):
-                motivo = (f"crollo netto ({delta:+.4f}, oltre {GATE_CROLLO} margini)"
-                          if crollo else
-                          f"{sotto} sonde consecutive sotto il riferimento")
-                print(f"  CANCELLO all'epoca {epoch+1}: {motivo}.")
-                print(f"  Sonda lineare {knn['lineare']:.4f} contro encoder casuale {knn_ref:.4f}.")
-                print("  Il pre-training sta DEGRADANDO le rappresentazioni: ci si")
-                print("  ferma qui invece di consumare le epoche restanti.")
-                break
+                # Si giudica la sonda CORRENTE, non la migliore mai vista.
+                # La versione precedente confrontava knn_best con la soglia: una
+                # sola sonda fortunata all'inizio disarmava il cancello per
+                # sempre. Successo il 22 ago - k-NN 0.7067 all'epoca 10, poi
+                # 0.6520, 0.5548, 0.4280 - e il run e' proseguito verso altre
+                # 4.7 ore di degrado con il cancello che taceva, perche' il
+                # massimo storico restava sopra la soglia.
+                sotto = sotto + 1 if criterio < soglia else 0
+                print(f"            [cancello] {nome_crit} {criterio:.4f} vs casuale {riferimento:.4f}"
+                      f"  -> {delta:+.4f}   miglior finora {knn_best:.4f}"
+                      f"   sonde sotto di fila: {sotto}")
+
+                crollo = criterio < riferimento - GATE_CROLLO * GATE_MARGINE
+                if epoch + 1 >= GATE_AT and (sotto >= GATE_SONDE_SOTTO or crollo):
+                    motivo = (f"crollo netto ({delta:+.4f}, oltre {GATE_CROLLO} margini)"
+                              if crollo else
+                              f"{sotto} sonde consecutive sotto il riferimento")
+                    print(f"  CANCELLO all'epoca {epoch+1}: {motivo}.")
+                    print(f"  {nome_crit} {criterio:.4f} contro encoder casuale {riferimento:.4f}.")
+                    print("  Il pre-training sta DEGRADANDO le rappresentazioni: ci si")
+                    print("  ferma qui invece di consumare le epoche restanti.")
+                    break
+
+            if (epoch + 1) % RESOCONTO_OGNI == 0 and sonde:
+                stampa_resoconto(sonde, knn_ref, run_name, epoch + 1, epochs,
+                             rif_down=rif_down)
 
         if monitor.is_collapsing():
             print("\n  COLLASSO RILEVATO. Non insistete: cambiate qualcosa.")

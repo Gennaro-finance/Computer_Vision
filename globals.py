@@ -269,6 +269,24 @@ GATE_SONDE_SOTTO = 2
 # di piu' di questo numero di margini e' gia' una risposta, non rumore.
 GATE_CROLLO = 5
 
+# Ogni quante epoche stampare il RESOCONTO: non una riga in piu', ma la
+# tabella di tutte le sonde fatte finora con i delta rispetto all'encoder
+# casuale. Serve a rispondere a colpo d'occhio all'unica domanda che conta
+# durante un run lungo - "sta migliorando o no?" - senza dover rileggere
+# centinaia di righe di log.
+# Profondita' concatenate per il downstream. L'ultimo blocco e' il piu'
+# COMPRESSO: con una lettura lineare - che e' cio' che fa la testa - un
+# blocco intermedio rende molto di piu'.
+LAYERS_DOWNSTREAM = [2, 7, 11]
+
+# Quante lesioni di train usare per la sonda DOWNSTREAM durante il
+# pre-training. Tutte e 4719 costerebbero ~2.1 GB di token a ogni controllo;
+# un sottoinsieme fisso basta per seguire una tendenza, e resta fisso
+# proprio perche' i valori vadano confrontati fra loro.
+DOWNSTREAM_SONDA_TRAIN = 2500
+
+RESOCONTO_OGNI = 10
+
 KNN_PROBE_EVERY = 5
 KNN_K = 20
 KNN_SUBSET = 1500
