@@ -43,7 +43,7 @@ from utils import load_checkpoint, save_json, set_seed
 # ==========================================================================
 @torch.no_grad()
 def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
-                  ckpt_tag=""):
+                  ckpt_tag="", casuale=False, tag=""):
     """
     Estrae e salva i token dell'encoder congelato per tutte le lesioni.
 
@@ -64,12 +64,24 @@ def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
     # ckpt_tag sceglie QUALE run di pre-training usare: gli esperimenti
     # producono checkpoint distinti e il downstream deve puntare a quello
     # voluto, non al primo che c'e'.
-    nome = f"ijepa_{variant}{('_' + ckpt_tag) if ckpt_tag else ''}"
-    ckpt = load_checkpoint(nome, map_location=DEVICE)
-    if ckpt is None:
-        raise FileNotFoundError(f"Nessun checkpoint {nome}. Lanciate train_ssl.py")
-    model = build_ijepa(ckpt.get("variant", variant)).to(DEVICE)
-    model.load_state_dict(ckpt["model"])
+    if casuale:
+        # ENCODER CASUALE: stessa architettura, pesi non addestrati.
+        # Non e' un "braccio di confronto" opzionale, e' il RIFERIMENTO
+        # senza cui i numeri del pre-training non significano niente: dice
+        # quanta della prestazione viene dall'addestramento e quanta e'
+        # gia' data dall'architettura piu' le bbox. Il seme e' fisso, cosi'
+        # il riferimento e' riproducibile e non cambia a ogni misura.
+        set_seed(SEED)
+        model = build_ijepa(variant).to(DEVICE)
+        print(f"Encoder CASUALE (seme {SEED}), nessun peso addestrato")
+    else:
+        nome = f"ijepa_{variant}{('_' + ckpt_tag) if ckpt_tag else ''}"
+        ckpt = load_checkpoint(nome, map_location=DEVICE)
+        if ckpt is None:
+            raise FileNotFoundError(f"Nessun checkpoint {nome}. Lanciate train_ssl.py")
+        model = build_ijepa(ckpt.get("variant", variant)).to(DEVICE)
+        model.load_state_dict(ckpt["model"])
+        print(f"Encoder da {nome}, epoca {ckpt['epoch']}")
 
     model.eval()
     out = {}
@@ -99,7 +111,7 @@ def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
 
     dim = out["train"]["tokens"].shape[-1]
     suffisso = "" if layers is None else "_L" + "-".join(map(str, layers))
-    path = os.path.join(CACHE_DIR, f"latents_{variant}{suffisso}.pt")
+    path = os.path.join(CACHE_DIR, f"latents_{variant}{suffisso}{tag}.pt")
     torch.save({"data": out, "embed_dim": dim, "grid": model.grid,
                 "layers": layers}, path)
     size_mb = os.path.getsize(path) / 1e6
@@ -108,9 +120,9 @@ def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
     return path
 
 
-def load_latents(variant=DEFAULT_VARIANT, layers=None):
+def load_latents(variant=DEFAULT_VARIANT, layers=None, tag=""):
     suffisso = "" if layers is None else "_L" + "-".join(map(str, layers))
-    path = os.path.join(CACHE_DIR, f"latents_{variant}{suffisso}.pt")
+    path = os.path.join(CACHE_DIR, f"latents_{variant}{suffisso}{tag}.pt")
     if not os.path.isfile(path):
         raise FileNotFoundError(f"{path} mancante. Lanciate --cache")
     return torch.load(path, map_location="cpu", weights_only=False)
@@ -221,7 +233,7 @@ def train_head(cached, method="none", head_type="flat", seed=0,
 
 
 def run_grid(variant=DEFAULT_VARIANT, methods=None, heads=None,
-             seeds=None, layers=None):
+             seeds=None, layers=None, tag=""):
     """
     Griglia completa: metodo x tipo di testa x seed.
 
@@ -230,7 +242,7 @@ def run_grid(variant=DEFAULT_VARIANT, methods=None, heads=None,
     """
     from evaluation import evaluate_split
 
-    cached = load_latents(variant, layers=layers)
+    cached = load_latents(variant, layers=layers, tag=tag)
     methods = methods or IMBALANCE_METHODS
     heads = heads or HEAD_TYPES
     seeds = seeds or list(range(N_SEEDS))
@@ -270,7 +282,7 @@ def run_grid(variant=DEFAULT_VARIANT, methods=None, heads=None,
 
     if rows:
         suff = "" if layers is None else "_L" + "-".join(map(str, layers))
-        path = os.path.join(OUT_DIR, f"results_{variant}{suff}.json")
+        path = os.path.join(OUT_DIR, f"results_{variant}{suff}{tag}.json")
         save_json(rows, path)
         print(f"\nRisultati in {path}")
     return rows
@@ -293,7 +305,7 @@ def sweep_alpha(variant=DEFAULT_VARIANT, alphas=None, heads=None,
     """
     from evaluation import evaluate_split
 
-    cached = load_latents(variant, layers=layers)
+    cached = load_latents(variant, layers=layers, tag=tag)
     alphas = alphas or [0.0, 0.25, 0.5, 0.75, 1.0]
     heads = heads or HEAD_TYPES
     seeds = seeds or list(range(N_SEEDS))
@@ -338,6 +350,11 @@ if __name__ == "__main__":
     ap.add_argument("--sweep-alpha", action="store_true")
     ap.add_argument("--layers", type=int, nargs="+", default=None,
                     help="blocchi da concatenare, es. --layers 2 7 11")
+    ap.add_argument("--random", action="store_true",
+                    help="encoder con pesi CASUALI: il riferimento senza cui "
+                         "i numeri del pre-training non significano nulla")
+    ap.add_argument("--tag", default="",
+                    help="suffisso dei file, per tenere i bracci separati")
     ap.add_argument("--ckpt-tag", default="",
                     help="quale run SSL usare per il braccio ijepa (es. pred48)")
     ap.add_argument("--variant", default=DEFAULT_VARIANT)
@@ -347,12 +364,12 @@ if __name__ == "__main__":
     a = ap.parse_args()
 
     if a.cache:
-        cache_latents(a.variant, layers=a.layers,
-                      ckpt_tag=a.ckpt_tag)
+        cache_latents(a.variant, layers=a.layers, ckpt_tag=a.ckpt_tag,
+                      casuale=a.random, tag=a.tag)
     elif a.sweep_alpha:
         sweep_alpha(a.variant, layers=a.layers)
     elif a.grid:
-        run_grid(a.variant, layers=a.layers)
+        run_grid(a.variant, layers=a.layers, tag=a.tag)
     else:
         from evaluation import evaluate_split, print_report
         cached = load_latents(a.variant, layers=a.layers)
