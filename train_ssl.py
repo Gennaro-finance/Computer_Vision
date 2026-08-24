@@ -41,7 +41,7 @@ EMA_END = SSL_EMA_END
 LR = SSL_LR
 GATE_AT = GATE_EPOCH
 from utils import (
-    effective_rank_centered,
+    Freno, effective_rank_centered,
     AverageMeter, CollapseMonitor, knn_probe, load_checkpoint, save_checkpoint,
     set_seed,
 )
@@ -333,7 +333,7 @@ def run_probe(model, records, splits, completo=False):
     return p
 
 def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
-          resume=False, smoke=False, tag=""):
+          resume=False, smoke=False, tag="", carico=100):
     set_seed()
     # Il tag tiene separati i checkpoint di run paralleli: senza, due varianti
     # lanciate insieme si sovrascrivono a vicenda lo stesso file.
@@ -393,6 +393,9 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
     print(f"Precisione: {dtype} (GradScaler {'attivo' if scaler.is_enabled() else 'non necessario'})")
 
     monitor = CollapseMonitor()
+    brake = Freno(carico)
+    if carico < 100:
+        print(f"[freno] {brake}")
 
     # TensorBoard: curve dal vivo. Mentre un run gira, in un altro terminale:
     #     .venv\Scripts\tensorboard --logdir runs\tb
@@ -463,6 +466,7 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
         emb_epoca = []
 
         for step, batch in enumerate(loader):
+            t_passo = time.perf_counter()
             if smoke and step >= 20:
                 break
             images = batch["image"].to(DEVICE, non_blocking=True)
@@ -498,6 +502,9 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
 
             if sum(e.shape[0] for e in emb_epoca) < MONITOR_SAMPLES:
                 emb_epoca.append(embeddings.detach().float().cpu())
+
+            # Freno a fine passo: abbassa il ciclo di lavoro della GPU.
+            brake.pausa(t_passo)
 
         knn = None
         if (epoch + 1) % KNN_PROBE_EVERY == 0 or epoch == epochs - 1:
@@ -665,6 +672,11 @@ if __name__ == "__main__":
     ap.add_argument("--lr", type=float, default=None)
     ap.add_argument("--ema-start", type=float, default=None,
                     help="momentum EMA iniziale: piu' alto = target piu' lento = meno collasso")
+    ap.add_argument("--carico", type=int, default=100,
+                    help="percentuale di tempo in cui la GPU lavora. 80 = "
+                         "lavora l'80%% e riposa il 20%%, run 1.25x piu' "
+                         "lungo. Serve su hardware che si spegne sotto "
+                         "carico sostenuto")
     ap.add_argument("--mask-ratio", type=float, nargs=2, default=None,
                     help="es. 0.75 0.85 - rapporto mascherato CONTROLLATO. "
                          "Senza, vale quello del paper: 53.8%%")
@@ -701,4 +713,5 @@ if __name__ == "__main__":
     print(f"[config] tag={a.tag or '-'} context={network.CONTEXT_SCALE} "
           f"target={network.TARGET_SCALE} predictor_dim={network.PREDICTOR_DIM} "
           f"workers={data_mod.NUM_WORKERS}")
-    train(a.variant, a.epochs, a.batch_size, a.resume, a.smoke, a.tag)
+    train(a.variant, a.epochs, a.batch_size, a.resume, a.smoke, a.tag,
+          carico=a.carico)

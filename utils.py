@@ -9,6 +9,8 @@ import os
 import random
 
 import numpy as np
+import time
+
 import torch
 
 from globals import CKPT_DIR, FIG_DIR, KNN_K, SEED
@@ -440,3 +442,77 @@ if __name__ == "__main__":
         e = torch.randn(N, k) @ torch.randn(k, D)
         mon3.update(ep, 0.5 / (ep + 1), e)
     print(f"  su segnali BASSI ma in salita: is_collapsing() = {mon3.is_collapsing()}   (atteso False)")
+
+
+# ==========================================================================
+# Freno: ridurre il consumo medio quando l'hardware non regge
+# ==========================================================================
+class Freno:
+    """
+    Limita il CICLO DI LAVORO della GPU a una percentuale del tempo.
+
+    `carico=80` significa: la GPU lavora l'80% del tempo e riposa il 20%,
+    quindi il consumo medio scende all'80% e il run dura 1/0.8 = 1.25 volte.
+
+    PERCHE' NON SI PUO' FARE MEGLIO. La strada pulita sarebbe abbassare il
+    limite di potenza della scheda, ma su questo portatile e' bloccato dal
+    produttore: `nvidia-smi -pl` risponde "not supported in current scope".
+    La GPU gira a 175 W contro un limite PREDEFINITO di 60 W, su un
+    alimentatore da 330 W che deve reggere anche un i9-13980HX. Sei
+    spegnimenti improvvisi (Kernel-Power 41) in quattro giorni, tutti sotto
+    carico sostenuto.
+
+    Non potendo limitare la potenza istantanea si limita il tempo in cui
+    viene assorbita. Non protegge dai picchi di accensione, ma toglie il
+    carico sostenuto, che e' quello che fa scattare le protezioni.
+
+    Costo, per i valori utili:
+        carico 100  ->  1.00x   nessun freno
+        carico  90  ->  1.11x
+        carico  80  ->  1.25x
+        carico  70  ->  1.43x
+        carico  50  ->  2.00x
+
+        freno = Freno(carico=80)
+        for batch in loader:
+            t = time.perf_counter()
+            ... passo di training ...
+            freno.pausa(t)
+    """
+
+    def __init__(self, carico=100):
+        if not 1 <= carico <= 100:
+            raise ValueError(f"carico deve stare fra 1 e 100, ricevuto {carico}")
+        self.carico = float(carico)
+        # quota di pausa rispetto al tempo di calcolo: con carico c il
+        # rapporto pausa/calcolo e' (100 - c) / c
+        self.frazione = (100.0 - self.carico) / self.carico
+        self._t0 = None
+        self.pausa_totale = 0.0
+
+    def __enter__(self):
+        self._t0 = time.perf_counter()
+        return self
+
+    def __exit__(self, *exc):
+        if self._t0 is not None:
+            self.pausa(self._t0)
+        return False
+
+    def pausa(self, t0):
+        """Pausa proporzionale al tempo trascorso da `t0`.
+
+        Forma esplicita, da chiamare a fine passo. Si preferisce al gestore
+        di contesto dentro cicli gia' profondi: avvolgere il corpo di un
+        `for` in un `with` aggiunge un livello di indentazione a decine di
+        righe e rende il diff illeggibile."""
+        if self.frazione <= 0:
+            return 0.0
+        p = (time.perf_counter() - t0) * self.frazione
+        time.sleep(p)
+        self.pausa_totale += p
+        return p
+
+    def __repr__(self):
+        return (f"Freno(carico={self.carico:.0f}%, "
+                f"run {1/(self.carico/100):.2f}x piu' lungo)")

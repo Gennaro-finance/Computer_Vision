@@ -28,7 +28,7 @@ from data import LesionCropDataset, load_splits, make_loader, parse_annotations
 from globals import (
     CACHE_DIR, DEFAULT_VARIANT, DEVICE, HEAD_BATCH_SIZE, HEAD_EPOCHS, HEAD_LR,
     HEAD_TYPES, HEAD_WEIGHT_DECAY, IMBALANCE_METHODS, N_SEEDS, NUM_CLASSES,
-    OUT_DIR,
+    OUT_DIR, SEED,
 )
 from imbalance import (
     balanced_sampler_weights, balanced_token_sampling, class_counts,
