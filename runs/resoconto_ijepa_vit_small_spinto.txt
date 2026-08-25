@@ -1,0 +1,17 @@
+==============================================================================
+RESOCONTO - ijepa_vit_small_spinto - epoca 40/40
+DA BATTERE - encoder casuale: downstream = 0.7512   (sonda lineare 0.7477)
+==============================================================================
+ epoca  DOWNSTREAM  PR-AUC5   lineare     k-NN   rango  R2 int  R2 dim
+     4         nan      nan    0.7509   0.7372    2.67     nan     nan
+     9      0.7530   0.8819    0.7519   0.7101    2.09   0.991   0.885
+    14         nan      nan    0.7499   0.6674    2.02     nan     nan
+    19      0.7616   0.8824    0.7470   0.5973    2.25   0.991   0.886
+    24         nan      nan    0.7409   0.5348    2.54     nan     nan
+    29      0.7621   0.8824    0.7397   0.5157    2.72   0.991   0.885
+    34         nan      nan    0.7393   0.5012    2.79     nan     nan
+    39      0.7579   0.8817    0.7425   0.5083    2.80   0.991   0.884
+
+Tendenza sulle ultime 3 sonde (downstream): stabile (-0.0018 per sonda)
+Migliore finora (downstream): 0.7621 all'epoca 29  (+0.0110 vs casuale)
+==============================================================================

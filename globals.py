@@ -221,10 +221,35 @@ SSL_BATCH_SIZE = 128   # su 12 GB con bf16 ci sta; scendete a 64 se OOM
 # coseno medio 0.97 -> 0.64 rispetto all'init) ma troppo lentamente, e il run
 # veniva interrotto all'epoca 15. Dividere il LR per 3 rallenta proprio la
 # fuga dal collasso, quindi si resta a meta' strada invece che a 5e-5.
-SSL_LR = 1.5e-4            # valore ORIGINALE del progetto, ripristinato
+# Learning rate. 1.5e-4 e' il valore originale; i run che hanno prodotto i
+# risultati usano 3e-5 (configurazione `completa`, spostamento lento) oppure
+# 3e-4 (configurazione `spinto`, spostamento rapido). Si passa da riga di
+# comando con --lr, e il valore effettivo finisce nel checkpoint.
+SSL_LR = 3e-5
 SSL_WEIGHT_DECAY = 0.04
 SSL_WARMUP_EPOCHS = 15
-SSL_EMA_START = 0.996      # valore ORIGINALE del progetto, ripristinato
+# MOMENTUM EMA INIZIALE - la leva anti-collasso piu' importante.
+#
+# Il valore del paper (0.996) COLLASSA su questo dataset, e non e' una
+# sfumatura: cio' che conta e' la costante di tempo 1/(1-tau) rapportata
+# alla durata del training. Con 171 passi per epoca:
+#     0.996   ->   1.5 epoche   il target assorbe il 49.6% della distanza
+#                               dal context in UNA epoca: viene raggiunto,
+#                               e i due convergono sulla soluzione costante
+#     0.9996  ->  14.6 epoche   ne assorbe il 6.6%: insegue senza raggiungere
+#
+# Misurato (sonda k-NN a 10 epoche, encoder casuale = 0.7030):
+#     0.996  -> 0.4354      0.999   -> 0.7002
+#     0.9995 -> 0.7093      0.9996  -> 0.7117
+#
+# Il valore del paper vale per ImageNet, 1.28M immagini contro le nostre
+# 2.746: la stessa tau significa un regime completamente diverso.
+#
+# ATTENZIONE ALLA RIPRODUCIBILITA': fino al 25 ago qui c'era 0.996 mentre
+# TUTTI i run passavano --ema-start 0.9996 da riga di comando. Chi clonava
+# il repo e lanciava train_ssl.py senza flag otteneva la configurazione che
+# collassa, e non riproduceva nulla dei risultati riportati.
+SSL_EMA_START = 0.9996
 SSL_EMA_END = 1.0
 AMP = True
 
