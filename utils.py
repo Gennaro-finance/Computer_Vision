@@ -54,10 +54,25 @@ def save_checkpoint(state: dict, name: str) -> str:
 
     Con la rinomina (atomica sullo stesso filesystem) il file finale o e'
     quello vecchio integro o quello nuovo completo, mai una via di mezzo.
+
+    MA LA RINOMINA DA SOLA NON BASTA, e il 24 ago l'abbiamo scoperto a spese
+    di un checkpoint. torch.save scrive nella cache del sistema operativo:
+    os.replace scambia la voce di directory SUBITO, mentre i blocchi di dati
+    possono essere ancora in memoria. Se manca la corrente in quella
+    finestra, la directory punta a un file il cui contenuto non e' mai
+    arrivato sul disco - e torch.load fallisce esattamente come nel caso che
+    la rinomina doveva prevenire.
+    L'os.fsync forza la scrittura fisica PRIMA dello scambio, e chiude la
+    finestra. Costa qualche decimo di secondo su 350 MB, contro il rischio
+    di perdere l'intero run: su questa macchina, che si e' spenta da sola
+    nove volte in quattro giorni, non e' un compromesso discutibile.
     """
     path = os.path.join(CKPT_DIR, f"{name}.pt")
     tmp = path + ".tmp"
-    torch.save(state, tmp)
+    with open(tmp, "wb") as f:
+        torch.save(state, f)
+        f.flush()
+        os.fsync(f.fileno())   # i byte sono sul disco, non solo nella cache
     os.replace(tmp, path)      # atomica: sostituisce anche se path esiste
     return path
 

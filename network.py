@@ -438,6 +438,65 @@ class FlatHead(nn.Module):
         return self.fc(x)
 
 
+class MLPHead(nn.Module):
+    """
+    Testa con uno strato nascosto, normalizzazione e dropout.
+
+    PERCHE'. La testa precedente e' un solo nn.Linear(1152, 3): puo' solo
+    separare le classi con degli iperpiani. Ma il grado PAI dipende dalla
+    CONGIUNZIONE di due grandezze - quanto e' grande la radiotrasparenza e
+    quanto e' scura - e "grande E scura" non e' una funzione lineare di
+    "grande" e "scura" prese separatamente. Uno strato nascosto con una non
+    linearita' puo' rappresentare quell'interazione.
+
+    IL LayerNorm IN INGRESSO NON E' ORNAMENTALE. Le feature sono la
+    concatenazione dei blocchi 2, 7 e 11 del ViT, che hanno scale diverse
+    fra loro. Senza normalizzare, il blocco con la scala piu' grande domina
+    il gradiente e gli altri due contano poco: si userebbe un terzo
+    dell'informazione credendo di usarla tutta.
+
+    RESTA LEGGERA, come chiede il brief ("a lightweight multi class
+    classification head"): con nascosto=256 sono ~0.3M parametri contro i
+    5.3M dell'attention pooling che c'e' gia'. Il dropout serve perche' le
+    lesioni di training sono 4719: con una testa piu' capace il rischio di
+    sovradattamento cresce, e va contenuto invece che scoperto dopo.
+    """
+
+    def __init__(self, dim, num_classes=NUM_CLASSES, nascosto=256, dropout=0.2,
+                 ordinale=False):
+        super().__init__()
+        uscite = (num_classes - 1) if ordinale else num_classes
+        self.norm = nn.LayerNorm(dim)
+        self.rete = nn.Sequential(
+            nn.Linear(dim, nascosto),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(nascosto, uscite),
+        )
+
+    def forward(self, x):
+        return self.rete(self.norm(x))
+
+
+class NormFlatHead(nn.Module):
+    """
+    Solo LayerNorm piu' lineare: serve a separare l'effetto della
+    normalizzazione da quello dello strato nascosto.
+
+    Senza questo braccio, un eventuale miglioramento di MLPHead non si
+    saprebbe attribuire: puo' venire dalla non linearita' o soltanto
+    dall'aver messo le tre profondita' sulla stessa scala.
+    """
+
+    def __init__(self, dim, num_classes=NUM_CLASSES, ordinale=False):
+        super().__init__()
+        self.norm = nn.LayerNorm(dim)
+        self.fc = nn.Linear(dim, (num_classes - 1) if ordinale else num_classes)
+
+    def forward(self, x):
+        return self.fc(self.norm(x))
+
+
 class OrdinalHead(nn.Module):
     """
     Testa ordinale in stile CORAL - piu' appropriata al PAI.
@@ -502,7 +561,22 @@ class LesionClassifier(nn.Module):
             # diverse di ordini di grandezza e senza questo la testa vedrebbe
             # solo i latenti.
             self.geom_norm = nn.LayerNorm(geom_dim)
-        self.head = FlatHead(dim) if head_type == "flat" else OrdinalHead(dim)
+        # Sei teste: due baseline piu' quattro varianti. Le varianti sono
+        # combinazioni di due leve indipendenti - normalizzazione in
+        # ingresso e strato nascosto - cosi' l'effetto di ciascuna si puo'
+        # attribuire invece di misurarne solo la somma.
+        teste = {
+            "flat":        lambda: FlatHead(dim),
+            "ordinal":     lambda: OrdinalHead(dim),
+            "norm":        lambda: NormFlatHead(dim),
+            "norm_ord":    lambda: NormFlatHead(dim, ordinale=True),
+            "mlp":         lambda: MLPHead(dim),
+            "mlp_ord":     lambda: MLPHead(dim, ordinale=True),
+        }
+        if head_type not in teste:
+            raise ValueError(f"testa sconosciuta: {head_type}. "
+                             f"Disponibili: {sorted(teste)}")
+        self.head = teste[head_type]()
         self.head_type = head_type
         self.grid = grid
 

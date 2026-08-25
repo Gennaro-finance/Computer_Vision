@@ -21,7 +21,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from globals import FOCAL_GAMMA, NUM_CLASSES
+from globals import FOCAL_GAMMA, NUM_CLASSES, e_ordinale
 
 
 # ==========================================================================
@@ -233,7 +233,7 @@ def compute_loss(logits, targets, method="none", head_type="flat",
     if method in ("class_weighted", "focal") and train_labels is not None:
         weight = inverse_frequency_weights(train_labels).to(logits.device)
 
-    if head_type == "ordinal":
+    if e_ordinale(head_type):
         # `focal` deve restare distinto da `class_weighted` anche qui:
         # entrambi passano da ordinal_loss, ma solo il primo attiva la
         # modulazione focale. Vedi la docstring di ordinal_loss.

@@ -17,7 +17,7 @@ uguale.
 import numpy as np
 import torch
 
-from globals import DEVICE, FIG_DIR, NUM_CLASSES, PAI_GRADES
+from globals import DEVICE, FIG_DIR, NUM_CLASSES, PAI_GRADES, e_ordinale
 
 
 # ==========================================================================
@@ -120,7 +120,7 @@ def evaluate_split(clf, split_data, head_type="flat", batch_size=256,
               if use_geom else None)
         logits, _, _ = clf(tok, token_mask=msk, geom=gm)
 
-        if head_type == "ordinal":
+        if e_ordinale(head_type):
             cum = torch.sigmoid(logits)                    # (B, K-1)
             pred = (cum > 0.5).sum(dim=1)
             # probabilita' per classe dai cumulativi: P(k) = P(>k-1) - P(>k)

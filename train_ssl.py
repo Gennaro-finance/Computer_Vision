@@ -445,10 +445,22 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
     # protocollo usato dopo, e' l'unico modo per sapere se il pre-training
     # aggiunge o toglie. Costa una manciata di secondi.
     if knn_ref is None or rif_down is None:
+        # Il riferimento si misura su un encoder APPENA INIZIALIZZATO, non su
+        # `model`. Al riavvio `model` ha gia' i pesi addestrati caricati:
+        # misurarlo qui significherebbe confrontare il modello con se' stesso.
+        # Successo il 24 ago su un resume dall'epoca 149: il riferimento
+        # usciva 0.7654 - il valore di quell'epoca - invece dei 0.7512
+        # dell'encoder casuale, e il cancello avrebbe giudicato il run contro
+        # la sua stessa versione precedente.
         print(""
               "Riferimento (encoder casuale, pesi non addestrati):")
-        knn_ref = run_probe(model, records, splits, completo=True)['lineare']
-        rif_down, rif_pra = sonda_downstream(model, records, splits)
+        set_seed()
+        casuale = build_ijepa(variant).to(DEVICE).eval()
+        knn_ref = run_probe(casuale, records, splits, completo=True)['lineare']
+        rif_down, rif_pra = sonda_downstream(casuale, records, splits)
+        del casuale
+        torch.cuda.empty_cache()
+        set_seed()
         print(f"  [downstream] macroF1={rif_down:.4f}  PR-AUC5={rif_pra:.4f}"
               f"   <- E' QUESTO il numero da battere", flush=True)
     print(f"Da battere: macro-F1 della sonda LINEARE = {knn_ref:.4f}"

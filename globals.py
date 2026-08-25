@@ -350,6 +350,18 @@ FOCAL_GAMMA = 2.0
 # Teste: piatta (come da brief) vs ordinale (piu' appropriata al PAI).
 HEAD_TYPES = ["flat", "ordinal"]
 
+# Teste che predicono soglie cumulative invece di logit per classe. Serve
+# una funzione sola, chiamata da tutti: la loss e la valutazione decidevano
+# con `head_type == "ordinal"`, quindi qualunque testa ordinale con un nome
+# diverso sarebbe stata addestrata con la cross-entropy e valutata come se
+# fosse piatta - in silenzio, senza errori, con numeri plausibili e sbagliati.
+HEAD_TYPES_ESTESE = ["flat", "ordinal", "norm", "norm_ord", "mlp", "mlp_ord"]
+
+
+def e_ordinale(head_type):
+    """True se la testa produce K-1 soglie cumulative invece di K logit."""
+    return head_type in ("ordinal", "norm_ord", "mlp_ord")
+
 N_SEEDS = 5   # lo sbilanciamento e' 7:1, non 100:1: i margini sono stretti
               # e servono intervalli di confidenza, non un singolo run.
 

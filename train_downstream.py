@@ -18,6 +18,7 @@ Uso:
 
 import argparse
 import itertools
+import json
 import os
 
 import numpy as np
@@ -247,8 +248,25 @@ def run_grid(variant=DEFAULT_VARIANT, methods=None, heads=None,
     heads = heads or HEAD_TYPES
     seeds = seeds or list(range(N_SEEDS))
 
+    # RIPARTENZA. La griglia dura ~40 minuti e questa macchina si e' spenta
+    # da sola sette volte in cinque giorni. Senza ripartenza un crash a
+    # meta' butta via tutto: e' gia' successo, 30 minuti persi perche' i
+    # risultati stavano solo in memoria.
+    suff = "" if layers is None else "_L" + "-".join(map(str, layers))
+    percorso = os.path.join(OUT_DIR, f"results_{variant}{suff}{tag}.json")
     rows = []
+    if os.path.isfile(percorso):
+        with open(percorso, encoding="utf-8") as f:
+            rows = json.load(f)
+        if rows:
+            print(f"Riprendo: {len(rows)} righe gia' su disco in "
+                  f"{os.path.basename(percorso)}")
+    fatte = {(r["method"], r["head"]) for r in rows}
+
     for method, head in itertools.product(methods, heads):
+        if (method, head) in fatte:
+            print(f"  {method:16s} {head:8s} gia' fatta, salto")
+            continue
         per_seed = []
         for s in seeds:
             try:
@@ -273,6 +291,9 @@ def run_grid(variant=DEFAULT_VARIANT, methods=None, heads=None,
             agg[f"{k}_mean"] = float(np.mean(vals))
             agg[f"{k}_std"] = float(np.std(vals))
         rows.append(agg)
+        # Salvataggio incrementale: il costo di un crash scende da "tutta la
+        # griglia" a "la riga in corso".
+        save_json(rows, percorso)
         print(f"  {method:16s} {head:8s} macroF1={agg['macro_f1_mean']:.4f}"
               f"+-{agg['macro_f1_std']:.4f}  F1(3/4/5)="
               f"{agg['f1_pai3_mean']:.3f}/{agg['f1_pai4_mean']:.3f}/{agg['f1_pai5_mean']:.3f}"
@@ -281,8 +302,7 @@ def run_grid(variant=DEFAULT_VARIANT, methods=None, heads=None,
               f"  kappa={agg['quadratic_kappa_mean']:.4f}")
 
     if rows:
-        suff = "" if layers is None else "_L" + "-".join(map(str, layers))
-        path = os.path.join(OUT_DIR, f"results_{variant}{suff}{tag}.json")
+        path = percorso
         save_json(rows, path)
         print(f"\nRisultati in {path}")
     return rows
