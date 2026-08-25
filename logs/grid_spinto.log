@@ -1,0 +1,12 @@
+  none             flat     macroF1=0.7676+-0.0052  F1(3/4/5)=0.897/0.638/0.769  recall5=0.7250  prec5=0.819  kappa=0.7997
+  none             ordinal  macroF1=0.7631+-0.0043  F1(3/4/5)=0.894/0.619/0.777  recall5=0.7589  prec5=0.798  kappa=0.7966
+  class_weighted   flat     macroF1=0.7632+-0.0075  F1(3/4/5)=0.879/0.633/0.778  recall5=0.7714  prec5=0.785  kappa=0.7862
+  class_weighted   ordinal  macroF1=0.7579+-0.0103  F1(3/4/5)=0.880/0.627/0.766  recall5=0.7857  prec5=0.749  kappa=0.7868
+  focal            flat     macroF1=0.7601+-0.0048  F1(3/4/5)=0.867/0.630/0.783  recall5=0.8054  prec5=0.763  kappa=0.7782
+  focal            ordinal  macroF1=0.7535+-0.0072  F1(3/4/5)=0.866/0.630/0.764  recall5=0.7750  prec5=0.754  kappa=0.7739
+  oversample       flat     macroF1=0.7607+-0.0071  F1(3/4/5)=0.872/0.636/0.774  recall5=0.7625  prec5=0.789  kappa=0.7793
+  oversample       ordinal  macroF1=0.7573+-0.0074  F1(3/4/5)=0.880/0.625/0.767  recall5=0.7661  prec5=0.769  kappa=0.7840
+  balanced_tokens  flat     macroF1=0.7640+-0.0063  F1(3/4/5)=0.877/0.640/0.775  recall5=0.7607  prec5=0.792  kappa=0.7834
+  balanced_tokens  ordinal  macroF1=0.7633+-0.0059  F1(3/4/5)=0.886/0.633/0.771  recall5=0.7518  prec5=0.791  kappa=0.7894
+
+Risultati in ./runs\results_vit_small_L2-7-11_spinto.json

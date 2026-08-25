@@ -1,0 +1,11 @@
+[freno] Freno(carico=80%, run 1.25x piu' lungo)
+
+riferimento CASUALE: downstream 0.7551  (media su 3 seed)
+
+  base             ep  99  spostamento  0.220  CKA 0.252  downstream 0.7176 (-0.0375)
+  base100          ep  99  spostamento  0.203  CKA 0.210  downstream 0.7322 (-0.0229)
+  completa_best    ep 179  spostamento  0.149  CKA 0.498  downstream 0.7547 (-0.0005)
+  salto ijepa_vit_small_ema999: RuntimeError
+  salto ijepa_vit_small_ema9995: RuntimeError
+  hardctx          ep  99  spostamento  0.204  CKA 0.241  downstream 0.7191 (-0.0360)
+  lento            ep  10  spostamento  0.016  CKA 1.000  downstream 0.7558 (+0.0006)

@@ -91,32 +91,50 @@ pixel sintetici (a differenza di SMOTE) — ogni vista e' genuina.
 
 ### Obiettivo 4 — ablation, 10 configurazioni x 5 seed, sul test
 
-| metodo | testa | PR-AUC5 | macro-F1 | recall PAI5 |
-|---|---|---|---|---|
-| none | flat | 0.8800 | 0.7631 | 0.7196 |
-| **balanced_tokens** | flat | 0.8787 | 0.7594 | 0.7875 |
-| focal | flat | 0.8738 | 0.7567 | 0.7946 |
-| none | ordinal | 0.8732 | 0.7631 | 0.7464 |
-| class_weighted | flat | 0.8702 | 0.7562 | 0.7750 |
-| balanced_tokens | ordinal | 0.8692 | 0.7575 | 0.7661 |
+Le prime righe delle 30 configurazioni misurate (3 encoder x 10 config x 5
+seed), ordinate per PR-AUC su PAI 5:
 
-**Il risultato piu' solido del progetto**: applicando il criterio dichiarato
-("PAI 3 e 4 non peggiorano, PAI 5 migliora") contro la cross-entropy
-semplice, l'unico metodo che lo supera e' **`balanced_tokens/ordinal`**:
-recall PAI 5 **+0.046 a 3.2 errori standard**, senza perdere sulle altre
-classi.
+| encoder | metodo | testa | PR-AUC5 | macro-F1 | F1 PAI5 | prec5 |
+|---|---|---|---|---|---|---|
+| **casuale** | **balanced_tokens** | flat | **0.8813** | 0.7676 | **0.790** | 0.814 |
+| spinto | class_weighted | flat | 0.8798 | 0.7632 | 0.778 | 0.785 |
+| spinto | oversample | flat | 0.8778 | 0.7607 | 0.774 | 0.789 |
+| spinto | none | flat | 0.8772 | 0.7676 | 0.769 | 0.819 |
+| casuale | none | flat | 0.8758 | **0.7705** | 0.777 | 0.840 |
+| completa | none | flat | 0.8753 | 0.7672 | 0.776 | 0.797 |
+
+**Il risultato piu' solido del progetto**: `balanced_token_sampling` ha
+insieme la PR-AUC piu' alta (0.8813) E la F1 sulla classe rara piu' alta
+(0.790) di TUTTE E TRENTA le configurazioni, con precisione 0.814 - cioe'
+senza il tipico scambio recall-contro-precisione degli altri tre metodi
+(focal arriva a recall 0.8054 ma con precisione 0.763).
+
+ATTENZIONE: entrambi i primati sono sull'encoder CASUALE. La novita'
+funziona; il pre-training no. Le due cose vanno riportate insieme.
+
+Una versione precedente di questo documento dava la novita' a "+0.046 a
+3.2 errori standard": quel valore veniva da un encoder poi sostituito. Sul
+confronto attuale il margine in recall e' piu' stretto - va citata la F1 e
+la PR-AUC, che sono i primati veri.
 
 ### Obiettivo 1/2 — il pre-training non batte l'inizializzazione casuale
 
-Encoder migliore (epoca 59, EMA 0.9996): downstream macro-F1 **0.7672 +-
-0.0121** e **0.7681 +- 0.0033** a 5 seed sul test, contro **0.7705 +-
-0.0111** di un ViT con pesi casuali. Differenza **sotto un errore standard**.
+VERIFICATO il 25 ago con il braccio casuale misurato collo stesso
+protocollo, 10 configurazioni x 5 seed sul test:
 
-**Indizio non ancora verificato**: sulla PR-AUC di PAI 5 — la metrica
-primaria — il pre-training sta sopra il casuale in **14 misure su 15**
-(media 0.868 contro 0.861). ATTENZIONE: sono misure ripetute dello stesso
-run, quindi **correlate**; serve una verifica a 5 seed indipendenti sul test
-prima di dichiararlo.
+    encoder     macro-F1 media (max)   PR-AUC5 media (max)   dev. media
+    casuale       0.7584  (0.7705)       0.8719  (0.8813)       0.0096
+    spinto        0.7611  (0.7676)       0.8746  (0.8798)       0.0066
+    completa      0.7545  (0.7681)       0.8650  (0.8753)       0.0087
+
+Test del segno appaiato, spinto contro casuale: macro-F1 6/10 (p=0.377),
+PR-AUC5 8/10 (p=0.055), kappa 7/10 (p=0.172). Nessuno significativo, e
+ENTRAMBI I MASSIMI ASSOLUTI restano dell'encoder casuale.
+
+L'indizio sulla PR-AUC riportato in precedenza - "sopra il riferimento in
+14 misure su 15" - era un ARTEFATTO: misure ripetute dello stesso run,
+correlate, confrontate con un riferimento a un seed su validation. La
+verifica indipendente lo ha smentito.
 
 ### Perche' il soffitto e' basso, misurato
 
@@ -135,7 +153,8 @@ prima di dichiararlo.
 
 ## 5. Trappole — leggere prima di proporre qualcosa
 
-Il progetto ha perso giorni ottimizzando contro **tre metriche sbagliate**.
+Il progetto ha perso giorni ottimizzando contro **quattro metriche
+sbagliate**, in quest'ordine.
 
 1. **Rango effettivo non centrato**: vale **1.07 sull'encoder casuale** e
    1.12 sui pixel grezzi. Segna "collasso totale" su qualunque cosa, perche'
@@ -148,11 +167,16 @@ Il progetto ha perso giorni ottimizzando contro **tre metriche sbagliate**.
    run che stanno migliorando.
 3. **Sonda lineare su un solo layer**: sui due punti dove si conoscono
    entrambi i numeri ha il **segno invertito** rispetto al downstream vero.
+4. **La sonda downstream su validation, a UN SEED** (`sonda_downstream`).
+   Diceva che il pre-training vinceva in **22 misure su 23**. La verifica a
+   5 seed indipendenti sul test: **vince 2 righe su 10**. Usa un
+   sottoinsieme fisso di 2500 lesioni, seed 0 sempre, e valuta su
+   validation: e' un errore SISTEMATICO, non rumore. Serve a fermare un run
+   che sta chiaramente degradando, MAI a dichiarare un risultato.
 
-**L'unica misura affidabile** e' il downstream stesso: attention pooling +
-testa addestrata sui layer 2+7+11 dell'encoder congelato, valutato su
-**validation** (mai sul test, che si usa solo per il numero finale). Costa
-63 secondi ed e' implementato in `train_ssl.sonda_downstream`.
+**L'unica misura affidabile** e' la **griglia a 5 seed sul test**
+(`train_downstream.py --grid`). Ogni conclusione difendibile di questo
+progetto passa da li'. Tutto il resto e' diagnostica.
 
 ### Interventi gia' provati, con esito
 
@@ -174,11 +198,19 @@ paper con EMA 0.9996.
 
 Mancano:
 
-1. **Una misura**: griglia a 5 seed sul test con quel checkpoint, piu' il
-   braccio casuale con lo stesso protocollo (~70 min). Serve a verificare
-   l'indizio sulla PR-AUC.
-2. Figure, slide, README con il link Mendeley al dataset.
-3. Form entro il 6 settembre.
+1. **Sweep di alpha** per `balanced_token_sampling`: e' l'unico esperimento
+   rimasto che puo' MIGLIORARE un risultato invece di misurarne meglio uno
+   negativo. Tutti i numeri usano alpha=0.5 preso come default, mai
+   ottimizzato.
+2. Le quattro teste rimanenti (norm, mlp e varianti ordinali): le due
+   misurate dicono che il LayerNorm non sposta la media ma DIMEZZA la
+   dispersione, da 0.0079 a 0.0031.
+3. Figure, slide, README con il link Mendeley al dataset.
+4. Form entro il 6 settembre.
+
+CONFRONTO PRINCIPALE: chiuso. Il braccio casuale e' misurato, l'indizio
+sulla PR-AUC verificato e smentito. Non serve altra sperimentazione
+sull'encoder.
 
 ---
 

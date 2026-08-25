@@ -1,0 +1,933 @@
+[config] tag=completa context=(0.85, 1.0) target=(0.15, 0.2) predictor_dim=96 workers=8
+Tile di pre-training: 21968 da 2746 immagini (21968 item x 1 crop per decodifica)
+Step per epoca: 171  (batch = 128 img x 1 = 128 tile)
+vit_small: 22.11M parametri addestrabili
+[iperparametri] lr=3.00e-05 ema=0.9996->1.0 predictor_dim=96
+Precisione: torch.bfloat16 (GradScaler non necessario)
+[freno] Freno(carico=80%, run 1.25x piu' lungo)
+Ripreso dall'epoca 150
+Riferimento (encoder casuale, pesi non addestrati):
+  [sonda] lineare=0.7477  k-NN=0.7389  rango=2.80  R2 intensita=0.991 dimensione=0.886  (pavimento 0.2530) OK
+  [downstream] macroF1=0.7512  PR-AUC5=0.8608   <- E' QUESTO il numero da battere
+Da battere: macro-F1 della sonda LINEARE = 0.7477   (cancello: se a 15 epoche non e' superato, ci si ferma)
+    ep150 step    0/171  loss=0.0706  23s
+    ep150 step   25/171  loss=0.0712  31s
+    ep150 step   50/171  loss=0.0703  41s
+    ep150 step   75/171  loss=0.0831  51s
+    ep150 step  100/171  loss=0.0641  61s
+    ep150 step  125/171  loss=0.0695  71s
+    ep150 step  150/171  loss=0.0750  81s
+  [monitor] ep150 loss=0.0740 std=0.04565 rango=11.19 centrato=12.48 (1.00x l'iniziale)
+            epoca in 89s   restano 149 epoche (~3.7 h)
+    ep151 step    0/171  loss=0.0858  4s
+    ep151 step   25/171  loss=0.0728  13s
+    ep151 step   50/171  loss=0.0799  22s
+    ep151 step   75/171  loss=0.0752  31s
+    ep151 step  100/171  loss=0.0706  41s
+    ep151 step  125/171  loss=0.0646  51s
+    ep151 step  150/171  loss=0.0723  60s
+  [monitor] ep151 loss=0.0761 std=0.04574 rango=11.48 centrato=12.88 (1.03x l'iniziale)
+            epoca in 67s   restano 148 epoche (~2.8 h)
+    ep152 step    0/171  loss=0.0597  4s
+    ep152 step   25/171  loss=0.0707  13s
+    ep152 step   50/171  loss=0.0743  22s
+    ep152 step   75/171  loss=0.0698  31s
+    ep152 step  100/171  loss=0.0754  41s
+    ep152 step  125/171  loss=0.0741  51s
+    ep152 step  150/171  loss=0.0940  61s
+  [monitor] ep152 loss=0.0743 std=0.04588 rango=11.82 centrato=13.09 (1.05x l'iniziale)
+            epoca in 68s   restano 147 epoche (~2.8 h)
+    ep153 step    0/171  loss=0.0717  4s
+    ep153 step   25/171  loss=0.0789  13s
+    ep153 step   50/171  loss=0.0781  22s
+    ep153 step   75/171  loss=0.0702  32s
+    ep153 step  100/171  loss=0.0954  41s
+    ep153 step  125/171  loss=0.0712  50s
+    ep153 step  150/171  loss=0.0766  60s
+  [monitor] ep153 loss=0.0748 std=0.04573 rango=11.75 centrato=13.46 (1.08x l'iniziale)
+            epoca in 68s   restano 146 epoche (~2.7 h)
+    ep154 step    0/171  loss=0.0679  4s
+    ep154 step   25/171  loss=0.0679  13s
+    ep154 step   50/171  loss=0.0968  22s
+    ep154 step   75/171  loss=0.0628  32s
+    ep154 step  100/171  loss=0.0657  41s
+    ep154 step  125/171  loss=0.0826  51s
+    ep154 step  150/171  loss=0.0701  61s
+  [sonda] lineare=0.7279  k-NN=0.4235  rango=10.53  (pavimento 0.2530) OK
+  [monitor] ep154 loss=0.0754 std=0.04585 rango=11.72 centrato=13.21 (1.06x l'iniziale)
+            epoca in 76s   restano 145 epoche (~3.1 h)
+            [sonda intermedia] lineare 0.7279  k-NN 0.4235 (nessun giudizio: il criterio e' il downstream)
+    ep155 step    0/171  loss=0.0783  4s
+    ep155 step   25/171  loss=0.0648  13s
+    ep155 step   50/171  loss=0.0741  22s
+    ep155 step   75/171  loss=0.0803  32s
+    ep155 step  100/171  loss=0.0796  42s
+    ep155 step  125/171  loss=0.0853  51s
+    ep155 step  150/171  loss=0.0709  61s
+  [monitor] ep155 loss=0.0752 std=0.04593 rango=12.05 centrato=13.45 (1.08x l'iniziale)
+            epoca in 68s   restano 144 epoche (~2.7 h)
+    ep156 step    0/171  loss=0.0720  4s
+    ep156 step   25/171  loss=0.0869  13s
+    ep156 step   50/171  loss=0.0736  22s
+    ep156 step   75/171  loss=0.0769  32s
+    ep156 step  100/171  loss=0.0788  42s
+    ep156 step  125/171  loss=0.0785  51s
+    ep156 step  150/171  loss=0.0707  61s
+  [monitor] ep156 loss=0.0768 std=0.04585 rango=12.07 centrato=13.72 (1.10x l'iniziale)
+            epoca in 68s   restano 143 epoche (~2.7 h)
+    ep157 step    0/171  loss=0.1056  3s
+    ep157 step   25/171  loss=0.0866  13s
+    ep157 step   50/171  loss=0.0708  22s
+    ep157 step   75/171  loss=0.0873  32s
+    ep157 step  100/171  loss=0.0792  41s
+    ep157 step  125/171  loss=0.0687  51s
+    ep157 step  150/171  loss=0.0790  60s
+  [monitor] ep157 loss=0.0756 std=0.04588 rango=11.96 centrato=13.39 (1.07x l'iniziale)
+            epoca in 68s   restano 142 epoche (~2.7 h)
+    ep158 step    0/171  loss=0.0678  3s
+    ep158 step   25/171  loss=0.0683  12s
+    ep158 step   50/171  loss=0.0912  22s
+    ep158 step   75/171  loss=0.0836  32s
+    ep158 step  100/171  loss=0.0811  41s
+    ep158 step  125/171  loss=0.0892  51s
+    ep158 step  150/171  loss=0.0706  60s
+  [monitor] ep158 loss=0.0776 std=0.04580 rango=11.90 centrato=13.78 (1.10x l'iniziale)
+            epoca in 67s   restano 141 epoche (~2.6 h)
+    ep159 step    0/171  loss=0.0708  4s
+    ep159 step   25/171  loss=0.0788  13s
+    ep159 step   50/171  loss=0.0918  22s
+    ep159 step   75/171  loss=0.0915  32s
+    ep159 step  100/171  loss=0.0640  41s
+    ep159 step  125/171  loss=0.0791  51s
+    ep159 step  150/171  loss=0.0789  60s
+  [sonda] lineare=0.7254  k-NN=0.4281  rango=10.82  R2 intensita=0.984 dimensione=0.867  (pavimento 0.2530) OK
+  [downstream] macroF1=0.7583  PR-AUC5=0.8679   (riferimento casuale 0.7512, +0.0071)   [61s]
+  [monitor] ep159 loss=0.0767 std=0.04579 rango=11.82 centrato=13.42 (1.08x l'iniziale)
+            epoca in 137s   restano 140 epoche (~5.3 h)
+            [migliore] nuovo record 0.7583 (downstream) all'epoca 159: salvato ijepa_vit_small_completa_best
+            [cancello] downstream 0.7583 vs casuale 0.7512  -> +0.0071   miglior finora 0.7583   sonde sotto di fila: 0
+==============================================================================
+RESOCONTO - ijepa_vit_small_completa - epoca 160/300
+DA BATTERE - encoder casuale: downstream = 0.7512   (sonda lineare 0.7477)
+==============================================================================
+ epoca  DOWNSTREAM  PR-AUC5   lineare     k-NN   rango  R2 int  R2 dim
+   154         nan      nan    0.7279   0.4235   10.53     nan     nan
+   159      0.7583   0.8679    0.7254   0.4281   10.82   0.984   0.867
+Migliore finora (downstream): 0.7583 all'epoca 159  (+0.0071 vs casuale)
+==============================================================================
+    ep160 step    0/171  loss=0.0630  4s
+    ep160 step   25/171  loss=0.0725  13s
+    ep160 step   50/171  loss=0.0815  23s
+    ep160 step   75/171  loss=0.0897  32s
+    ep160 step  100/171  loss=0.0675  42s
+    ep160 step  125/171  loss=0.0901  52s
+    ep160 step  150/171  loss=0.0699  62s
+  [monitor] ep160 loss=0.0765 std=0.04598 rango=12.21 centrato=13.75 (1.10x l'iniziale)
+            epoca in 69s   restano 139 epoche (~2.7 h)
+    ep161 step    0/171  loss=0.0640  4s
+    ep161 step   25/171  loss=0.0715  13s
+    ep161 step   50/171  loss=0.0854  22s
+    ep161 step   75/171  loss=0.0682  32s
+    ep161 step  100/171  loss=0.0846  41s
+    ep161 step  125/171  loss=0.0717  51s
+    ep161 step  150/171  loss=0.0748  61s
+  [monitor] ep161 loss=0.0779 std=0.04598 rango=12.29 centrato=13.85 (1.11x l'iniziale)
+            epoca in 68s   restano 138 epoche (~2.6 h)
+    ep162 step    0/171  loss=0.0835  4s
+    ep162 step   25/171  loss=0.0805  12s
+    ep162 step   50/171  loss=0.0675  22s
+    ep162 step   75/171  loss=0.0960  32s
+    ep162 step  100/171  loss=0.0744  41s
+    ep162 step  125/171  loss=0.0854  51s
+    ep162 step  150/171  loss=0.0708  61s
+  [monitor] ep162 loss=0.0779 std=0.04594 rango=12.37 centrato=14.09 (1.13x l'iniziale)
+            epoca in 68s   restano 137 epoche (~2.6 h)
+    ep163 step    0/171  loss=0.0808  4s
+    ep163 step   25/171  loss=0.0858  13s
+    ep163 step   50/171  loss=0.0621  22s
+    ep163 step   75/171  loss=0.0712  32s
+    ep163 step  100/171  loss=0.0757  41s
+    ep163 step  125/171  loss=0.0968  51s
+    ep163 step  150/171  loss=0.0722  60s
+  [monitor] ep163 loss=0.0774 std=0.04592 rango=12.25 centrato=14.08 (1.13x l'iniziale)
+            epoca in 68s   restano 136 epoche (~2.6 h)
+    ep164 step    0/171  loss=0.0659  4s
+    ep164 step   25/171  loss=0.0768  13s
+    ep164 step   50/171  loss=0.0644  22s
+    ep164 step   75/171  loss=0.0854  32s
+    ep164 step  100/171  loss=0.0821  41s
+    ep164 step  125/171  loss=0.0763  51s
+    ep164 step  150/171  loss=0.0950  61s
+  [sonda] lineare=0.7265  k-NN=0.4311  rango=11.10  (pavimento 0.2530) OK
+  [monitor] ep164 loss=0.0786 std=0.04610 rango=12.86 centrato=14.47 (1.16x l'iniziale)
+            epoca in 76s   restano 135 epoche (~2.8 h)
+            [sonda intermedia] lineare 0.7265  k-NN 0.4311 (nessun giudizio: il criterio e' il downstream)
+    ep165 step    0/171  loss=0.0660  3s
+    ep165 step   25/171  loss=0.0685  13s
+    ep165 step   50/171  loss=0.0853  22s
+    ep165 step   75/171  loss=0.0904  32s
+    ep165 step  100/171  loss=0.0974  41s
+    ep165 step  125/171  loss=0.0727  51s
+    ep165 step  150/171  loss=0.0768  60s
+  [monitor] ep165 loss=0.0782 std=0.04606 rango=12.73 centrato=14.63 (1.17x l'iniziale)
+            epoca in 68s   restano 134 epoche (~2.5 h)
+    ep166 step    0/171  loss=0.0757  3s
+    ep166 step   25/171  loss=0.0794  13s
+    ep166 step   50/171  loss=0.1020  22s
+    ep166 step   75/171  loss=0.0714  32s
+    ep166 step  100/171  loss=0.0871  41s
+    ep166 step  125/171  loss=0.0729  51s
+    ep166 step  150/171  loss=0.0944  61s
+  [monitor] ep166 loss=0.0790 std=0.04606 rango=12.71 centrato=14.53 (1.16x l'iniziale)
+            epoca in 68s   restano 133 epoche (~2.5 h)
+    ep167 step    0/171  loss=0.0774  3s
+    ep167 step   25/171  loss=0.0935  13s
+    ep167 step   50/171  loss=0.0783  22s
+    ep167 step   75/171  loss=0.0685  32s
+    ep167 step  100/171  loss=0.0815  41s
+    ep167 step  125/171  loss=0.0685  51s
+    ep167 step  150/171  loss=0.0768  60s
+  [monitor] ep167 loss=0.0787 std=0.04608 rango=12.91 centrato=14.65 (1.17x l'iniziale)
+            epoca in 68s   restano 132 epoche (~2.5 h)
+    ep168 step    0/171  loss=0.0835  4s
+    ep168 step   25/171  loss=0.0846  13s
+    ep168 step   50/171  loss=0.0606  22s
+    ep168 step   75/171  loss=0.0883  32s
+    ep168 step  100/171  loss=0.0786  41s
+    ep168 step  125/171  loss=0.0659  51s
+    ep168 step  150/171  loss=0.0894  60s
+  [monitor] ep168 loss=0.0792 std=0.04620 rango=13.21 centrato=15.02 (1.20x l'iniziale)
+            epoca in 68s   restano 131 epoche (~2.5 h)
+    ep169 step    0/171  loss=0.0736  4s
+    ep169 step   25/171  loss=0.0665  13s
+    ep169 step   50/171  loss=0.0794  23s
+    ep169 step   75/171  loss=0.0719  32s
+    ep169 step  100/171  loss=0.0789  42s
+    ep169 step  125/171  loss=0.0672  51s
+    ep169 step  150/171  loss=0.0659  60s
+  [sonda] lineare=0.7232  k-NN=0.4288  rango=11.37  R2 intensita=0.983 dimensione=0.866  (pavimento 0.2530) OK
+  [downstream] macroF1=0.7523  PR-AUC5=0.8714   (riferimento casuale 0.7512, +0.0012)   [60s]
+  [monitor] ep169 loss=0.0783 std=0.04598 rango=12.67 centrato=14.66 (1.17x l'iniziale)
+            epoca in 137s   restano 130 epoche (~4.9 h)
+            [cancello] downstream 0.7523 vs casuale 0.7512  -> +0.0012   miglior finora 0.7583   sonde sotto di fila: 0
+==============================================================================
+RESOCONTO - ijepa_vit_small_completa - epoca 170/300
+DA BATTERE - encoder casuale: downstream = 0.7512   (sonda lineare 0.7477)
+==============================================================================
+ epoca  DOWNSTREAM  PR-AUC5   lineare     k-NN   rango  R2 int  R2 dim
+   154         nan      nan    0.7279   0.4235   10.53     nan     nan
+   159      0.7583   0.8679    0.7254   0.4281   10.82   0.984   0.867
+   164         nan      nan    0.7265   0.4311   11.10     nan     nan
+   169      0.7523   0.8714    0.7232   0.4288   11.37   0.983   0.866
+Migliore finora (downstream): 0.7583 all'epoca 159  (+0.0071 vs casuale)
+==============================================================================
+    ep170 step    0/171  loss=0.0750  4s
+    ep170 step   25/171  loss=0.0767  13s
+    ep170 step   50/171  loss=0.0847  22s
+    ep170 step   75/171  loss=0.0912  32s
+    ep170 step  100/171  loss=0.0688  42s
+    ep170 step  125/171  loss=0.0864  52s
+    ep170 step  150/171  loss=0.0739  62s
+  [monitor] ep170 loss=0.0786 std=0.04609 rango=12.91 centrato=14.91 (1.20x l'iniziale)
+            epoca in 69s   restano 129 epoche (~2.5 h)
+    ep171 step    0/171  loss=0.0697  4s
+    ep171 step   25/171  loss=0.0716  13s
+    ep171 step   50/171  loss=0.0787  22s
+    ep171 step   75/171  loss=0.0683  32s
+    ep171 step  100/171  loss=0.0820  41s
+    ep171 step  125/171  loss=0.0805  51s
+    ep171 step  150/171  loss=0.0780  61s
+  [monitor] ep171 loss=0.0801 std=0.04605 rango=12.64 centrato=14.38 (1.15x l'iniziale)
+            epoca in 68s   restano 128 epoche (~2.4 h)
+    ep172 step    0/171  loss=0.0855  3s
+    ep172 step   25/171  loss=0.0777  13s
+    ep172 step   50/171  loss=0.0774  22s
+    ep172 step   75/171  loss=0.0944  31s
+    ep172 step  100/171  loss=0.0763  41s
+    ep172 step  125/171  loss=0.0845  51s
+    ep172 step  150/171  loss=0.0723  61s
+  [monitor] ep172 loss=0.0807 std=0.04604 rango=12.93 centrato=14.97 (1.20x l'iniziale)
+            epoca in 68s   restano 127 epoche (~2.4 h)
+    ep173 step    0/171  loss=0.0834  3s
+    ep173 step   25/171  loss=0.0864  13s
+    ep173 step   50/171  loss=0.0738  22s
+    ep173 step   75/171  loss=0.0738  32s
+    ep173 step  100/171  loss=0.0749  41s
+    ep173 step  125/171  loss=0.0993  51s
+    ep173 step  150/171  loss=0.0703  60s
+  [monitor] ep173 loss=0.0798 std=0.04612 rango=13.29 centrato=15.51 (1.24x l'iniziale)
+            epoca in 68s   restano 126 epoche (~2.4 h)
+    ep174 step    0/171  loss=0.0708  4s
+    ep174 step   25/171  loss=0.0723  13s
+    ep174 step   50/171  loss=0.0730  22s
+    ep174 step   75/171  loss=0.0854  32s
+    ep174 step  100/171  loss=0.0856  41s
+    ep174 step  125/171  loss=0.0742  51s
+    ep174 step  150/171  loss=0.0982  61s
+  [sonda] lineare=0.7250  k-NN=0.4148  rango=11.62  (pavimento 0.2530) OK
+  [monitor] ep174 loss=0.0813 std=0.04613 rango=13.33 centrato=15.40 (1.23x l'iniziale)
+            epoca in 76s   restano 125 epoche (~2.6 h)
+            [sonda intermedia] lineare 0.7250  k-NN 0.4148 (nessun giudizio: il criterio e' il downstream)
+    ep175 step    0/171  loss=0.0750  4s
+    ep175 step   25/171  loss=0.0733  13s
+    ep175 step   50/171  loss=0.0828  22s
+    ep175 step   75/171  loss=0.0936  32s
+    ep175 step  100/171  loss=0.0904  42s
+    ep175 step  125/171  loss=0.0794  51s
+    ep175 step  150/171  loss=0.0823  61s
+  [monitor] ep175 loss=0.0799 std=0.04623 rango=13.38 centrato=15.31 (1.23x l'iniziale)
+            epoca in 68s   restano 124 epoche (~2.4 h)
+    ep176 step    0/171  loss=0.0845  3s
+    ep176 step   25/171  loss=0.0751  13s
+    ep176 step   50/171  loss=0.1007  22s
+    ep176 step   75/171  loss=0.0718  32s
+    ep176 step  100/171  loss=0.0917  42s
+    ep176 step  125/171  loss=0.0718  51s
+    ep176 step  150/171  loss=0.0918  61s
+  [monitor] ep176 loss=0.0812 std=0.04632 rango=13.73 centrato=15.67 (1.26x l'iniziale)
+            epoca in 68s   restano 123 epoche (~2.3 h)
+    ep177 step    0/171  loss=0.0836  4s
+    ep177 step   25/171  loss=0.0922  13s
+    ep177 step   50/171  loss=0.0787  22s
+    ep177 step   75/171  loss=0.0714  32s
+    ep177 step  100/171  loss=0.0825  41s
+    ep177 step  125/171  loss=0.0651  51s
+    ep177 step  150/171  loss=0.0744  61s
+  [monitor] ep177 loss=0.0806 std=0.04616 rango=13.35 centrato=15.50 (1.24x l'iniziale)
+            epoca in 68s   restano 122 epoche (~2.3 h)
+    ep178 step    0/171  loss=0.0888  4s
+    ep178 step   25/171  loss=0.0921  13s
+    ep178 step   50/171  loss=0.0642  22s
+    ep178 step   75/171  loss=0.0975  32s
+    ep178 step  100/171  loss=0.0783  42s
+    ep178 step  125/171  loss=0.0689  52s
+    ep178 step  150/171  loss=0.0941  61s
+  [monitor] ep178 loss=0.0815 std=0.04623 rango=13.80 centrato=16.11 (1.29x l'iniziale)
+            epoca in 69s   restano 121 epoche (~2.3 h)
+    ep179 step    0/171  loss=0.0747  4s
+    ep179 step   25/171  loss=0.0744  13s
+    ep179 step   50/171  loss=0.0835  23s
+    ep179 step   75/171  loss=0.0747  32s
+    ep179 step  100/171  loss=0.0834  42s
+    ep179 step  125/171  loss=0.0676  52s
+    ep179 step  150/171  loss=0.0720  61s
+  [sonda] lineare=0.7240  k-NN=0.4178  rango=11.87  R2 intensita=0.983 dimensione=0.866  (pavimento 0.2530) OK
+  [downstream] macroF1=0.7639  PR-AUC5=0.8753   (riferimento casuale 0.7512, +0.0127)   [61s]
+  [monitor] ep179 loss=0.0812 std=0.04621 rango=13.61 centrato=15.82 (1.27x l'iniziale)
+            epoca in 138s   restano 120 epoche (~4.6 h)
+            [migliore] nuovo record 0.7639 (downstream) all'epoca 179: salvato ijepa_vit_small_completa_best
+            [cancello] downstream 0.7639 vs casuale 0.7512  -> +0.0127   miglior finora 0.7639   sonde sotto di fila: 0
+==============================================================================
+RESOCONTO - ijepa_vit_small_completa - epoca 180/300
+DA BATTERE - encoder casuale: downstream = 0.7512   (sonda lineare 0.7477)
+==============================================================================
+ epoca  DOWNSTREAM  PR-AUC5   lineare     k-NN   rango  R2 int  R2 dim
+   154         nan      nan    0.7279   0.4235   10.53     nan     nan
+   159      0.7583   0.8679    0.7254   0.4281   10.82   0.984   0.867
+   164         nan      nan    0.7265   0.4311   11.10     nan     nan
+   169      0.7523   0.8714    0.7232   0.4288   11.37   0.983   0.866
+   174         nan      nan    0.7250   0.4148   11.62     nan     nan
+   179      0.7639   0.8753    0.7240   0.4178   11.87   0.983   0.866
+
+Tendenza sulle ultime 3 sonde (downstream): in miglioramento (+0.0028 per sonda)
+Migliore finora (downstream): 0.7639 all'epoca 179  (+0.0127 vs casuale)
+==============================================================================
+    ep180 step    0/171  loss=0.0718  4s
+    ep180 step   25/171  loss=0.0754  13s
+    ep180 step   50/171  loss=0.0850  22s
+    ep180 step   75/171  loss=0.0928  32s
+    ep180 step  100/171  loss=0.0743  41s
+    ep180 step  125/171  loss=0.0940  51s
+    ep180 step  150/171  loss=0.0745  61s
+  [monitor] ep180 loss=0.0813 std=0.04614 rango=13.50 centrato=16.02 (1.28x l'iniziale)
+            epoca in 68s   restano 119 epoche (~2.2 h)
+    ep181 step    0/171  loss=0.0692  4s
+    ep181 step   25/171  loss=0.0745  12s
+    ep181 step   50/171  loss=0.0885  22s
+    ep181 step   75/171  loss=0.0673  32s
+    ep181 step  100/171  loss=0.0913  41s
+    ep181 step  125/171  loss=0.0743  51s
+    ep181 step  150/171  loss=0.0778  61s
+  [monitor] ep181 loss=0.0825 std=0.04617 rango=13.48 centrato=15.51 (1.24x l'iniziale)
+            epoca in 67s   restano 118 epoche (~2.2 h)
+    ep182 step    0/171  loss=0.0860  3s
+    ep182 step   25/171  loss=0.0832  12s
+    ep182 step   50/171  loss=0.0761  22s
+    ep182 step   75/171  loss=0.1005  32s
+    ep182 step  100/171  loss=0.0759  41s
+    ep182 step  125/171  loss=0.0911  51s
+    ep182 step  150/171  loss=0.0767  61s
+  [monitor] ep182 loss=0.0826 std=0.04618 rango=13.58 centrato=15.87 (1.27x l'iniziale)
+            epoca in 68s   restano 117 epoche (~2.2 h)
+    ep183 step    0/171  loss=0.0868  4s
+    ep183 step   25/171  loss=0.0924  13s
+    ep183 step   50/171  loss=0.0699  23s
+    ep183 step   75/171  loss=0.0753  32s
+    ep183 step  100/171  loss=0.0822  42s
+    ep183 step  125/171  loss=0.1079  52s
+    ep183 step  150/171  loss=0.0689  62s
+  [monitor] ep183 loss=0.0816 std=0.04621 rango=13.74 centrato=16.08 (1.29x l'iniziale)
+            epoca in 69s   restano 116 epoche (~2.2 h)
+    ep184 step    0/171  loss=0.0679  4s
+    ep184 step   25/171  loss=0.0771  13s
+    ep184 step   50/171  loss=0.0681  22s
+    ep184 step   75/171  loss=0.0873  32s
+    ep184 step  100/171  loss=0.0897  42s
+    ep184 step  125/171  loss=0.0766  52s
+    ep184 step  150/171  loss=0.1038  62s
+  [sonda] lineare=0.7191  k-NN=0.4183  rango=12.08  (pavimento 0.2530) OK
+  [monitor] ep184 loss=0.0832 std=0.04629 rango=14.00 centrato=16.33 (1.31x l'iniziale)
+            epoca in 77s   restano 115 epoche (~2.5 h)
+            [sonda intermedia] lineare 0.7191  k-NN 0.4183 (nessun giudizio: il criterio e' il downstream)
+    ep185 step    0/171  loss=0.0690  3s
+    ep185 step   25/171  loss=0.0756  13s
+    ep185 step   50/171  loss=0.0870  22s
+    ep185 step   75/171  loss=0.0911  32s
+    ep185 step  100/171  loss=0.1010  41s
+    ep185 step  125/171  loss=0.0768  51s
+    ep185 step  150/171  loss=0.0742  61s
+  [monitor] ep185 loss=0.0819 std=0.04641 rango=14.15 centrato=16.16 (1.30x l'iniziale)
+            epoca in 69s   restano 114 epoche (~2.2 h)
+    ep186 step    0/171  loss=0.0802  4s
+    ep186 step   25/171  loss=0.0858  13s
+    ep186 step   50/171  loss=0.1024  23s
+    ep186 step   75/171  loss=0.0737  33s
+    ep186 step  100/171  loss=0.0897  43s
+    ep186 step  125/171  loss=0.0777  52s
+    ep186 step  150/171  loss=0.0894  62s
+  [monitor] ep186 loss=0.0832 std=0.04630 rango=13.92 centrato=16.09 (1.29x l'iniziale)
+            epoca in 69s   restano 113 epoche (~2.2 h)
+    ep187 step    0/171  loss=0.0919  3s
+    ep187 step   25/171  loss=0.0978  13s
+    ep187 step   50/171  loss=0.0824  23s
+    ep187 step   75/171  loss=0.0681  32s
+    ep187 step  100/171  loss=0.0863  42s
+    ep187 step  125/171  loss=0.0710  52s
+    ep187 step  150/171  loss=0.0814  62s
+  [monitor] ep187 loss=0.0827 std=0.04633 rango=14.17 centrato=16.69 (1.34x l'iniziale)
+            epoca in 69s   restano 112 epoche (~2.2 h)
+    ep188 step    0/171  loss=0.0874  4s
+    ep188 step   25/171  loss=0.0932  13s
+    ep188 step   50/171  loss=0.0715  22s
+    ep188 step   75/171  loss=0.0955  32s
+    ep188 step  100/171  loss=0.0812  42s
+    ep188 step  125/171  loss=0.0710  52s
+    ep188 step  150/171  loss=0.0924  62s
+  [monitor] ep188 loss=0.0838 std=0.04617 rango=13.78 centrato=16.20 (1.30x l'iniziale)
+            epoca in 70s   restano 111 epoche (~2.1 h)
+    ep189 step    0/171  loss=0.0791  4s
+    ep189 step   25/171  loss=0.0753  13s
+    ep189 step   50/171  loss=0.0821  23s
+    ep189 step   75/171  loss=0.0760  33s
+    ep189 step  100/171  loss=0.0763  43s
+    ep189 step  125/171  loss=0.0751  52s
+    ep189 step  150/171  loss=0.0728  62s
+  [sonda] lineare=0.7164  k-NN=0.4138  rango=12.29  R2 intensita=0.983 dimensione=0.865  (pavimento 0.2530) OK
+  [downstream] macroF1=0.7508  PR-AUC5=0.8682   (riferimento casuale 0.7512, -0.0003)   [61s]
+  [monitor] ep189 loss=0.0834 std=0.04632 rango=14.11 centrato=16.31 (1.31x l'iniziale)
+            epoca in 139s   restano 110 epoche (~4.3 h)
+            [cancello] downstream 0.7508 vs casuale 0.7512  -> -0.0003   miglior finora 0.7639   sonde sotto di fila: 0
+==============================================================================
+RESOCONTO - ijepa_vit_small_completa - epoca 190/300
+DA BATTERE - encoder casuale: downstream = 0.7512   (sonda lineare 0.7477)
+==============================================================================
+ epoca  DOWNSTREAM  PR-AUC5   lineare     k-NN   rango  R2 int  R2 dim
+   154         nan      nan    0.7279   0.4235   10.53     nan     nan
+   159      0.7583   0.8679    0.7254   0.4281   10.82   0.984   0.867
+   164         nan      nan    0.7265   0.4311   11.10     nan     nan
+   169      0.7523   0.8714    0.7232   0.4288   11.37   0.983   0.866
+   174         nan      nan    0.7250   0.4148   11.62     nan     nan
+   179      0.7639   0.8753    0.7240   0.4178   11.87   0.983   0.866
+   184         nan      nan    0.7191   0.4183   12.08     nan     nan
+   189      0.7508   0.8682    0.7164   0.4138   12.29   0.983   0.865
+
+Tendenza sulle ultime 3 sonde (downstream): stabile (-0.0007 per sonda)
+Migliore finora (downstream): 0.7639 all'epoca 179  (+0.0127 vs casuale)
+==============================================================================
+    ep190 step    0/171  loss=0.0728  4s
+    ep190 step   25/171  loss=0.0778  13s
+    ep190 step   50/171  loss=0.0884  22s
+    ep190 step   75/171  loss=0.0948  32s
+    ep190 step  100/171  loss=0.0724  42s
+    ep190 step  125/171  loss=0.0886  51s
+    ep190 step  150/171  loss=0.0836  61s
+  [monitor] ep190 loss=0.0830 std=0.04625 rango=14.10 centrato=16.87 (1.35x l'iniziale)
+            epoca in 68s   restano 109 epoche (~2.1 h)
+    ep191 step    0/171  loss=0.0816  3s
+    ep191 step   25/171  loss=0.0771  13s
+    ep191 step   50/171  loss=0.0962  22s
+    ep191 step   75/171  loss=0.0731  32s
+    ep191 step  100/171  loss=0.0932  41s
+    ep191 step  125/171  loss=0.0724  51s
+    ep191 step  150/171  loss=0.0781  61s
+  [monitor] ep191 loss=0.0847 std=0.04631 rango=14.24 centrato=16.79 (1.35x l'iniziale)
+            epoca in 68s   restano 108 epoche (~2.0 h)
+    ep192 step    0/171  loss=0.0886  3s
+    ep192 step   25/171  loss=0.0823  12s
+    ep192 step   50/171  loss=0.0849  22s
+    ep192 step   75/171  loss=0.1011  32s
+    ep192 step  100/171  loss=0.0791  42s
+    ep192 step  125/171  loss=0.0901  52s
+    ep192 step  150/171  loss=0.0751  62s
+  [monitor] ep192 loss=0.0845 std=0.04626 rango=14.03 centrato=16.71 (1.34x l'iniziale)
+            epoca in 69s   restano 107 epoche (~2.0 h)
+    ep193 step    0/171  loss=0.0865  3s
+    ep193 step   25/171  loss=0.0934  13s
+    ep193 step   50/171  loss=0.0715  23s
+    ep193 step   75/171  loss=0.0787  32s
+    ep193 step  100/171  loss=0.0835  42s
+    ep193 step  125/171  loss=0.1103  52s
+    ep193 step  150/171  loss=0.0755  62s
+  [monitor] ep193 loss=0.0837 std=0.04635 rango=14.31 centrato=16.76 (1.34x l'iniziale)
+            epoca in 69s   restano 106 epoche (~2.0 h)
+    ep194 step    0/171  loss=0.0695  4s
+    ep194 step   25/171  loss=0.0792  13s
+    ep194 step   50/171  loss=0.0744  22s
+    ep194 step   75/171  loss=0.0856  32s
+    ep194 step  100/171  loss=0.0949  42s
+    ep194 step  125/171  loss=0.0825  52s
+    ep194 step  150/171  loss=0.0999  62s
+  [sonda] lineare=0.7195  k-NN=0.4095  rango=12.47  (pavimento 0.2530) OK
+  [monitor] ep194 loss=0.0845 std=0.04629 rango=14.18 centrato=16.66 (1.34x l'iniziale)
+            epoca in 77s   restano 105 epoche (~2.2 h)
+            [sonda intermedia] lineare 0.7195  k-NN 0.4095 (nessun giudizio: il criterio e' il downstream)
+    ep195 step    0/171  loss=0.0728  4s
+    ep195 step   25/171  loss=0.0834  13s
+    ep195 step   50/171  loss=0.0894  22s
+    ep195 step   75/171  loss=0.0965  32s
+    ep195 step  100/171  loss=0.1015  42s
+    ep195 step  125/171  loss=0.0829  51s
+    ep195 step  150/171  loss=0.0805  61s
+  [monitor] ep195 loss=0.0836 std=0.04638 rango=14.35 centrato=16.71 (1.34x l'iniziale)
+            epoca in 69s   restano 104 epoche (~2.0 h)
+    ep196 step    0/171  loss=0.0851  3s
+    ep196 step   25/171  loss=0.0810  13s
+    ep196 step   50/171  loss=0.0998  22s
+    ep196 step   75/171  loss=0.0772  32s
+    ep196 step  100/171  loss=0.0956  42s
+    ep196 step  125/171  loss=0.0702  52s
+    ep196 step  150/171  loss=0.1023  62s
+  [monitor] ep196 loss=0.0852 std=0.04627 rango=14.24 centrato=17.11 (1.37x l'iniziale)
+            epoca in 69s   restano 103 epoche (~2.0 h)
+    ep197 step    0/171  loss=0.0812  4s
+    ep197 step   25/171  loss=0.0963  13s
+    ep197 step   50/171  loss=0.0838  23s
+    ep197 step   75/171  loss=0.0733  32s
+    ep197 step  100/171  loss=0.0823  42s
+    ep197 step  125/171  loss=0.0698  52s
+    ep197 step  150/171  loss=0.0785  63s
+  [monitor] ep197 loss=0.0841 std=0.04626 rango=14.29 centrato=17.34 (1.39x l'iniziale)
+            epoca in 70s   restano 102 epoche (~2.0 h)
+    ep198 step    0/171  loss=0.0908  4s
+    ep198 step   25/171  loss=0.0888  13s
+    ep198 step   50/171  loss=0.0730  22s
+    ep198 step   75/171  loss=0.0917  33s
+    ep198 step  100/171  loss=0.0780  43s
+    ep198 step  125/171  loss=0.0750  52s
+    ep198 step  150/171  loss=0.0904  62s
+  [monitor] ep198 loss=0.0854 std=0.04636 rango=14.43 centrato=16.96 (1.36x l'iniziale)
+            epoca in 70s   restano 101 epoche (~2.0 h)
+    ep199 step    0/171  loss=0.0797  4s
+    ep199 step   25/171  loss=0.0745  13s
+    ep199 step   50/171  loss=0.0789  23s
+    ep199 step   75/171  loss=0.0765  33s
+    ep199 step  100/171  loss=0.0807  42s
+    ep199 step  125/171  loss=0.0784  52s
+    ep199 step  150/171  loss=0.0771  62s
+  [sonda] lineare=0.7171  k-NN=0.4251  rango=12.64  R2 intensita=0.982 dimensione=0.865  (pavimento 0.2530) OK
+  [downstream] macroF1=0.7561  PR-AUC5=0.8685   (riferimento casuale 0.7512, +0.0049)   [61s]
+  [monitor] ep199 loss=0.0845 std=0.04634 rango=14.55 centrato=17.52 (1.40x l'iniziale)
+            epoca in 139s   restano 100 epoche (~3.9 h)
+            [cancello] downstream 0.7561 vs casuale 0.7512  -> +0.0049   miglior finora 0.7639   sonde sotto di fila: 0
+==============================================================================
+RESOCONTO - ijepa_vit_small_completa - epoca 200/300
+DA BATTERE - encoder casuale: downstream = 0.7512   (sonda lineare 0.7477)
+==============================================================================
+ epoca  DOWNSTREAM  PR-AUC5   lineare     k-NN   rango  R2 int  R2 dim
+   154         nan      nan    0.7279   0.4235   10.53     nan     nan
+   159      0.7583   0.8679    0.7254   0.4281   10.82   0.984   0.867
+   164         nan      nan    0.7265   0.4311   11.10     nan     nan
+   169      0.7523   0.8714    0.7232   0.4288   11.37   0.983   0.866
+   174         nan      nan    0.7250   0.4148   11.62     nan     nan
+   179      0.7639   0.8753    0.7240   0.4178   11.87   0.983   0.866
+   184         nan      nan    0.7191   0.4183   12.08     nan     nan
+   189      0.7508   0.8682    0.7164   0.4138   12.29   0.983   0.865
+   194         nan      nan    0.7195   0.4095   12.47     nan     nan
+   199      0.7561   0.8685    0.7171   0.4251   12.64   0.982   0.865
+
+Tendenza sulle ultime 3 sonde (downstream): in peggioramento (-0.0039 per sonda)
+Migliore finora (downstream): 0.7639 all'epoca 179  (+0.0127 vs casuale)
+==============================================================================
+    ep200 step    0/171  loss=0.0840  4s
+    ep200 step   25/171  loss=0.0813  13s
+    ep200 step   50/171  loss=0.0893  22s
+    ep200 step   75/171  loss=0.1008  32s
+    ep200 step  100/171  loss=0.0713  42s
+    ep200 step  125/171  loss=0.1048  51s
+    ep200 step  150/171  loss=0.0732  61s
+  [monitor] ep200 loss=0.0848 std=0.04641 rango=14.86 centrato=17.76 (1.42x l'iniziale)
+            epoca in 68s   restano 99 epoche (~1.9 h)
+    ep201 step    0/171  loss=0.0761  4s
+    ep201 step   25/171  loss=0.0769  13s
+    ep201 step   50/171  loss=0.0938  22s
+    ep201 step   75/171  loss=0.0705  32s
+    ep201 step  100/171  loss=0.0862  42s
+    ep201 step  125/171  loss=0.0819  52s
+    ep201 step  150/171  loss=0.0777  61s
+  [monitor] ep201 loss=0.0866 std=0.04635 rango=14.56 centrato=17.22 (1.38x l'iniziale)
+            epoca in 69s   restano 98 epoche (~1.9 h)
+    ep202 step    0/171  loss=0.0858  4s
+    ep202 step   25/171  loss=0.0814  13s
+    ep202 step   50/171  loss=0.0804  23s
+    ep202 step   75/171  loss=0.1086  32s
+    ep202 step  100/171  loss=0.0805  42s
+    ep202 step  125/171  loss=0.0982  52s
+    ep202 step  150/171  loss=0.0808  62s
+  [monitor] ep202 loss=0.0863 std=0.04641 rango=14.86 centrato=17.52 (1.40x l'iniziale)
+            epoca in 70s   restano 97 epoche (~1.9 h)
+    ep203 step    0/171  loss=0.0839  4s
+    ep203 step   25/171  loss=0.0976  13s
+    ep203 step   50/171  loss=0.0794  23s
+    ep203 step   75/171  loss=0.0784  32s
+    ep203 step  100/171  loss=0.0864  42s
+    ep203 step  125/171  loss=0.0972  52s
+    ep203 step  150/171  loss=0.0753  62s
+  [monitor] ep203 loss=0.0854 std=0.04648 rango=14.98 centrato=17.52 (1.40x l'iniziale)
+            epoca in 70s   restano 96 epoche (~1.9 h)
+    ep204 step    0/171  loss=0.0748  4s
+    ep204 step   25/171  loss=0.0800  13s
+    ep204 step   50/171  loss=0.0739  23s
+    ep204 step   75/171  loss=0.0872  33s
+    ep204 step  100/171  loss=0.0987  42s
+    ep204 step  125/171  loss=0.0820  52s
+    ep204 step  150/171  loss=0.1013  62s
+  [sonda] lineare=0.7147  k-NN=0.4246  rango=12.80  (pavimento 0.2530) OK
+  [monitor] ep204 loss=0.0867 std=0.04640 rango=14.82 centrato=17.56 (1.41x l'iniziale)
+            epoca in 77s   restano 95 epoche (~2.0 h)
+            [sonda intermedia] lineare 0.7147  k-NN 0.4246 (nessun giudizio: il criterio e' il downstream)
+    ep205 step    0/171  loss=0.0738  3s
+    ep205 step   25/171  loss=0.0845  13s
+    ep205 step   50/171  loss=0.0906  22s
+    ep205 step   75/171  loss=0.0976  32s
+    ep205 step  100/171  loss=0.1020  42s
+    ep205 step  125/171  loss=0.0804  52s
+    ep205 step  150/171  loss=0.0846  61s
+  [monitor] ep205 loss=0.0849 std=0.04646 rango=14.85 centrato=17.35 (1.39x l'iniziale)
+            epoca in 69s   restano 94 epoche (~1.8 h)
+    ep206 step    0/171  loss=0.0888  4s
+    ep206 step   25/171  loss=0.0825  13s
+    ep206 step   50/171  loss=0.1077  23s
+    ep206 step   75/171  loss=0.0784  33s
+    ep206 step  100/171  loss=0.0990  42s
+    ep206 step  125/171  loss=0.0714  52s
+    ep206 step  150/171  loss=0.1006  62s
+  [monitor] ep206 loss=0.0865 std=0.04633 rango=14.57 centrato=17.59 (1.41x l'iniziale)
+            epoca in 69s   restano 93 epoche (~1.8 h)
+    ep207 step    0/171  loss=0.0914  4s
+    ep207 step   25/171  loss=0.1085  13s
+    ep207 step   50/171  loss=0.0829  23s
+    ep207 step   75/171  loss=0.0765  32s
+    ep207 step  100/171  loss=0.0884  42s
+    ep207 step  125/171  loss=0.0751  52s
+    ep207 step  150/171  loss=0.0822  62s
+  [monitor] ep207 loss=0.0857 std=0.04645 rango=15.13 centrato=18.08 (1.45x l'iniziale)
+            epoca in 69s   restano 92 epoche (~1.8 h)
+    ep208 step    0/171  loss=0.0911  3s
+    ep208 step   25/171  loss=0.0919  13s
+    ep208 step   50/171  loss=0.0731  22s
+    ep208 step   75/171  loss=0.1001  32s
+    ep208 step  100/171  loss=0.0862  42s
+    ep208 step  125/171  loss=0.0749  52s
+    ep208 step  150/171  loss=0.0966  62s
+  [monitor] ep208 loss=0.0862 std=0.04632 rango=14.78 centrato=17.98 (1.44x l'iniziale)
+            epoca in 69s   restano 91 epoche (~1.8 h)
+    ep209 step    0/171  loss=0.0824  4s
+    ep209 step   25/171  loss=0.0803  13s
+    ep209 step   50/171  loss=0.0814  23s
+    ep209 step   75/171  loss=0.0771  33s
+    ep209 step  100/171  loss=0.0833  42s
+    ep209 step  125/171  loss=0.0759  52s
+    ep209 step  150/171  loss=0.0802  62s
+  [sonda] lineare=0.7150  k-NN=0.4232  rango=12.94  R2 intensita=0.982 dimensione=0.865  (pavimento 0.2530) OK
+  [downstream] macroF1=0.7415  PR-AUC5=0.8662   (riferimento casuale 0.7512, -0.0096)   [61s]
+  [monitor] ep209 loss=0.0863 std=0.04632 rango=14.89 centrato=18.39 (1.47x l'iniziale)
+            epoca in 139s   restano 90 epoche (~3.5 h)
+            [cancello] downstream 0.7415 vs casuale 0.7512  -> -0.0096   miglior finora 0.7639   sonde sotto di fila: 0
+==============================================================================
+RESOCONTO - ijepa_vit_small_completa - epoca 210/300
+DA BATTERE - encoder casuale: downstream = 0.7512   (sonda lineare 0.7477)
+==============================================================================
+ epoca  DOWNSTREAM  PR-AUC5   lineare     k-NN   rango  R2 int  R2 dim
+   154         nan      nan    0.7279   0.4235   10.53     nan     nan
+   159      0.7583   0.8679    0.7254   0.4281   10.82   0.984   0.867
+   164         nan      nan    0.7265   0.4311   11.10     nan     nan
+   169      0.7523   0.8714    0.7232   0.4288   11.37   0.983   0.866
+   174         nan      nan    0.7250   0.4148   11.62     nan     nan
+   179      0.7639   0.8753    0.7240   0.4178   11.87   0.983   0.866
+   184         nan      nan    0.7191   0.4183   12.08     nan     nan
+   189      0.7508   0.8682    0.7164   0.4138   12.29   0.983   0.865
+   194         nan      nan    0.7195   0.4095   12.47     nan     nan
+   199      0.7561   0.8685    0.7171   0.4251   12.64   0.982   0.865
+   204         nan      nan    0.7147   0.4246   12.80     nan     nan
+   209      0.7415   0.8662    0.7150   0.4232   12.94   0.982   0.865
+
+Tendenza sulle ultime 3 sonde (downstream): in peggioramento (-0.0047 per sonda)
+Migliore finora (downstream): 0.7639 all'epoca 179  (+0.0127 vs casuale)
+==============================================================================
+    ep210 step    0/171  loss=0.0775  4s
+    ep210 step   25/171  loss=0.0768  13s
+    ep210 step   50/171  loss=0.0929  22s
+    ep210 step   75/171  loss=0.0956  32s
+    ep210 step  100/171  loss=0.0770  42s
+    ep210 step  125/171  loss=0.1001  52s
+    ep210 step  150/171  loss=0.0878  62s
+  [monitor] ep210 loss=0.0859 std=0.04631 rango=14.49 centrato=17.46 (1.40x l'iniziale)
+            epoca in 69s   restano 89 epoche (~1.7 h)
+    ep211 step    0/171  loss=0.0803  4s
+    ep211 step   25/171  loss=0.0831  13s
+    ep211 step   50/171  loss=0.0922  22s
+    ep211 step   75/171  loss=0.0757  32s
+    ep211 step  100/171  loss=0.0947  42s
+    ep211 step  125/171  loss=0.0847  52s
+    ep211 step  150/171  loss=0.0824  62s
+  [monitor] ep211 loss=0.0875 std=0.04642 rango=14.96 centrato=17.69 (1.42x l'iniziale)
+            epoca in 69s   restano 88 epoche (~1.7 h)
+    ep212 step    0/171  loss=0.0925  3s
+    ep212 step   25/171  loss=0.0900  13s
+    ep212 step   50/171  loss=0.0880  22s
+    ep212 step   75/171  loss=0.1001  32s
+    ep212 step  100/171  loss=0.0815  42s
+    ep212 step  125/171  loss=0.0934  52s
+    ep212 step  150/171  loss=0.0887  62s
+  [monitor] ep212 loss=0.0883 std=0.04638 rango=15.15 centrato=18.46 (1.48x l'iniziale)
+            epoca in 69s   restano 87 epoche (~1.7 h)
+    ep213 step    0/171  loss=0.0912  4s
+    ep213 step   25/171  loss=0.1006  13s
+    ep213 step   50/171  loss=0.0792  23s
+    ep213 step   75/171  loss=0.0810  32s
+    ep213 step  100/171  loss=0.0801  42s
+    ep213 step  125/171  loss=0.1080  52s
+    ep213 step  150/171  loss=0.0769  62s
+  [monitor] ep213 loss=0.0865 std=0.04629 rango=14.76 centrato=18.30 (1.47x l'iniziale)
+            epoca in 70s   restano 86 epoche (~1.7 h)
+    ep214 step    0/171  loss=0.0760  4s
+    ep214 step   25/171  loss=0.0786  13s
+    ep214 step   50/171  loss=0.0743  22s
+    ep214 step   75/171  loss=0.0919  32s
+    ep214 step  100/171  loss=0.0955  42s
+    ep214 step  125/171  loss=0.0859  52s
+    ep214 step  150/171  loss=0.1040  62s
+  [sonda] lineare=0.7137  k-NN=0.4275  rango=13.07  (pavimento 0.2530) OK
+  [monitor] ep214 loss=0.0875 std=0.04628 rango=14.67 centrato=17.90 (1.43x l'iniziale)
+            epoca in 77s   restano 85 epoche (~1.8 h)
+            [sonda intermedia] lineare 0.7137  k-NN 0.4275 (nessun giudizio: il criterio e' il downstream)
+    ep215 step    0/171  loss=0.0806  3s
+    ep215 step   25/171  loss=0.0813  13s
+    ep215 step   50/171  loss=0.0986  22s
+    ep215 step   75/171  loss=0.0980  32s
+    ep215 step  100/171  loss=0.1010  42s
+    ep215 step  125/171  loss=0.0801  52s
+    ep215 step  150/171  loss=0.0853  61s
+  [monitor] ep215 loss=0.0866 std=0.04626 rango=14.84 centrato=18.33 (1.47x l'iniziale)
+            epoca in 69s   restano 84 epoche (~1.6 h)
+    ep216 step    0/171  loss=0.0862  3s
+    ep216 step   25/171  loss=0.0802  13s
+    ep216 step   50/171  loss=0.1101  22s
+    ep216 step   75/171  loss=0.0811  32s
+    ep216 step  100/171  loss=0.0958  42s
+    ep216 step  125/171  loss=0.0756  52s
+    ep216 step  150/171  loss=0.0961  62s
+  [monitor] ep216 loss=0.0882 std=0.04630 rango=14.97 centrato=18.48 (1.48x l'iniziale)
+            epoca in 69s   restano 83 epoche (~1.6 h)
+    ep217 step    0/171  loss=0.0869  4s
+    ep217 step   25/171  loss=0.0971  13s
+    ep217 step   50/171  loss=0.0930  23s
+    ep217 step   75/171  loss=0.0728  32s
+    ep217 step  100/171  loss=0.0834  42s
+    ep217 step  125/171  loss=0.0833  52s
+    ep217 step  150/171  loss=0.0860  62s
+  [monitor] ep217 loss=0.0871 std=0.04637 rango=15.04 centrato=18.28 (1.47x l'iniziale)
+            epoca in 69s   restano 82 epoche (~1.6 h)
+    ep218 step    0/171  loss=0.0897  4s
+    ep218 step   25/171  loss=0.0965  13s
+    ep218 step   50/171  loss=0.0719  22s
+    ep218 step   75/171  loss=0.1010  32s
+    ep218 step  100/171  loss=0.0838  42s
+    ep218 step  125/171  loss=0.0773  52s
+    ep218 step  150/171  loss=0.0976  61s
+  [monitor] ep218 loss=0.0880 std=0.04648 rango=15.39 centrato=18.54 (1.49x l'iniziale)
+            epoca in 69s   restano 81 epoche (~1.6 h)
+    ep219 step    0/171  loss=0.0800  4s
+    ep219 step   25/171  loss=0.0799  13s
+    ep219 step   50/171  loss=0.0823  23s
+    ep219 step   75/171  loss=0.0784  32s
+    ep219 step  100/171  loss=0.0820  42s
+    ep219 step  125/171  loss=0.0794  52s
+    ep219 step  150/171  loss=0.0816  61s
+  [sonda] lineare=0.7158  k-NN=0.4206  rango=13.20  R2 intensita=0.982 dimensione=0.865  (pavimento 0.2530) OK
+  [downstream] macroF1=0.7436  PR-AUC5=0.8671   (riferimento casuale 0.7512, -0.0076)   [61s]
+  [monitor] ep219 loss=0.0872 std=0.04640 rango=15.05 centrato=18.24 (1.46x l'iniziale)
+            epoca in 139s   restano 80 epoche (~3.1 h)
+            [cancello] downstream 0.7436 vs casuale 0.7512  -> -0.0076   miglior finora 0.7639   sonde sotto di fila: 0
+==============================================================================
+RESOCONTO - ijepa_vit_small_completa - epoca 220/300
+DA BATTERE - encoder casuale: downstream = 0.7512   (sonda lineare 0.7477)
+==============================================================================
+ epoca  DOWNSTREAM  PR-AUC5   lineare     k-NN   rango  R2 int  R2 dim
+   154         nan      nan    0.7279   0.4235   10.53     nan     nan
+   159      0.7583   0.8679    0.7254   0.4281   10.82   0.984   0.867
+   164         nan      nan    0.7265   0.4311   11.10     nan     nan
+   169      0.7523   0.8714    0.7232   0.4288   11.37   0.983   0.866
+   174         nan      nan    0.7250   0.4148   11.62     nan     nan
+   179      0.7639   0.8753    0.7240   0.4178   11.87   0.983   0.866
+   184         nan      nan    0.7191   0.4183   12.08     nan     nan
+   189      0.7508   0.8682    0.7164   0.4138   12.29   0.983   0.865
+   194         nan      nan    0.7195   0.4095   12.47     nan     nan
+   199      0.7561   0.8685    0.7171   0.4251   12.64   0.982   0.865
+   204         nan      nan    0.7147   0.4246   12.80     nan     nan
+   209      0.7415   0.8662    0.7150   0.4232   12.94   0.982   0.865
+   214         nan      nan    0.7137   0.4275   13.07     nan     nan
+   219      0.7436   0.8671    0.7158   0.4206   13.20   0.982   0.865
+
+Tendenza sulle ultime 3 sonde (downstream): in peggioramento (-0.0063 per sonda)
+Migliore finora (downstream): 0.7639 all'epoca 179  (+0.0127 vs casuale)
+==============================================================================
+    ep220 step    0/171  loss=0.0846  3s
+    ep220 step   25/171  loss=0.0862  13s
+    ep220 step   50/171  loss=0.0899  22s
+    ep220 step   75/171  loss=0.1038  32s
+    ep220 step  100/171  loss=0.0723  42s
+    ep220 step  125/171  loss=0.1072  52s
+    ep220 step  150/171  loss=0.0931  62s
+  [monitor] ep220 loss=0.0869 std=0.04635 rango=14.95 centrato=18.09 (1.45x l'iniziale)
+            epoca in 68s   restano 79 epoche (~1.5 h)
+    ep221 step    0/171  loss=0.0800  3s
+    ep221 step   25/171  loss=0.0775  13s
+    ep221 step   50/171  loss=0.0924  22s
+    ep221 step   75/171  loss=0.0770  32s
+    ep221 step  100/171  loss=0.0899  42s
+    ep221 step  125/171  loss=0.0840  52s
+    ep221 step  150/171  loss=0.0847  62s
+  [monitor] ep221 loss=0.0885 std=0.04650 rango=15.56 centrato=18.58 (1.49x l'iniziale)
+            epoca in 69s   restano 78 epoche (~1.5 h)
+    ep222 step    0/171  loss=0.0848  4s
+    ep222 step   25/171  loss=0.0913  13s
+    ep222 step   50/171  loss=0.0800  23s
+    ep222 step   75/171  loss=0.0961  33s
+    ep222 step  100/171  loss=0.0844  43s
+    ep222 step  125/171  loss=0.0897  53s
+    ep222 step  150/171  loss=0.0805  63s
+  [monitor] ep222 loss=0.0883 std=0.04641 rango=15.15 centrato=18.17 (1.46x l'iniziale)
+            epoca in 70s   restano 77 epoche (~1.5 h)
+    ep223 step    0/171  loss=0.0920  4s
+    ep223 step   25/171  loss=0.0991  13s
+    ep223 step   50/171  loss=0.0772  23s
+    ep223 step   75/171  loss=0.0827  32s
+    ep223 step  100/171  loss=0.0826  42s
+    ep223 step  125/171  loss=0.1070  52s
+    ep223 step  150/171  loss=0.0804  61s
+  [monitor] ep223 loss=0.0877 std=0.04641 rango=15.46 centrato=19.00 (1.52x l'iniziale)
+            epoca in 69s   restano 76 epoche (~1.5 h)
+    ep224 step    0/171  loss=0.0731  4s
+    ep224 step   25/171  loss=0.0826  13s
+    ep224 step   50/171  loss=0.0758  22s
+    ep224 step   75/171  loss=0.0870  32s
+    ep224 step  100/171  loss=0.0921  42s
+    ep224 step  125/171  loss=0.0833  52s
+    ep224 step  150/171  loss=0.1060  62s
+  [sonda] lineare=0.7165  k-NN=0.4243  rango=13.30  (pavimento 0.2530) OK
+  [monitor] ep224 loss=0.0886 std=0.04630 rango=15.11 centrato=19.05 (1.53x l'iniziale)
+            epoca in 77s   restano 75 epoche (~1.6 h)
+            [sonda intermedia] lineare 0.7165  k-NN 0.4243 (nessun giudizio: il criterio e' il downstream)
+    ep225 step    0/171  loss=0.0763  4s
+    ep225 step   25/171  loss=0.0831  13s
+    ep225 step   50/171  loss=0.0864  23s
+    ep225 step   75/171  loss=0.1002  32s
+    ep225 step  100/171  loss=0.1042  42s
+    ep225 step  125/171  loss=0.0849  52s
+    ep225 step  150/171  loss=0.0848  62s
+  [monitor] ep225 loss=0.0873 std=0.04639 rango=15.07 centrato=18.28 (1.47x l'iniziale)
+            epoca in 69s   restano 74 epoche (~1.4 h)
+    ep226 step    0/171  loss=0.0901  4s
+    ep226 step   25/171  loss=0.0819  13s
+    ep226 step   50/171  loss=0.1096  23s
+    ep226 step   75/171  loss=0.0789  32s
+    ep226 step  100/171  loss=0.0919  42s
+    ep226 step  125/171  loss=0.0789  52s
+    ep226 step  150/171  loss=0.1005  62s
+  [monitor] ep226 loss=0.0886 std=0.04641 rango=15.31 centrato=18.97 (1.52x l'iniziale)
+            epoca in 69s   restano 73 epoche (~1.4 h)
+    ep227 step    0/171  loss=0.0935  4s
+    ep227 step   25/171  loss=0.1013  13s
+    ep227 step   50/171  loss=0.0977  23s
+    ep227 step   75/171  loss=0.0778  32s
+    ep227 step  100/171  loss=0.0805  42s
+    ep227 step  125/171  loss=0.0804  52s
+    ep227 step  150/171  loss=0.0831  62s
+  [monitor] ep227 loss=0.0881 std=0.04639 rango=15.26 centrato=18.57 (1.49x l'iniziale)
+            epoca in 69s   restano 72 epoche (~1.4 h)
+    ep228 step    0/171  loss=0.0883  4s
+    ep228 step   25/171  loss=0.0929  13s
+    ep228 step   50/171  loss=0.0742  22s
+    ep228 step   75/171  loss=0.1017  32s
+    ep228 step  100/171  loss=0.0828  42s
+    ep228 step  125/171  loss=0.0820  52s
+    ep228 step  150/171  loss=0.0997  61s
+  [monitor] ep228 loss=0.0881 std=0.04634 rango=15.12 centrato=18.84 (1.51x l'iniziale)
+            epoca in 69s   restano 71 epoche (~1.4 h)
+    ep229 step    0/171  loss=0.0879  4s
+    ep229 step   25/171  loss=0.0788  13s
+    ep229 step   50/171  loss=0.0860  23s
+    ep229 step   75/171  loss=0.0758  33s
+    ep229 step  100/171  loss=0.0816  42s
+    ep229 step  125/171  loss=0.0753  52s
+    ep229 step  150/171  loss=0.0802  61s
+  [sonda] lineare=0.7155  k-NN=0.4289  rango=13.39  R2 intensita=0.982 dimensione=0.865  (pavimento 0.2530) OK
+  [downstream] macroF1=0.7635  PR-AUC5=0.8683   (riferimento casuale 0.7512, +0.0124)   [62s]
+  [monitor] ep229 loss=0.0882 std=0.04641 rango=15.43 centrato=18.88 (1.51x l'iniziale)
+            epoca in 139s   restano 70 epoche (~2.7 h)
+            [cancello] downstream 0.7635 vs casuale 0.7512  -> +0.0124   miglior finora 0.7639   sonde sotto di fila: 0
+==============================================================================
+RESOCONTO - ijepa_vit_small_completa - epoca 230/300
+DA BATTERE - encoder casuale: downstream = 0.7512   (sonda lineare 0.7477)
+==============================================================================
+ epoca  DOWNSTREAM  PR-AUC5   lineare     k-NN   rango  R2 int  R2 dim
+   154         nan      nan    0.7279   0.4235   10.53     nan     nan
+   159      0.7583   0.8679    0.7254   0.4281   10.82   0.984   0.867
+   164         nan      nan    0.7265   0.4311   11.10     nan     nan
+   169      0.7523   0.8714    0.7232   0.4288   11.37   0.983   0.866
+   174         nan      nan    0.7250   0.4148   11.62     nan     nan
+   179      0.7639   0.8753    0.7240   0.4178   11.87   0.983   0.866
+   184         nan      nan    0.7191   0.4183   12.08     nan     nan
+   189      0.7508   0.8682    0.7164   0.4138   12.29   0.983   0.865
+   194         nan      nan    0.7195   0.4095   12.47     nan     nan
+   199      0.7561   0.8685    0.7171   0.4251   12.64   0.982   0.865
+   204         nan      nan    0.7147   0.4246   12.80     nan     nan
+   209      0.7415   0.8662    0.7150   0.4232   12.94   0.982   0.865
+   214         nan      nan    0.7137   0.4275   13.07     nan     nan
+   219      0.7436   0.8671    0.7158   0.4206   13.20   0.982   0.865
+   224         nan      nan    0.7165   0.4243   13.30     nan     nan
+   229      0.7635   0.8683    0.7155   0.4289   13.39   0.982   0.865
+
+Tendenza sulle ultime 3 sonde (downstream): in miglioramento (+0.0110 per sonda)
+Migliore finora (downstream): 0.7639 all'epoca 179  (+0.0127 vs casuale)
+==============================================================================
+    ep230 step    0/171  loss=0.0807  4s
+    ep230 step   25/171  loss=0.0876  13s
+    ep230 step   50/171  loss=0.0976  23s
+    ep230 step   75/171  loss=0.1064  33s
+    ep230 step  100/171  loss=0.0756  42s
+    ep230 step  125/171  loss=0.1080  52s
+    ep230 step  150/171  loss=0.0785  62s
+  [monitor] ep230 loss=0.0878 std=0.04644 rango=15.46 centrato=18.55 (1.49x l'iniziale)
+            epoca in 69s   restano 69 epoche (~1.3 h)
+    ep231 step    0/171  loss=0.0759  4s
+    ep231 step   25/171  loss=0.0788  13s
+    ep231 step   50/171  loss=0.0956  22s
+    ep231 step   75/171  loss=0.0775  32s
+    ep231 step  100/171  loss=0.0930  42s
+    ep231 step  125/171  loss=0.0738  52s
+    ep231 step  150/171  loss=0.0876  62s
+  [monitor] ep231 loss=0.0886 std=0.04652 rango=15.63 centrato=18.81 (1.51x l'iniziale)
+            epoca in 70s   restano 68 epoche (~1.3 h)
+                                          

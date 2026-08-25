@@ -48,6 +48,18 @@ logs/*
 !logs/PIPELINE.log
 !logs/run_fix_120.log
 !logs/training.log
+# I log che sostengono i numeri riportati in docs/: senza, l'affermazione
+# "ogni numero e' ricalcolabile dai file salvati" e' falsa, perche' le
+# traiettorie epoca per epoca esistono solo qui. Pesano ~330 KB in tutto.
+!logs/SSL_completa.log
+!logs/SSL_completa_150-300.log
+!logs/SSL_mask80.log
+!logs/SSL_spinto.log
+!logs/sweep_collasso.log
+!logs/grid_casuale.log
+!logs/grid_spinto.log
+!logs/exp_accordo.log
+!logs/exp_spostamento.log
 
 # Notebook: output ripuliti prima del commit (vedi SETUP.md)
 .ipynb_checkpoints/

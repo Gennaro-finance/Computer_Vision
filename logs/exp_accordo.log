@@ -1,0 +1,25 @@
+[freno] Freno(carico=80%, run 1.25x piu' lungo)
+
+JEPA: latenti caricati in 2s
+  5 teste addestrate
+casuale: latenti caricati in 2s
+  5 teste addestrate
+
+1013 lesioni di test
+
+                                 macro-F1        PR-AUC PAI5
+--------------------------------------------------------------
+JEPA                       0.7672+-0.0121     0.8753+-0.0073
+casuale                    0.7705+-0.0111     0.8758+-0.0042
+ENSEMBLE dei due           0.7735+-0.0077     0.8822+-0.0019
+
+ensemble vs il migliore dei due: +0.0030  (0.4 err.std)
+
+--- accordo fra i due modelli ---
+  predizioni identiche      : 91.6%
+  errori del JEPA che sono  : 76.8%
+  anche errori del casuale
+  attesa se INDIPENDENTI    : 18.5%   (tasso d'errore del casuale)
+
+  Se la quota misurata e' molto sopra l'attesa, gli errori sono
+  CORRELATI: i due modelli sbagliano sugli stessi casi difficili.
