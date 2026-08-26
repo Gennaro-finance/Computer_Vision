@@ -343,17 +343,26 @@ def fig_alpha():
 
     fig, ax = plt.subplots(figsize=(7.4, 3.6))
     ax.axhline(0.8813, color=INK_SOFT, linestyle="--", linewidth=1.2, zorder=2)
-    ax.text(a[0], 0.8813 + 0.0006, "alpha 0.5 misurato a 5 seed: 0.8813",
-            fontsize=8.5, color=INK_MID, va="bottom")
     ax.errorbar(a, m, yerr=s_dev, color=BLU, linewidth=2, marker="o",
                 markersize=6, markeredgecolor="white", markeredgewidth=0.9,
                 capsize=4, zorder=3)
-    for x, y in zip(a, m):
-        etichetta(ax, x, y, f"{y:.4f}", dy=0.0012)
+    # i valori sotto il punto, sotto la barra d'errore: sopra finiscono
+    # addosso alla riga di riferimento, che passa proprio all'altezza del
+    # massimo
+    for x, y, e in zip(a, m, s_dev):
+        ax.text(x, y - e - 0.0007, f"{y:.4f}", ha="center", va="top",
+                fontsize=8.5, color=INK_MID)
+    # l'annotazione della riga va in basso a sinistra, dove non c'e' nulla
+    ax.text(0.02, 0.04, "riga tratteggiata: alpha 0.5 misurato\na 5 seed nella griglia, 0.8813",
+            transform=ax.transAxes, fontsize=8.5, color=INK_MID,
+            va="bottom", ha="left")
 
     ax.set_xlabel("alpha (0 = nessun ribilanciamento, 1 = pareggio effettivo)")
     ax.set_ylabel("PR-AUC su PAI 5")
     ax.set_xticks(a)
+    # margine sotto: le etichette stanno sotto la barra d'errore e senza
+    # questo l'ultima, la piu' bassa, finisce tagliata dall'asse
+    ax.set_ylim((m - s_dev).min() - 0.0028, (m + s_dev).max() + 0.0008)
     ax.yaxis.grid(True, zorder=0)
     ax.set_axisbelow(True)
     ax.set_title("Ablation su alpha, screening")
