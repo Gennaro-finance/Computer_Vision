@@ -9,7 +9,20 @@ import os
 import torch
 
 # ----------------------------------------------------------------- ambiente
-ON_KAGGLE = os.path.isdir("/kaggle/input")
+#
+# ATTENZIONE: `os.path.isdir("/kaggle/input")` NON basta per riconoscere
+# Kaggle. Su Google Colab quella cartella esiste comunque - c'e'
+# un'integrazione Kaggle preinstallata - ma e' VUOTA. Con il solo isdir, il
+# codice su Colab cercava il dataset in /kaggle/input/panoramic-periapical-
+# lesions e riportava "Nessun XML trovato", mentre sul disco ce n'erano
+# 17.004. Un fallimento che indica il posto sbagliato invece della causa.
+#
+# Si richiede quindi che la cartella esista E contenga qualcosa. In piu'
+# PERIAPICAL_DATA e PERIAPICAL_OUT permettono di imporre i percorsi
+# dall'esterno, senza toccare il codice: e' la via d'uscita quando il
+# rilevamento automatico sbaglia comunque.
+_kaggle_input = "/kaggle/input"
+ON_KAGGLE = os.path.isdir(_kaggle_input) and bool(os.listdir(_kaggle_input))
 
 if ON_KAGGLE:
     # Caricate il dataset Mendeley come Kaggle Dataset e aggiustate il nome.
@@ -18,6 +31,9 @@ if ON_KAGGLE:
 else:
     DATA_ROOT = "./data/periapical"
     OUT_DIR = "./runs"
+
+DATA_ROOT = os.environ.get("PERIAPICAL_DATA", DATA_ROOT)
+OUT_DIR = os.environ.get("PERIAPICAL_OUT", OUT_DIR)
 
 # Le tre cartelle del dataset Mendeley (DOI 10.17632/kx52tk2ddj.3).
 # ATTENZIONE ai nomi: l'archivio Mendeley usa "Image Annots", non
