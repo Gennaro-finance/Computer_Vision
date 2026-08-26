@@ -117,6 +117,56 @@ Una versione precedente di questo documento dava la novita' a "+0.046 a
 confronto attuale il margine in recall e' piu' stretto - va citata la F1 e
 la PR-AUC, che sono i primati veri.
 
+### Obiettivo 4 — ablation su alpha, il parametro della novita'
+
+FATTO il 26 ago su Colab (T4), encoder casuale, testa flat, misure sul test.
+Protocollo in due fasi: screening a 3 seed su tutte le alpha, poi le due
+migliori rimisurate su 5 seed DISGIUNTI da quelli dello screening (con 4
+candidati e una deviazione di ~0.006, selezionare e riportare sugli stessi
+seed gonfia il vincitore di circa una deviazione, dello stesso ordine
+dell'effetto cercato).
+
+alpha regola quante viste riceve ogni classe: n_c = ceil((max/n_c)^alpha).
+
+| alpha | viste [1,2,5] | istanze | PR-AUC5 (3 seed) | recall5 | prec5 |
+|---|---|---|---|---|---|
+| 0.25 | [1,2,2] | 6.421 | 0.8793 ±0.0049 | 0.7381 | 0.833 |
+| **0.50** | [1,2,3] | 6.894 | **0.8814 ±0.0071** | 0.7738 | 0.810 |
+| 0.75 | [1,2,5] | 7.840 | 0.8747 ±0.0028 | 0.7946 | 0.756 |
+| 1.00 | [1,3,7] | 10.015 | 0.8689 ±0.0069 | 0.7708 | 0.783 |
+
+Fase 2, 5 seed nuovi: alpha 0.50 -> 0.8797 ±0.0043, alpha 0.25 -> 0.8775
+±0.0048. Distanza 0.8 errori standard: equivalenti.
+
+**Il massimo e' interno.** alpha 0.50 batte alpha 1.00 di +0.0125 a 2.2
+errori standard. Ribilanciare di piu' non e' meglio: le viste sono
+sottoinsiemi di token della STESSA lesione, quindi fortemente correlate, e
+sette viste di un PAI 5 non fanno sette esempi - fanno un esempio contato
+sette volte, che sposta il confine di decisione senza aggiungere
+informazione.
+
+**Previsione smentita.** `exp_alpha.py` prevedeva alpha 1.00 come vincitore,
+perche' a 10.015 istanze entra nello stesso regime di `oversample` (9.051).
+E' invece la peggiore. Il docstring del file conserva la previsione: e'
+l'ipotesi che l'esperimento ha falsificato, non un errore da correggere.
+
+**Il confronto piu' pulito per l'obiettivo 3** e' ad alpha 0.75, dove la
+novita' raggiunge lo stesso punto di lavoro di `oversample` sullo stesso
+encoder e stessa testa - recall 0.7946 contro 0.7929, precisione 0.756
+contro 0.752 - ma con PR-AUC 0.8747 contro 0.8636, **+0.0111**. Stesso
+ribilanciamento, stesso compromesso recall/precisione, ordinamento
+migliore: la differenza e' attribuibile ai sottoinsiemi di token genuini
+invece dei duplicati identici.
+
+**Riproducibilita'.** alpha 0.50 e' stato misurato tre volte in modo
+indipendente: 0.8813 (griglia, seed 0-4), 0.8814 (screening, seed 0-2),
+0.8797 (fase 2, seed 10-14). Scarto massimo 0.0017.
+
+Conseguenza pratica: il default alpha=0.5, scelto senza ottimizzarlo, era
+gia' il migliore. Tutti i numeri della griglia restano validi come sono.
+Dati in `runs/sweep_alpha_vit_small_L2-7-11_casuale.json`, figura
+`runs/figures/fin5_alpha.png`.
+
 ### Obiettivo 1/2 — il pre-training non batte l'inizializzazione casuale
 
 VERIFICATO il 25 ago con il braccio casuale misurato collo stesso
@@ -198,15 +248,13 @@ paper con EMA 0.9996.
 
 Mancano:
 
-1. **Sweep di alpha** per `balanced_token_sampling`: e' l'unico esperimento
-   rimasto che puo' MIGLIORARE un risultato invece di misurarne meglio uno
-   negativo. Tutti i numeri usano alpha=0.5 preso come default, mai
-   ottimizzato.
-2. Le quattro teste rimanenti (norm, mlp e varianti ordinali): le due
+1. Le quattro teste rimanenti (norm, mlp e varianti ordinali): le due
    misurate dicono che il LayerNorm non sposta la media ma DIMEZZA la
    dispersione, da 0.0079 a 0.0031.
-3. Figure, slide, README con il link Mendeley al dataset.
-4. Form entro il 6 settembre.
+2. Slide, README con il link Mendeley al dataset.
+3. Form entro il 6 settembre.
+
+SWEEP DI ALPHA: chiuso, vedi sezione 4. Il default era gia' il migliore.
 
 CONFRONTO PRINCIPALE: chiuso. Il braccio casuale e' misurato, l'indizio
 sulla PR-AUC verificato e smentito. Non serve altra sperimentazione
