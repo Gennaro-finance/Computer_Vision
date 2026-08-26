@@ -73,18 +73,38 @@ md("""
 ## 3 - Il codice, da GitHub
 
 Se hai gia' clonato in una sessione precedente, questa cella aggiorna e basta.
+
+Niente comandi con `!` qui dentro: IPython non li trasforma in modo
+affidabile quando stanno dentro un `if`, e il fallimento e' oscuro. Con
+`subprocess` il comando che ha fallito e il suo errore si leggono per
+intero.
 """)
 code("""
 REPO = 'https://github.com/Gennaro-finance/Computer_Vision.git'
+DEST = '/content/progetto'
 
-import os
-if os.path.isdir('/content/progetto/.git'):
-    !cd /content/progetto && git pull --quiet
+import os, subprocess
+
+
+def esegui(cmd, cwd=None):
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    if r.returncode != 0:
+        print('COMANDO FALLITO:', ' '.join(cmd))
+        print((r.stdout or '') + (r.stderr or ''))
+        raise SystemExit('vedi sopra')
+    return (r.stdout or '').strip()
+
+
+if os.path.isdir(os.path.join(DEST, '.git')):
+    esegui(['git', 'pull', '--quiet'], cwd=DEST)
+    print('repo aggiornato')
 else:
-    !git clone --quiet $REPO /content/progetto
+    esegui(['git', 'clone', '--quiet', REPO, DEST])
+    print('repo clonato')
 
-%cd /content/progetto
-!git log --oneline -1
+os.chdir(DEST)
+print('cartella:', os.getcwd())
+print('commit  :', esegui(['git', 'log', '--oneline', '-1']))
 """)
 
 md("""
