@@ -139,28 +139,44 @@ problemi = []
 
 # --- dataset (necessario)
 # Due modi, in ordine di preferenza:
-#   1. un archivio unico su Drive, scompattato in locale
+#   1. un archivio unico su Drive, scompattato sul disco locale
 #   2. la cartella gia' espansa su Drive, collegata con symlink
 # Il primo e' molto piu' veloce: il dataset sono 20.928 file, e Drive - sia
 # nel caricamento dal browser sia in lettura via FUSE - va male con tanti
 # file piccoli. Un archivio da 850 MB si carica una volta e si scompatta in
 # un paio di minuti sul disco locale di Colab, che poi legge veloce.
-ZIP = BASE + '/periapical_data.zip'
+DATA = '/content/progetto/data'
 
-if not os.path.exists('/content/progetto/data'):
-    if os.path.isfile(ZIP):
+# L'archivio si cerca OVUNQUE sotto BASE, non in un percorso fisso: e'
+# facilissimo caricarlo dentro la sottocartella sbagliata, e in quel caso
+# la ricerca in un punto solo fallisce in modo fuorviante - ripiega sul
+# symlink a una cartella che contiene lo zip e nessuna immagine, e riporta
+# "0 immagini" come se il dataset mancasse.
+zip_trovati = sorted(glob.glob(BASE + '/**/*.zip', recursive=True))
+
+# Un collegamento rimasto da un tentativo precedente punta alla cartella
+# sbagliata e impedisce ogni correzione: si toglie.
+if os.path.islink(DATA) and len(glob.glob(DATA + '/**/*.jpg', recursive=True)) == 0:
+    os.unlink(DATA)
+    print('rimosso un collegamento precedente che non conteneva immagini')
+
+if not os.path.exists(DATA):
+    if zip_trovati:
         import zipfile, time
+        scelto = zip_trovati[0]
+        print(f'archivio: {scelto.replace(BASE, "")} '
+              f'({os.path.getsize(scelto)/1e6:.0f} MB)')
         t = time.time()
-        with zipfile.ZipFile(ZIP) as z:
-            z.extractall('/content/progetto/data')
-        print(f'archivio scompattato in {time.time()-t:.0f}s')
-    elif os.path.isdir(BASE + '/data'):
-        os.symlink(BASE + '/data', '/content/progetto/data')
+        with zipfile.ZipFile(scelto) as z:
+            z.extractall(DATA)
+        print(f'scompattato in {time.time()-t:.0f}s')
+    elif glob.glob(BASE + '/data/**/*.jpg', recursive=True):
+        os.symlink(BASE + '/data', DATA)
         print('cartella data/ collegata da Drive')
     else:
         problemi.append(
-            'dataset assente. Carica periapical_data.zip in ' + BASE +
-            ' (consigliato), oppure la cartella data/ in ' + BASE + '/data')
+            'dataset assente. Carica periapical_data.zip da qualsiasi parte '
+            'dentro ' + BASE)
 
 n_img = len(glob.glob('/content/progetto/data/**/*.jpg', recursive=True))
 n_xml = len(glob.glob('/content/progetto/data/**/*.xml', recursive=True))
