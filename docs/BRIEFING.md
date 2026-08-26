@@ -158,6 +158,13 @@ ribilanciamento, stesso compromesso recall/precisione, ordinamento
 migliore: la differenza e' attribuibile ai sottoinsiemi di token genuini
 invece dei duplicati identici.
 
+Da dire per onesta': `focal` sta quasi sullo stesso punto di lavoro (recall
+0.7964, precisione 0.751) con PR-AUC 0.8734, appena 0.0013 sotto alpha 0.75.
+Il vantaggio di +0.0111 vale contro `oversample`, non contro qualunque
+metodo di ribilanciamento. Il primato della novita' resta ad alpha 0.50,
+dove ottiene la PR-AUC piu' alta con una precisione che nessun altro metodo
+raggiunge a quella recall.
+
 **Riproducibilita'.** alpha 0.50 e' stato misurato tre volte in modo
 indipendente: 0.8813 (griglia, seed 0-4), 0.8814 (screening, seed 0-2),
 0.8797 (fase 2, seed 10-14). Scarto massimo 0.0017.
