@@ -32,8 +32,13 @@ Notebook di lavoro per quando l'hardware locale non e' utilizzabile.
 
 | cosa | dimensione | dove | serve? |
 |---|---|---|---|
-| il dataset | 860 MB | `MyDrive/periapical/data/` | **si', sempre** |
+| `periapical_data.zip` | 850 MB | `MyDrive/periapical/` | **si', sempre** |
 | un checkpoint | 175 MB | `MyDrive/periapical/checkpoints/` | solo con `CASUALE = False` |
+
+Carica l'**archivio**, non la cartella espansa: il dataset sono 20.928 file,
+e il caricatore di Drive con tanti file piccoli e' lentissimo e spesso
+fallisce a meta'. Un file solo si carica una volta e si scompatta in Colab
+in un paio di minuti.
 
 `splits.json` **non** va portato: e' versionato nel repo e arriva col clone.
 Anche i risultati gia' misurati arrivano da GitHub.
@@ -121,8 +126,10 @@ md("""
   Per lo sweep di alpha non serve: gira sull'encoder casuale, che e' il
   riferimento e detiene i due primati assoluti.
 
-Il dataset si collega con un symlink invece di copiarlo: 860 MB ricopiati a
-ogni sessione sono minuti persi, e Drive li serve direttamente.
+Il dataset si prende dall'archivio su Drive e si scompatta sul disco locale
+di Colab. Costa un paio di minuti per sessione, ma poi le letture sono
+veloci: Drive via FUSE e' lento proprio sui tanti file piccoli, che e'
+esattamente la forma di questo dataset.
 """)
 code("""
 import os, glob
@@ -131,12 +138,29 @@ os.makedirs('/content/progetto/runs/checkpoints', exist_ok=True)
 problemi = []
 
 # --- dataset (necessario)
+# Due modi, in ordine di preferenza:
+#   1. un archivio unico su Drive, scompattato in locale
+#   2. la cartella gia' espansa su Drive, collegata con symlink
+# Il primo e' molto piu' veloce: il dataset sono 20.928 file, e Drive - sia
+# nel caricamento dal browser sia in lettura via FUSE - va male con tanti
+# file piccoli. Un archivio da 850 MB si carica una volta e si scompatta in
+# un paio di minuti sul disco locale di Colab, che poi legge veloce.
+ZIP = BASE + '/periapical_data.zip'
+
 if not os.path.exists('/content/progetto/data'):
-    if os.path.isdir(BASE + '/data'):
+    if os.path.isfile(ZIP):
+        import zipfile, time
+        t = time.time()
+        with zipfile.ZipFile(ZIP) as z:
+            z.extractall('/content/progetto/data')
+        print(f'archivio scompattato in {time.time()-t:.0f}s')
+    elif os.path.isdir(BASE + '/data'):
         os.symlink(BASE + '/data', '/content/progetto/data')
+        print('cartella data/ collegata da Drive')
     else:
         problemi.append(
-            'dataset assente. Carica la cartella `data/` in ' + BASE + '/data')
+            'dataset assente. Carica periapical_data.zip in ' + BASE +
+            ' (consigliato), oppure la cartella data/ in ' + BASE + '/data')
 
 n_img = len(glob.glob('/content/progetto/data/**/*.jpg', recursive=True))
 n_xml = len(glob.glob('/content/progetto/data/**/*.xml', recursive=True))

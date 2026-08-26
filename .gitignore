@@ -70,3 +70,6 @@ Thumbs.db
 
 # TensorBoard: event file binari, crescono e si rigenerano a ogni run
 runs/tb/
+
+# Archivi di trasferimento: 850 MB, si rigenerano da data/
+*.zip
