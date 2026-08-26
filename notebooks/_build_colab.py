@@ -216,10 +216,25 @@ md("""
 e' corretto.
 """)
 code("""
-import sys
-sys.path.insert(0, '/content/progetto')
+# Cartella e percorso di ricerca si rimettono a posto QUI, non si danno per
+# scontati: dopo un riavvio della sessione la cartella corrente torna a
+# /content e sys.path perde il progetto, quindi `from data import ...`
+# fallisce con un ModuleNotFoundError che non spiega niente.
+import os, sys
+
+os.chdir('/content/progetto')
+if '/content/progetto' not in sys.path:
+    sys.path.insert(0, '/content/progetto')
+
 from data import parse_annotations, load_splits
-from globals import NUM_CLASSES
+from globals import DATA_ROOT, NUM_CLASSES
+
+print('cartella :', os.getcwd())
+print('DATA_ROOT:', DATA_ROOT)
+if not os.path.isdir(DATA_ROOT):
+    raise SystemExit(
+        'DATA_ROOT non esiste. Se punta a /kaggle/... rilancia la cella 3 '
+        '(git pull) e riavvia la sessione: la correzione e nel repo.')
 
 recs = parse_annotations(verbose=False)
 sp = load_splits()
