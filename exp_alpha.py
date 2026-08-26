@@ -22,15 +22,17 @@ PROTOCOLLO IN DUE FASI
   1. screening su 3 seed, tutte le alpha
   2. le 2 migliori rimisurate su 5 seed DISGIUNTI
 
-I seed della fase 2 non riusano quelli della fase 1, ed e' il punto che
-rende il protocollo onesto: selezionare su una misura rumorosa e poi
-riportare quella stessa misura gonfia il vincitore. Con 4 candidati e una
-deviazione di ~0.008, il massimo di 4 estrazioni e' distorto verso l'alto
-di circa una deviazione - dello stesso ordine dell'effetto cercato. Seed
-disgiunti eliminano la distorsione invece di doverla dichiarare.
+I seed della fase 2 non riusano quelli della fase 1: selezionare su una
+misura rumorosa e poi riportare quella stessa misura gonfia il vincitore.
+Con 4 candidati e una deviazione di ~0.008, il massimo di 4 estrazioni e'
+distorto verso l'alto di circa una deviazione - dello stesso ordine
+dell'effetto cercato. Seed disgiunti eliminano la distorsione.
 
-TERMOSTATO invece di freno a ciclo fisso: la GPU lavora a pieno regime e si
-ferma solo quando supera la soglia, invece di rallentare sempre del 30%.
+FRENO A CICLO DI LAVORO, non termostato. Il termostato controllava la
+temperatura solo FRA un seed e l'altro, e un seed dura minuti: la GPU
+arrivava a 88 C - la temperatura a cui questa macchina si e' spenta - senza
+che il controllo scattasse. Il freno invece agisce a ogni singolo
+addestramento, e a carico 70 ha retto quattro ore a 71-72 C.
 """
 
 import json
@@ -41,10 +43,9 @@ import torch
 
 from evaluation import evaluate_split
 from train_downstream import load_latents, train_head
-from utils import Termostato
+from utils import Freno
 
-SOGLIA = 80        # gradi: sopra questa la GPU si ferma
-RIPARTI = 72       # gradi: sotto questa riprende
+CARICO = 70        # GPU attiva il 70% del tempo
 TAG = "_casuale"   # l'encoder dove vive il picco della novita'
 ALPHAS = [0.25, 0.50, 0.75, 1.00]
 SEED_SCREENING = [0, 1, 2]
@@ -52,16 +53,17 @@ SEED_FINALI = [10, 11, 12, 13, 14]     # disgiunti da quelli sopra
 HEAD = "flat"
 
 
-def misura(cached, alpha, seeds, term):
+def misura(cached, alpha, seeds, freno):
     """Media e deviazione su `seeds`, valutate sul TEST."""
     f1, pr, rec, prec = [], [], [], []
     for s in seeds:
+        t0 = time.perf_counter()
         clf, _ = train_head(cached, "balanced_tokens", HEAD, seed=s,
                             bts_alpha=alpha)
         r = evaluate_split(clf, cached["data"]["test"], HEAD)
         del clf
         torch.cuda.empty_cache()
-        term.controlla()
+        freno.pausa(t0)
         f1.append(r["macro_f1"])
         pr.append(r["pr_auc_pai5"])
         rec.append(r["recall_pai5"])
@@ -78,8 +80,8 @@ def riga(a, m):
 
 
 if __name__ == "__main__":
-    term = Termostato(soglia=SOGLIA, riparti=RIPARTI)
-    print(f"[termostato] {term}", flush=True)
+    freno = Freno(CARICO)
+    print(f"[freno] {freno}", flush=True)
     t0 = time.time()
     cached = load_latents("vit_small", layers=[2, 7, 11], tag=TAG)
     print(f"latenti caricati in {time.time()-t0:.0f}s", flush=True)
@@ -92,7 +94,7 @@ if __name__ == "__main__":
     print("-" * 62)
     scr = {}
     for a in ALPHAS:
-        scr[a] = misura(cached, a, SEED_SCREENING, term)
+        scr[a] = misura(cached, a, SEED_SCREENING, freno)
         print(riga(a, scr[a]), flush=True)
 
     migliori = sorted(ALPHAS, key=lambda a: -scr[a]["pr_auc"][0])[:2]
@@ -102,7 +104,7 @@ if __name__ == "__main__":
     print("-" * 62)
     fin = {}
     for a in migliori:
-        fin[a] = misura(cached, a, SEED_FINALI, term)
+        fin[a] = misura(cached, a, SEED_FINALI, freno)
         print(riga(a, fin[a]), flush=True)
 
     # riferimenti gia' misurati sullo stesso encoder, stessa testa, stesso test
@@ -131,6 +133,4 @@ if __name__ == "__main__":
                    "seed_screening": SEED_SCREENING,
                    "seed_finali": SEED_FINALI}, f, indent=2)
 
-    print(f"\n[termostato] {term.pause} pause, "
-          f"{term.pausa_totale/60:.1f} min totali, "
-          f"temperatura massima vista {term.t_max} C")
+    print(f"\n[freno] pausa accumulata: {freno.pausa_totale/60:.1f} min")
