@@ -30,13 +30,16 @@ Notebook di lavoro per quando l'hardware locale non e' utilizzabile.
 
 **Da mettere su Google Drive una volta sola:**
 
-| cosa | dimensione | dove |
-|---|---|---|
-| il dataset | 860 MB | `MyDrive/periapical/data/` |
-| un checkpoint dell'encoder | 175 MB | `MyDrive/periapical/checkpoints/` |
-| `splits.json` | 55 KB | `MyDrive/periapical/` |
+| cosa | dimensione | dove | serve? |
+|---|---|---|---|
+| il dataset | 860 MB | `MyDrive/periapical/data/` | **si', sempre** |
+| un checkpoint | 175 MB | `MyDrive/periapical/checkpoints/` | solo con `CASUALE = False` |
 
-Il resto - codice e risultati gia' misurati - arriva da GitHub.
+`splits.json` **non** va portato: e' versionato nel repo e arriva col clone.
+Anche i risultati gia' misurati arrivano da GitHub.
+
+Per lo sweep di alpha basta il dataset: gira sull'encoder casuale, che e'
+il riferimento e detiene i due primati assoluti.
 
 Esegui le celle in ordine. **La cella 5 verifica che l'ambiente sia
 corretto**: se passa, i risultati saranno confrontabili con quelli gia'
@@ -108,32 +111,62 @@ print('commit  :', esegui(['git', 'log', '--oneline', '-1']))
 """)
 
 md("""
-## 4 - Collegare dati e checkpoint
+## 4 - Collegare i dati
 
-Collegamenti simbolici invece di copie: 860 MB copiati a ogni sessione sono
-minuti persi, e Drive li serve direttamente.
+**L'unica cosa davvero necessaria e' il dataset.**
+
+- `splits.json` arriva **col clone**: e' versionato nel repo, non serve
+  portarlo su Drive.
+- Il **checkpoint serve solo** se nella cella 7 metti `CASUALE = False`.
+  Per lo sweep di alpha non serve: gira sull'encoder casuale, che e' il
+  riferimento e detiene i due primati assoluti.
+
+Il dataset si collega con un symlink invece di copiarlo: 860 MB ricopiati a
+ogni sessione sono minuti persi, e Drive li serve direttamente.
 """)
 code("""
-import os, shutil
+import os, glob
+
 os.makedirs('/content/progetto/runs/checkpoints', exist_ok=True)
+problemi = []
 
+# --- dataset (necessario)
 if not os.path.exists('/content/progetto/data'):
-    os.symlink(BASE + '/data', '/content/progetto/data')
+    if os.path.isdir(BASE + '/data'):
+        os.symlink(BASE + '/data', '/content/progetto/data')
+    else:
+        problemi.append(
+            'dataset assente. Carica la cartella `data/` in ' + BASE + '/data')
 
-# splits.json: senza, gli split verrebbero RIGENERATI e i numeri non
-# sarebbero piu' confrontabili con quelli gia' misurati.
-if os.path.isfile(BASE + '/splits.json'):
-    shutil.copy(BASE + '/splits.json', '/content/progetto/runs/splits.json')
-    print('splits.json copiato da Drive')
+n_img = len(glob.glob('/content/progetto/data/**/*.jpg', recursive=True))
+n_xml = len(glob.glob('/content/progetto/data/**/*.xml', recursive=True))
+print(f'dataset    : {n_img} immagini, {n_xml} xml   (attese 3924 immagini)')
+if n_img == 0:
+    problemi.append('la cartella data/ e\\' vuota o il symlink e\\' rotto')
+elif n_img != 3924:
+    print('  numero diverso dal previsto: i risultati potrebbero non combaciare')
+
+# --- split (dal repo, non da Drive)
+sp_path = '/content/progetto/runs/splits.json'
+print(f'splits.json: {"presente nel repo" if os.path.isfile(sp_path) else "ASSENTE"}')
+if not os.path.isfile(sp_path):
+    problemi.append('splits.json mancante: verifica che il clone sia riuscito')
+
+# --- checkpoint (facoltativi)
+if os.path.isdir(BASE + '/checkpoints'):
+    for f in os.listdir(BASE + '/checkpoints'):
+        dst = '/content/progetto/runs/checkpoints/' + f
+        if not os.path.exists(dst):
+            os.symlink(BASE + '/checkpoints/' + f, dst)
+trovati = os.listdir('/content/progetto/runs/checkpoints')
+print(f'checkpoint : {trovati if trovati else "nessuno (va bene: servono solo con CASUALE = False)"}')
+
+print()
+if problemi:
+    for p in problemi:
+        print('DA SISTEMARE:', p)
 else:
-    print('ATTENZIONE: splits.json non trovato su Drive.')
-    print('Verra rigenerato, e i risultati NON saranno confrontabili.')
-
-for f in os.listdir(BASE + '/checkpoints'):
-    dst = '/content/progetto/runs/checkpoints/' + f
-    if not os.path.exists(dst):
-        os.symlink(BASE + '/checkpoints/' + f, dst)
-print('checkpoint:', os.listdir('/content/progetto/runs/checkpoints'))
+    print('tutto a posto, prosegui')
 """)
 
 md("""
