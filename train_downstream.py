@@ -309,7 +309,7 @@ def run_grid(variant=DEFAULT_VARIANT, methods=None, heads=None,
 
 
 def sweep_alpha(variant=DEFAULT_VARIANT, alphas=None, heads=None,
-                seeds=None, layers=None):
+                seeds=None, layers=None, tag=""):
     """
     Ablation su alpha della novita' - richiesto dall'obiettivo 4.
 
@@ -358,7 +358,7 @@ def sweep_alpha(variant=DEFAULT_VARIANT, alphas=None, heads=None,
               f"  prec5={agg['precision_pai5_mean']:.3f}")
 
     suff = "" if layers is None else "_L" + "-".join(map(str, layers))
-    path = os.path.join(OUT_DIR, f"sweep_alpha_{variant}{suff}.json")
+    path = os.path.join(OUT_DIR, f"sweep_alpha_{variant}{suff}{tag}.json")
     save_json(rows, path)
     print(f"\nRisultati in {path}")
     return rows
@@ -387,7 +387,7 @@ if __name__ == "__main__":
         cache_latents(a.variant, layers=a.layers, ckpt_tag=a.ckpt_tag,
                       casuale=a.random, tag=a.tag)
     elif a.sweep_alpha:
-        sweep_alpha(a.variant, layers=a.layers)
+        sweep_alpha(a.variant, layers=a.layers, tag=a.tag)
     elif a.grid:
         run_grid(a.variant, layers=a.layers, tag=a.tag)
     else:

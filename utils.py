@@ -531,3 +531,110 @@ class Freno:
     def __repr__(self):
         return (f"Freno(carico={self.carico:.0f}%, "
                 f"run {1/(self.carico/100):.2f}x piu' lungo)")
+
+
+# ==========================================================================
+# Termostato: pieno regime, ma con pause quando la GPU scotta
+# ==========================================================================
+def temperatura_gpu():
+    """Temperatura della GPU in gradi, o None se nvidia-smi non risponde.
+
+    Il timeout non e' cosmetico: se nvidia-smi si impianta, un controllo
+    ogni pochi secondi bloccherebbe il training invece di proteggerlo."""
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=temperature.gpu",
+             "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5)
+        return int(out.stdout.strip().splitlines()[0])
+    except Exception:
+        return None
+
+
+class Termostato:
+    """
+    Lascia lavorare la GPU a PIENO REGIME e la ferma solo quando scotta.
+
+    DIFFERENZA DAL FRENO A CICLO FISSO. Freno(carico=80) toglie il 20% del
+    tempo sempre, anche quando la scheda e' fredda: paga il 25% di durata in
+    piu' a prescindere. Il termostato non paga niente finche' la temperatura
+    resta sotto soglia, e interviene solo quando serve. Su un carico che
+    scalda a intermittenza - come una griglia di teste, dove fra un
+    addestramento e l'altro la GPU respira - la differenza e' grossa.
+
+    ISTERESI, ed e' il punto che rende il meccanismo utile invece che
+    fastidioso: si ferma a `soglia` ma riparte solo a `riparti`, piu' bassa.
+    Con una soglia sola il sistema oscillerebbe attorno a quel valore
+    facendo micro-pause continue, senza mai far scendere davvero la
+    temperatura.
+
+    VALORI, misurati su questa macchina:
+        88 C   griglia a pieno regime -> spegnimento improvviso
+        71-72  con freno all'80%, stabile per ore
+        60-71  a riposo
+    Da cui soglia 80 e ripartenza 72: si interviene prima della fascia in
+    cui la macchina e' morta, e si torna al regime che ha retto quattro ore.
+
+    ATTENZIONE: la temperatura NON e' la causa provata degli spegnimenti.
+    La diagnosi piu' probabile e' la batteria al 74% che non tampona i
+    picchi di corrente, e quelli il termostato non li tocca. Riduce il
+    carico termico sostenuto, che e' un fattore correlato, non il
+    meccanismo.
+
+        term = Termostato(soglia=80, riparti=72)
+        for batch in loader:
+            ... passo ...
+            term.controlla()
+    """
+
+    def __init__(self, soglia=80, riparti=72, ogni=20.0, attesa_max=300):
+        if riparti >= soglia:
+            raise ValueError("`riparti` deve essere sotto `soglia`: senza "
+                             "isteresi il termostato oscilla")
+        self.soglia, self.riparti = soglia, riparti
+        self.ogni = ogni                  # secondi fra un controllo e l'altro
+        self.attesa_max = attesa_max      # non bloccarsi all'infinito
+        self._ultimo = 0.0
+        self.pause = 0
+        self.pausa_totale = 0.0
+        self.t_max = 0
+
+    def controlla(self, verbose=True):
+        """Da chiamare a fine passo. Legge la temperatura al massimo una
+        volta ogni `ogni` secondi: leggerla a ogni passo costerebbe piu' del
+        passo stesso."""
+        ora = time.time()
+        if ora - self._ultimo < self.ogni:
+            return 0.0
+        self._ultimo = ora
+
+        t = temperatura_gpu()
+        if t is None:
+            return 0.0
+        self.t_max = max(self.t_max, t)
+        if t < self.soglia:
+            return 0.0
+
+        t0 = time.time()
+        if verbose:
+            print(f"  [termostato] {t} C sopra la soglia di {self.soglia}: "
+                  f"pausa fino a {self.riparti} C", flush=True)
+        while time.time() - t0 < self.attesa_max:
+            time.sleep(5)
+            t = temperatura_gpu()
+            if t is None or t <= self.riparti:
+                break
+        att = time.time() - t0
+        self.pause += 1
+        self.pausa_totale += att
+        self._ultimo = time.time()
+        if verbose:
+            print(f"  [termostato] ripreso a {t} C dopo {att:.0f}s "
+                  f"(pausa {self.pause}, totale {self.pausa_totale/60:.1f} min)",
+                  flush=True)
+        return att
+
+    def __repr__(self):
+        return (f"Termostato(pausa sopra {self.soglia} C, riprende a "
+                f"{self.riparti} C, controllo ogni {self.ogni:.0f}s)")

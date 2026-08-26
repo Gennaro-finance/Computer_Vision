@@ -41,7 +41,7 @@ EMA_END = SSL_EMA_END
 LR = SSL_LR
 GATE_AT = GATE_EPOCH
 from utils import (
-    Freno, effective_rank_centered,
+    Freno, Termostato, effective_rank_centered,
     AverageMeter, CollapseMonitor, knn_probe, load_checkpoint, save_checkpoint,
     set_seed,
 )
@@ -333,7 +333,7 @@ def run_probe(model, records, splits, completo=False):
     return p
 
 def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
-          resume=False, smoke=False, tag="", carico=100):
+          resume=False, smoke=False, tag="", carico=100, soglia_gpu=0):
     set_seed()
     # Il tag tiene separati i checkpoint di run paralleli: senza, due varianti
     # lanciate insieme si sovrascrivono a vicenda lo stesso file.
@@ -396,6 +396,9 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
     brake = Freno(carico)
     if carico < 100:
         print(f"[freno] {brake}")
+    term = Termostato(soglia=soglia_gpu, riparti=soglia_gpu - 8) if soglia_gpu else None
+    if term:
+        print(f"[termostato] {term}")
 
     # TensorBoard: curve dal vivo. Mentre un run gira, in un altro terminale:
     #     .venv\Scripts\tensorboard --logdir runs\tb
@@ -517,6 +520,8 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
 
             # Freno a fine passo: abbassa il ciclo di lavoro della GPU.
             brake.pausa(t_passo)
+            if term:
+                term.controlla()
 
         knn = None
         if (epoch + 1) % KNN_PROBE_EVERY == 0 or epoch == epochs - 1:
@@ -684,6 +689,11 @@ if __name__ == "__main__":
     ap.add_argument("--lr", type=float, default=None)
     ap.add_argument("--ema-start", type=float, default=None,
                     help="momentum EMA iniziale: piu' alto = target piu' lento = meno collasso")
+    ap.add_argument("--soglia-gpu", type=int, default=0,
+                    help="gradi oltre i quali fermarsi finche' la GPU non "
+                         "scende di 8. 0 = disattivato. Alternativa a "
+                         "--carico: non paga nulla finche' la scheda e' "
+                         "fredda, invece di rallentare sempre")
     ap.add_argument("--carico", type=int, default=100,
                     help="percentuale di tempo in cui la GPU lavora. 80 = "
                          "lavora l'80%% e riposa il 20%%, run 1.25x piu' "
@@ -726,4 +736,4 @@ if __name__ == "__main__":
           f"target={network.TARGET_SCALE} predictor_dim={network.PREDICTOR_DIM} "
           f"workers={data_mod.NUM_WORKERS}")
     train(a.variant, a.epochs, a.batch_size, a.resume, a.smoke, a.tag,
-          carico=a.carico)
+          carico=a.carico, soglia_gpu=a.soglia_gpu)
