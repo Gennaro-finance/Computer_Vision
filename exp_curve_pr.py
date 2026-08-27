@@ -65,14 +65,37 @@ if __name__ == "__main__":
     print(f"prevalenza di PAI 5 nel test: {prevalenza:.4f} "
           f"(e' il pavimento della curva: un classificatore casuale sta li')")
 
-    fuori = {"tag": a.tag, "head": a.head, "seeds": a.seeds,
+    fuori = {"tag": a.tag, "head": a.head, "seeds": a.seeds, "alpha": a.alpha,
              "prevalenza_pai5": prevalenza, "recall_lavoro": RECALL_LAVORO,
              "curve": {}, "precisione_a_recall": {}, "pr_auc": {}}
+    percorso = os.path.join(OUT_DIR, f"curve_pr_{a.variant}{a.tag}.json")
+
+    # RIPARTENZA, e salvataggio dopo OGNI metodo invece che alla fine. Sono
+    # cinque metodi per cinque seed, circa un'ora: salvare solo in fondo
+    # significa che un'interruzione al minuto cinquanta butta via tutto. E
+    # le interruzioni qui sono previste - sorveglia.py ferma il comando
+    # apposta se la GPU sfora.
+    if os.path.isfile(percorso):
+        with open(percorso, encoding="utf-8") as f:
+            vecchio = json.load(f)
+        if all(vecchio.get(k) == v for k, v in
+               (("seeds", a.seeds), ("head", a.head), ("alpha", a.alpha))):
+            fuori = vecchio
+            print(f"Riprendo: {len(fuori['curve'])} metodi gia' su disco")
+        else:
+            print(f"{os.path.basename(percorso)} esiste ma con un altro "
+                  f"protocollo: riparto da capo")
 
     print(f"\n  {'metodo':18s} {'PR-AUC5':>9s}   "
           + "  ".join(f"prec@r{r:.2f}" for r in RECALL_LAVORO))
     print("  " + "-" * 60)
     for m in a.metodi:
+        if m in fuori["curve"]:
+            pr = fuori["precisione_a_recall"][m]
+            print(f"  {m:18s} {fuori['pr_auc'][m][0]:.4f}    "
+                  + "     ".join(f"{pr[f'{r:.2f}']:.3f}" for r in RECALL_LAVORO)
+                  + "   [da disco]")
+            continue
         curve, aree = [], []
         for s in a.seeds:
             t0 = time.perf_counter()
@@ -98,8 +121,8 @@ if __name__ == "__main__":
         print(f"  {m:18s} {fuori['pr_auc'][m][0]:.4f}    "
               + "     ".join(f"{prec[f'{r:.2f}']:.3f}" for r in RECALL_LAVORO),
               flush=True)
+        save_json(fuori, percorso)
 
-    percorso = os.path.join(OUT_DIR, f"curve_pr_{a.variant}{a.tag}.json")
     save_json(fuori, percorso)
     print(f"\nRisultati in {percorso}")
     print("Ora: python figure_finali.py  ->  fin6_curve_pr.png")
