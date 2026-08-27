@@ -36,6 +36,7 @@ from globals import FIG_DIR, OUT_DIR
 BLU, ARANCIO, ACQUA = "#2a78d6", "#eb6834", "#1baf7a"
 INK, INK_MID, INK_SOFT = "#151b21", "#4a5560", "#6e7a85"
 GRIGLIA = "#e2e7eb"
+BIANCO_CARTA = "#ffffff"
 
 plt.rcParams.update({
     "figure.dpi": 130,
@@ -400,6 +401,105 @@ def fig_sonde():
     return salva(fig, "fin7_sonde")
 
 
+def fig_mascheramento():
+    """
+    Il canale nascosto: cosa succede quando la maschera smette di dire la
+    dimensione della lesione.
+
+    A SINISTRA il confronto fra protocolli. La barra grigia in cima e' la
+    MASCHERA DA SOLA, one-hot, senza un solo pixel: nel protocollo del
+    brief batte il vettore completo dell'encoder casuale. E' il numero che
+    spiega tutto il resto.
+
+    A DESTRA lo sweep su K con K uguale per tutte le classi. Il casuale
+    resta schiacciato a ogni K; il divario si apre invece di chiudersi.
+
+    Le barre non partono da zero perche' il pavimento utile non e' zero ma
+    0,2589, la macro-F1 di un classificatore costante: sotto quella soglia
+    non c'e' niente da leggere. La riga tratteggiata la marca.
+    """
+    percorso = os.path.join(OUT_DIR, "mascheramento_vit_small.json")
+    if not os.path.isfile(percorso):
+        print("  salto fin8_mascheramento: lanciare prima exp_mascheramento.py")
+        return None
+    with open(percorso, encoding="utf-8") as f:
+        d = json.load(f)
+    P, tags = d["protocolli"], ["_casuale", "_geo_completa"]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.6, 4.3),
+                                   gridspec_kw={"width_ratios": [1.25, 1]})
+
+    # ---- sinistra: protocolli a confronto ----
+    ordine = ["P1_bbox", "P2d_conteggio_scorrelato", "P2c_centrale_fisso",
+              "P2b_griglia_fissa", "P2a_casuale_K36"]
+    nomi = {"P1_bbox": "maschera bbox\n(16/36/64 token)",
+            "P2d_conteggio_scorrelato": "conteggio scorrelato\ndalla classe",
+            "P2c_centrale_fisso": "blocco centrale\nfisso, 36",
+            "P2b_griglia_fissa": "griglia fissa\n6x6, 36",
+            "P2a_casuale_K36": "36 token a caso,\nbbox ignorata"}
+    y = np.arange(len(ordine))
+    h = 0.36
+    ax1.barh(y + h/2, [P[k][tags[0]]["macro_f1"] for k in ordine], h,
+             color=ARANCIO, label="encoder casuale", zorder=3)
+    ax1.barh(y - h/2, [P[k][tags[1]]["macro_f1"] for k in ordine], h,
+             color=BLU, label="I-JEPA", zorder=3)
+    for i, k in enumerate(ordine):
+        for dy, t in ((h/2, tags[0]), (-h/2, tags[1])):
+            v = P[k][t]["macro_f1"]
+            ax1.text(v + 0.008, i + dy, f"{v:.3f}", va="center",
+                     fontsize=8.5, color=INK_MID)
+    # La riga della "sola maschera" e' il numero chiave: si etichetta in
+    # orizzontale sopra l'asse, non ruotata dentro il grafico, dove finiva
+    # addosso al titolo e alle barre.
+    sm = d["solo_maschera_macro_f1"]
+    ax1.axvline(sm, color=INK, linestyle="-", linewidth=1.6, zorder=4)
+    ax1.annotate(f"la sola maschera, zero pixel: {sm:.4f}",
+                 xy=(sm, 2.0), xytext=(-9, 0),
+                 textcoords="offset points", ha="right", va="center",
+                 fontsize=8.5, color=INK,
+                 bbox=dict(boxstyle="round,pad=0.28", fc=BIANCO_CARTA,
+                           ec=GRIGLIA, lw=0.8))
+    ax1.axvline(PAVIMENTO, color=INK_SOFT, linestyle=":", linewidth=1.1, zorder=2)
+    ax1.text(PAVIMENTO + 0.006, -0.68, "classificatore costante",
+             fontsize=8, color=INK_SOFT)
+    ax1.set_yticks(y, [nomi[k] for k in ordine], fontsize=8.5)
+    ax1.set_xlim(0.22, 0.90)
+    ax1.set_ylim(-0.85, len(ordine) - 0.15)
+    ax1.set_xlabel("macro-F1, sonda k-NN senza parametri")
+    ax1.set_title("Tolta la dimensione dalla maschera, il segno si ribalta")
+    # La legenda in basso a destra finiva sulle barre lunghe di P1.
+    ax1.legend(fontsize=8.5, loc="upper right", framealpha=0.95,
+               bbox_to_anchor=(1.0, 1.02))
+    ax1.xaxis.grid(True, zorder=0)
+    ax1.set_axisbelow(True)
+
+    # ---- destra: sweep su K ----
+    Ks = [9, 16, 36, 64, 100]
+    for t, col, eti in ((tags[0], ARANCIO, "encoder casuale"),
+                        (tags[1], BLU, "I-JEPA")):
+        ax2.plot(Ks, [P[f"P3_K{k}"][t]["macro_f1"] for k in Ks], color=col,
+                 linewidth=2.2, marker="o", markersize=6,
+                 markeredgecolor="white", markeredgewidth=0.9,
+                 label=eti, zorder=3)
+    ax2.axhline(P["P1_bbox"][tags[0]]["macro_f1"], color=ARANCIO,
+                linestyle="--", linewidth=1.3, zorder=2)
+    ax2.text(100, P["P1_bbox"][tags[0]]["macro_f1"] - 0.016,
+             "casuale col protocollo originale", ha="right", va="top",
+             fontsize=8.5, color=ARANCIO)
+    ax2.set_xscale("log")
+    ax2.set_xticks(Ks, [str(k) for k in Ks])
+    ax2.set_xlabel("K, uguale per tutte le classi")
+    ax2.set_ylabel("macro-F1, sonda k-NN")
+    ax2.set_title("A ogni K, con K scorrelato dalla classe")
+    ax2.legend(fontsize=8.5, loc="center right")
+    ax2.yaxis.grid(True, zorder=0)
+    ax2.set_axisbelow(True)
+
+    fig.tight_layout()
+    print("  fin8_mascheramento da", os.path.basename(percorso))
+    return salva(fig, "fin8_mascheramento")
+
+
 def fig_curve_pr():
     """
     Le curve precision-recall su PAI 5 - la metrica primaria, non compressa.
@@ -562,7 +662,8 @@ def fig_alpha():
 if __name__ == "__main__":
     fatte = []
     for f in (fig_soffitto, fig_encoder, fig_novita, fig_traiettoria,
-              fig_alpha, fig_curve_pr, fig_sonde):
+              fig_alpha, fig_curve_pr, fig_sonde,
+              fig_mascheramento):
         p = f()
         if p:
             fatte.append(p)
