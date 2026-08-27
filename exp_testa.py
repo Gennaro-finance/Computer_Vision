@@ -119,7 +119,15 @@ if __name__ == "__main__":
         se = float(np.sqrt(fv.var(ddof=1)/len(fv) + fb.var(ddof=1)/len(fb)))
         print(f"  {eti:34s} {d:+12.4f} {d/se if se>0 else float('inf'):+7.2f}")
 
-    migliore = max(esiti, key=lambda h: esiti[h][0].mean())
+    # SI SELEZIONA SULLA PR-AUC DI PAI 5, non sulla macro-F1.
+    # La macro-F1 media le tre classi con lo stesso peso e dipende
+    # dall'argmax; la PR-AUC su PAI 5 e' la metrica che il brief dichiara
+    # primaria - specifica per la minoritaria e indipendente dalla soglia.
+    # Selezionare su una metrica e riportare l'altra e' lo stesso errore
+    # commesso col checkpoint `_best`, scelto massimizzando una misura che
+    # si e' poi rivelata cieca a cio' che contava. Qui, con la macro-F1,
+    # vinceva `mlp_ord` che sulla PR-AUC5 perdeva 0.047 contro `flat`.
+    migliore = max(esiti, key=lambda h: esiti[h][1].mean())
     print(f"\nTesta migliore su validation: {migliore} "
           f"({esiti[migliore][0].mean():.4f})")
 
@@ -130,13 +138,13 @@ if __name__ == "__main__":
     ep = {}
     for pool in a.pool:
         f1, pr, _ = misura(cached, migliore, freno, a.seeds, pool=pool)
-        ep[pool] = f1
+        ep[pool] = pr
         fuori["pooling"][pool] = {"macro_f1": [float(f1.mean()), float(f1.std())],
                                   "pr_auc_pai5": [float(pr.mean()), float(pr.std())]}
         print(f"  {pool:34s} {f1.mean():.4f}+-{f1.std():.4f}  "
               f"{pr.mean():.4f}+-{pr.std():.4f}", flush=True)
         save_json(fuori, percorso)
-    pool_migliore = max(ep, key=lambda p: ep[p].mean())
+    pool_migliore = max(ep, key=lambda p: ep[p].mean())   # PR-AUC5, vedi sopra
 
     # ---------------- 3. sul TEST, solo la scelta e i riferimenti ----------------
     # Selezionato su validation, il test si tocca una volta sola e solo per
