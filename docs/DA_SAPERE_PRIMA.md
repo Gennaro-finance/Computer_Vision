@@ -8,13 +8,14 @@ senza guardare.
 Regola d'uso: **se un numero è in questo file, devi saperlo difendere. Se
 non lo sai difendere, toglilo dalle slide.**
 
-Aggiornato il 27 agosto 2026, dopo la rifattura della griglia.
+Aggiornato il 27 agosto 2026, dopo la rifattura della griglia e l'ablation
+cieca alla dimensione, che ha cambiato il segno del risultato centrale.
 
 ---
 
-# PARTE 1 — Le diciotto slide
+# PARTE 1 — Le diciannove slide
 
-Tempo obiettivo 15-18 minuti. Le slide contrassegnate ⭐ sono quelle su cui
+Diciannove slide, tempo obiettivo 16-19 minuti. Le slide contrassegnate ⭐ sono quelle su cui
 si vince o si perde: se il tempo stringe, si taglia altrove.
 
 ## Atto 1 — Il problema, e il tetto che si porta dentro (3 slide, ~2 min)
@@ -63,46 +64,65 @@ Monitoraggio a ogni epoca: loss, deviazione degli embedding, rango
 effettivo, sonda k-NN. Lo `std` va da **0,0116 a 0,0236**: raddoppia. Serve
 a chiudere in anticipo "siete sicuri che non sia collassato?".
 
-## Atto 3 — Obiettivo 2: le rappresentazioni congelate (3-4 slide, ~4 min)
+## Atto 3 — Obiettivo 2: due misure che sembrano contraddirsi (4 slide, ~5 min)
 
-**7. Il pre-training non batte l'inizializzazione casuale** ⭐ — 70 s
-Tre encoder, 10 configurazioni, 5 seed, stesso test. **Entrambi i massimi
-assoluti appartengono all'encoder casuale.** Presentalo come misura, non
-come sconfitta: *"abbiamo misurato quanto vale il pre-training in questo
-dominio, e vale zero"*.
+È il cuore del progetto. Le quattro slide vanno **in questo ordine e mai
+separate**: la 7 pone un enigma, la 9 lo scioglie.
 
-**8. Perché: quattro misure indipendenti** ⭐ — 70 s
-R² intensità 0,991 → 0,992 e dimensione 0,886 → 0,884 in 40 epoche: niente
-perso, niente guadagnato. CKA 0,498. Predizioni identiche al **91,6%**.
-Errori condivisi al **76,8%** contro **18,5% attesi** se sbagliassero
-indipendentemente. Un ViT casuale codifica già intensità e dimensione quasi
-perfettamente: non c'è niente da aggiungere.
+**7. Nel compito così com'è specificato, il pre-training non serve** ⭐ — 60 s
+Tre encoder, 10 configurazioni, 5 seed, stesso test.
+`completa` 0,8753 contro `casuale` 0,8676 di PR-AUC; macro-F1 0,7672 contro
+0,7565. **Differenze dentro il rumore, e i massimi assoluti appartengono
+all'encoder casuale.** Non dire "il pre-training non funziona": di' *"nel
+compito così com'è specificato non aggiunge niente di misurabile"*. La
+distinzione regge tutta la slide 9.
 
-> **La 7 e la 8 non si separano mai.** Il risultato negativo da solo è un
-> fallimento; col meccanismo accanto è una scoperta.
+**8. La misura è satura, e si vede** ⭐ — 50 s
+Il pavimento geometrico è 0,7567 e il massimo mai misurato 0,7705: **0,0138
+di spazio**. In quel margine nessuna differenza fra encoder può emergere.
+*"Non aggiunge"* e *"non si vede"* sono indistinguibili finché la misura
+resta lì.
+Analogia: due termometri in una stanza a temperatura costante segnano
+entrambi 20 °C. Non significa che siano ugualmente precisi.
 
-**9. L'ablation cieca alla dimensione** — 50 s
-*(risultato in arrivo — vedi Parte 2)*
-Ritagliando 3× il lato della bbox, ogni lesione appare uguale: **36 token
-per tutte e tre le classi**, separazione 1,00× invece di 5,00×. Serve
-perché nel protocollo geometrico ci sono solo 0,0138 di spazio, e lì
-*"il pre-training non aggiunge niente"* è indistinguibile da *"non si
-vede"*.
+**9. Tolta la geometria, I-JEPA vince di venti sigma** ⭐⭐ — 80 s
+Ritagliando 3× il lato della bbox ogni lesione appare uguale: **36 token per
+tutte e tre le classi**, separazione 1,00× invece di 5,00×. Stessa
+architettura, stesso ritaglio, stessa testa, stessi seed. **Cambia solo
+addestrato contro casuale.**
+
+| | macro-F1 | PR-AUC5 | kappa |
+|---|---|---|---|
+| casuale | 0,5300 ±0,0173 | 0,4452 ±0,0174 | 0,4643 |
+| **completa (I-JEPA)** | **0,6653 ±0,0116** | **0,7281 ±0,0190** | **0,6608** |
+| Δ | **+0,1353** (z = **14,5**) | **+0,2828** (z = **24,6**) | **+0,1965** (z = **33,9**) |
+
+> **La risoluzione dell'enigma**: la rappresentazione non è *inutile*, è
+> **ridondante** nel compito specificato. Il brief fornisce le bounding box,
+> e la dimensione — che è quasi tutto il PAI — si legge dalle box da sola.
+
+**10. Perché il compito rende ridondante la rappresentazione** — 60 s
+R² intensità 0,991 → 0,992 e dimensione 0,886 → 0,884 in 40 epoche: un ViT
+**casuale** codifica già le due grandezze che contano. CKA fra casuale e
+addestrato 0,498, predizioni identiche al **91,6%**, errori condivisi al
+**76,8%** contro 18,5% attesi. Nel compito geometrico i due encoder
+*decidono allo stesso modo* — non perché siano uguali (la CKA dice di no),
+ma perché la decisione dipende da ciò che entrambi hanno già.
 
 ## Atto 4 — Obiettivo 3: la novità (4 slide, ~4 min)
 
-**10. balanced_token_sampling** — 60 s
+**11. balanced_token_sampling** — 60 s
 L'attention pooling aggrega i token dentro la bbox. Invece di prenderli
 sempre tutti, per le classi rare si campionano **sottoinsiemi diversi**, e
 ogni sottoinsieme diventa un'istanza distinta. Non duplica immagini come
 l'oversampling, non interpola pixel come SMOTE: ogni istanza è una vista
 **genuina** della stessa lesione reale.
 
-**11. Il risultato** ⭐ — 60 s
+**12. Il risultato** ⭐ — 60 s
 Testa flat, encoder casuale, 5 seed, test: **PR-AUC5 0,8826 ±0,0050**,
 prima su tutte e cinque. Contro `none`: **+0,0150, z = +4,11**.
 
-**12. Lo sweep di alpha: il massimo è interno** ⭐ — 60 s
+**13. Lo sweep di alpha: il massimo è interno** ⭐ — 60 s
 alpha 0,50 batte alpha 1,00 di **+0,0125 a 2,2 errori standard**.
 Ribilanciare di più non è meglio. Protocollo a **seed disgiunti**: alpha
 0,50 misurato tre volte indipendenti, 0,8813 / 0,8814 / 0,8797, escursione
@@ -110,7 +130,7 @@ Ribilanciare di più non è meglio. Protocollo a **seed disgiunti**: alpha
 risultato il peggiore — un'ipotesi falsificata dichiarata vale più di dieci
 confermate.
 
-**13. Il meccanismo: sette viste valgono un esempio** ⭐ — 70 s
+**14. Il meccanismo: sette viste valgono un esempio** ⭐ — 70 s
 Correlazione intra-lesione **rho = 0,9864** su PAI 5. Dal design effect,
 `n_eff = k / (1 + (k−1)·rho)`: **7 viste valgono 1,01 campioni
 indipendenti**. Col pooling addestrato rho = 0,9464 e n_eff = 1,05: la
@@ -118,10 +138,10 @@ conclusione tiene. Le bbox hanno 16-64 token, quindi la ridondanza **non è
 combinatoria**, è della rappresentazione.
 
 > Conseguenza: la novità **non aggiunge esempi, riassegna peso**. Ed è per
-> questo che ha un ottimo interno — la 12 e la 13 si spiegano a vicenda.
+> questo che ha un ottimo interno — la 13 e la 14 si spiegano a vicenda.
 > È il pezzo più originale del progetto.
 
-**14. Le curve precision-recall** — 50 s
+**15. Le curve precision-recall** — 50 s
 Il vantaggio è massimo dove serve clinicamente: **+0,053** di precisione a
 recall 0,90 contro `none`, contro +0,020 a recall 0,80. E mostra cosa
 l'area nascondeva: **focal ha la precisione migliore a recall 0,80 (0,766)
@@ -129,25 +149,33 @@ e la peggiore a 0,90 (0,535)**.
 
 ## Atto 5 — Obiettivo 4: ablation e limiti (3 slide, ~3 min)
 
-**15. I controlli** — 50 s
+**16. I controlli** — 50 s
 *(se `exp_controlli` viene lanciato — vedi Parte 7)*
 `random_tokens` tiene le viste e toglie il ribilanciamento a budget
 identico. Il controllo a pari esempi visti pareggia i passi di gradiente,
 perché ad alpha 0,50 la novità ne fa 6.894 contro 4.719, il **46% in più**.
 Entrambi falsificabili in direzione sfavorevole.
 
-**16. I due limiti** ⭐ — 60 s
+**17. I tre limiti** ⭐ — 70 s
 **Dipende dall'encoder**: prima sul casuale, seconda sul completo, **ultima
-delle cinque** sullo spinto. Non è *"la novità vince"*, è *"vince dove il
-pre-training non ha appiattito le rappresentazioni"*.
+delle cinque** sullo spinto.
 **Dipende dalla testa**: con l'ordinale pareggia con `focal` (0,8777 contro
 0,8785, z = −0,20) e `none/ordinal` ha la macro-F1 più alta di tutte
 (0,7667).
+**Dipende dal regime**: nel protocollo cieco alla dimensione **pareggia con
+`none`** — +0,0067 (z = +0,49) sul casuale, +0,0071 (z = +0,65) su
+`completa`.
 
-> Portala tu. È l'unica slide che, se la scopre il relatore, ti costa la
-> credibilità delle altre diciassette.
+> Il terzo limite non indebolisce la novità, la **spiega**. Con n_eff = 1,01
+> la novità riassegna peso senza aggiungere informazione: aiuta quando il
+> classificatore è già vicino al suo tetto e si gioca sul confine di
+> decisione, non quando l'informazione manca. Il meccanismo della slide 14
+> lo prevedeva — è una previsione confermata, non una scusa.
 
-**17. Il difetto di provenienza, trovato e chiuso** — 50 s
+> Porta tutti e tre. Sono le slide che, se le scopre il relatore, ti costano
+> la credibilità delle altre diciotto.
+
+**18. Il difetto di provenienza, trovato e chiuso** — 50 s
 Rifatta la griglia da zero, **tre celle su dieci erano sbagliate**: `none/flat`
 −0,0083, `oversample/ordinal` −0,0143, `focal/ordinal` +0,0067. Le altre
 sette combaciano entro 0,003. Causa: la ripartenza saltava le celle già
@@ -158,16 +186,30 @@ rifiutata se non corrisponde.
 > Questa slide non parla dei risultati, parla di **come lavori**. In una
 > discussione vale quanto un risultato.
 
-## 18. La tesi in una frase — 40 s
+## 19. La tesi, in tre frasi — 60 s
 
-> Il compito è quasi interamente geometrico e il brief ne fornisce la
-> geometria: il pre-training non supera un encoder casuale. Quando la
-> geometria viene rimossa, la qualità della rappresentazione torna a
-> contare. In questo regime ribilanciare nello spazio latente funziona — e
-> funziona **non aggiungendo esempi, ma riassegnando peso**, motivo per cui
-> ha un ottimo interno che abbiamo trovato e spiegato.
+> **I-JEPA impara.** Le sue rappresentazioni valgono +0,28 di PR-AUC e +0,14
+> di macro-F1 sopra un encoder casuale — venti errori standard — quando la
+> misura ha lo spazio per vederlo.
+>
+> **Il compito così com'è specificato non ne ha bisogno.** Il brief fornisce
+> le bounding box, e la dimensione della lesione — che è quasi tutto il grado
+> PAI — si legge dalle box da sola: due soglie danno 0,7567 di macro-F1
+> senza alcuna rete. In quel compito la rappresentazione è **ridondante**, e
+> un encoder casuale la pareggia.
+>
+> **Nello stesso regime, ribilanciare nello spazio latente funziona** —
+> +0,0150 a 4,11 errori standard — e funziona non aggiungendo esempi ma
+> riassegnando peso: sette viste di una lesione valgono 1,01 campioni
+> indipendenti. Ed è per questo che ha un ottimo interno, e che sparisce
+> quando l'informazione manca davvero.
 
-I due risultati negativi non convivono col positivo: lo **spiegano**.
+Il contributo metodologico, che è quello che vale oltre questo dataset:
+
+> **Valutare rappresentazioni self-supervised su un compito che porta forti
+> priori nell'input misura il compito, non la rappresentazione.** Serve un
+> protocollo che rimuova il priore, altrimenti "non aggiunge" e "non si
+> vede" restano indistinguibili.
 
 ---
 
@@ -273,12 +315,48 @@ Precisione alle recall di lavoro, encoder casuale, testa flat, 5 seed:
 | none | 0,822 | 0,720 | 0,579 |
 | oversample | 0,834 | 0,731 | 0,575 |
 
-## L'ablation cieca alla dimensione
+## L'ablation cieca alla dimensione — il risultato centrale
 
-Verificato: **36 token per PAI 3, 4 e 5**, separazione **1,00×** contro
-5,00× del protocollo geometrico.
+Ritaglio a 3× il lato della bbox, ridimensionato a 224. Verificato:
+**36 token per PAI 3, 4 e 5**, separazione **1,00×** contro 5,00× del
+protocollo geometrico. Stessa architettura, stesso ritaglio, stessa testa,
+stessi seed: **cambia solo addestrato contro casuale**.
 
-*Risultati in arrivo. Quando ci sono, vanno qui.*
+| encoder | metodo | macro-F1 | PR-AUC5 | kappa |
+|---|---|---|---|---|
+| casuale | none | 0,5300 ±0,0173 | 0,4452 ±0,0174 | 0,4643 |
+| casuale | balanced_tokens | 0,5254 ±0,0163 | 0,4519 ±0,0252 | 0,4588 |
+| **completa** | **none** | **0,6653 ±0,0116** | **0,7281 ±0,0190** | **0,6608** |
+| completa | balanced_tokens | 0,6689 ±0,0147 | 0,7352 ±0,0151 | 0,6570 |
+
+**completa − casuale**, metodo `none`:
+
+| metrica | Δ | z |
+|---|---|---|
+| macro-F1 | +0,1353 | **+14,5** |
+| PR-AUC su PAI 5 | +0,2828 | **+24,6** |
+| kappa quadratico | +0,1965 | **+33,9** |
+
+**La novità in questo regime pareggia**: +0,0067 (z = +0,49) sul casuale,
++0,0071 (z = +0,65) su completa.
+
+Quanto vale la geometria, per l'encoder casuale:
+
+| | macro-F1 |
+|---|---|
+| protocollo geometrico | 0,7565 |
+| protocollo cieco | 0,5300 |
+| **la geometria vale** | **0,2265** |
+
+Dove crolla: **F1 su PAI 4 = 0,352** con l'encoder casuale. Senza
+dimensione, la classe intermedia diventa quasi indistinguibile — che è
+esattamente ciò che ci si aspetta se il segnale è la dimensione. Con
+`completa` risale a 0,523.
+
+> **Il caveat da dichiarare**: i numeri ciechi **non sono confrontabili**
+> con quelli geometrici, è un compito diverso e deliberatamente più
+> difficile. Si riporta come **ablation sull'encoder**, non come risultato
+> principale: il protocollo del brief resta quello con le bounding box.
 
 ---
 
@@ -480,9 +558,31 @@ deviazione. Nel progetto compare tre volte:
 | "prima di 30 configurazioni" | 30 estrazioni | dichiarata |
 | scelta dell'epoca | 10 checkpoint, dentro ogni misura | nessuna, ma è deterministica dato il seme |
 
-Saperlo dire è metà del valore della slide 12.
+Saperlo dire è meta' del valore della slide 13.
 
-## 4.11 Il tetto geometrico, in una frase
+## 4.11 Ridondante non vuol dire inutile — il concetto chiave
+
+Due misure che sembrano contraddirsi e non lo sono:
+
+- nel compito specificato, `completa` ≈ `casuale` (0,8753 contro 0,8676)
+- tolta la geometria, `completa` batte `casuale` di **+0,28 di PR-AUC**
+
+Non c'è contraddizione perché misurano cose diverse. La prima dice *"quanto
+serve la rappresentazione in questo compito"*; la seconda dice *"quanto vale
+la rappresentazione"*. Sono la stessa distinzione che c'è fra **ridondante**
+e **inutile**: un'informazione ridondante è preziosa e semplicemente già
+disponibile per un'altra strada.
+
+La conferma che i due encoder *decidono* allo stesso modo pur essendo
+diversi: CKA 0,498 (rappresentazioni diverse), ma predizioni identiche al
+91,6% e errori condivisi al 76,8%. Rappresentazioni diverse, stessa
+decisione — perché la decisione dipende dalla geometria che entrambi hanno.
+
+**Se ti chiedono una sola frase**: *la bounding box è un input fornito dal
+brief, e contiene già la risposta; il pre-training impara la stessa cosa per
+un'altra strada, e nel compito specificato arriva secondo.*
+
+## 4.12 Il tetto geometrico, in una frase
 
 Il grado PAI è **dimensione + scurezza** della radiotrasparenza. Il brief
 fornisce le bounding box, quindi fornisce la dimensione. Due soglie sul lato
@@ -526,6 +626,21 @@ Perché l'abbiamo misurato, con screening a 3 seed e le due migliori
 rimisurate su **5 seed disgiunti**. Il massimo è interno e alpha 1,00 è il
 peggiore — contro la nostra previsione iniziale.
 
+**"Il vostro pre-training funziona o no? Avete due risultati opposti."**
+Funziona, e molto: +0,28 di PR-AUC sopra il casuale, 24 errori standard,
+quando la misura ha spazio. Nel compito così com'è specificato non aggiunge
+niente perché il brief fornisce le bounding box e la dimensione della
+lesione si legge da quelle. La rappresentazione è **ridondante**, non
+inutile. Le due misure non si contraddicono: una dice quanto serve, l'altra
+quanto vale.
+
+**"Perché il vostro protocollo cieco alla dimensione sarebbe legittimo?"**
+Non sostituisce il protocollo del brief, lo affianca come **ablation**.
+Serve perché nel protocollo geometrico ci sono 0,0138 di spazio fra il
+pavimento e il massimo, e in quel margine nessuna differenza fra encoder
+può manifestarsi. Rimuovere il priore è l'unico modo di distinguere "non
+aggiunge" da "non si vede".
+
 **"Avete provato altre architetture?"**
 Il mascheramento è stato variato dal 54% all'80%: traiettoria della loss
 identica. Il tetto non è nella formulazione del compito.
@@ -564,7 +679,7 @@ Portali se te li chiedono. Un progetto che dichiara i propri errori corretti
 
 | esperimento | costo | cosa aggiunge |
 |---|---|---|
-| **Ablation cieca alla dimensione** | in corso | L'unica misura che può ancora ribaltare l'atto 3 |
+| ~~Ablation cieca alla dimensione~~ | **FATTA** | Ha ribaltato l'atto 3: I-JEPA batte il casuale di 24 errori standard |
 | `exp_controlli` — `random_tokens` + budget pari | 2h20 | Attribuisce il risultato: ribilanciamento o augmentation? È l'ablation dell'obiettivo 4 |
 | `exp_pooling` — gated e top-k | 2h | L'unico che può produrre un positivo nuovo (0,7778 in una prova a 10 epoche) |
 | `exp_testa` — le quattro teste rimanenti | 40 min | Chiude "il collo di bottiglia è la testa?" |
