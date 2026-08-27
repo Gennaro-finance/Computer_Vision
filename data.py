@@ -570,7 +570,7 @@ class LesionCropDataset(Dataset):
     """
 
     def __init__(self, records, image_ids, size=TILE_SIZE, augment=False,
-                 crop_pixels=None):
+                 crop_pixels=None, context_factor=None):
         keep = set(image_ids)
         self.size, self.augment = size, augment
         # Finestra di lato COSTANTE in pixel nativi: la dimensione apparente
@@ -578,6 +578,26 @@ class LesionCropDataset(Dataset):
         # normalizzava via, e' stato tolto: annullava il segnale piu' forte
         # del problema (vedi LESION_CROP_PIXELS in globals.py).
         self.crop_px = LESION_CROP_PIXELS if crop_pixels is None else crop_pixels
+
+        # RITAGLIO CIECO ALLA DIMENSIONE, come ABLATION - non come default.
+        # Con context_factor la finestra vale cf volte il lato della bbox e
+        # poi si ridimensiona a `size`: ogni lesione appare della STESSA
+        # dimensione apparente, e il segnale dominante del problema sparisce.
+        #
+        # Era il ritaglio originale del progetto, tolto il 22 agosto perche'
+        # "annullava il segnale piu' forte". Torna qui come strumento di
+        # misura, non come scelta: serve a rispondere a una domanda che il
+        # protocollo geometrico non puo' porre.
+        #
+        # PERCHE' SERVE. Con la finestra fissa il pavimento geometrico e'
+        # macro-F1 0.7567 (due soglie sul lato della bbox) e il massimo
+        # misurato 0.7705: 0.0138 di spazio. In quel margine nessuna
+        # differenza fra encoder puo' emergere, e "il pre-training non
+        # aggiunge niente" resta indistinguibile da "non si vede". Nel
+        # ritaglio cieco alla dimensione la dinamica misurata e' 0.177
+        # (casuale 0.5356 contro ImageNet 0.7121): li' la qualita' della
+        # rappresentazione conta davvero, e la domanda diventa ponibile.
+        self.cf = context_factor
         self.items = [
             {"image_id": r["image_id"], "image_path": r["image_path"],
              "lesion_idx": j, **l}
@@ -591,7 +611,11 @@ class LesionCropDataset(Dataset):
     def __getitem__(self, i):
         it = self.items[i]
         cx, cy = (it["xmin"] + it["xmax"]) / 2, (it["ymin"] + it["ymax"]) / 2
-        half = self.crop_px / 2
+        if self.cf is None:
+            half = self.crop_px / 2                    # finestra fissa: scala reale
+        else:
+            lato = max(it["xmax"] - it["xmin"], it["ymax"] - it["ymin"])
+            half = lato * self.cf / 2                  # cieco: scala normalizzata
 
         with Image.open(it["image_path"]) as im:
             im = im.convert("L")

@@ -4,7 +4,7 @@
     "byte": 3045615809,
     "modificato": 1787583697
   },
-  "quando": "2026-08-27 16:12",
+  "quando": "2026-08-27 16:23",
   "seeds": [
     0,
     1,
@@ -35,6 +35,29 @@
       "f1_pai5_std": 0.012182892140902785,
       "precision_pai5_mean": 0.7735427551549161,
       "precision_pai5_std": 0.007388753532810767
+    },
+    {
+      "method": "none",
+      "head": "ordinal",
+      "n_seeds": 5,
+      "macro_f1_mean": 0.7666729125808041,
+      "macro_f1_std": 0.007964751185583749,
+      "balanced_acc_mean": 0.7562823320341676,
+      "balanced_acc_std": 0.004452168642126909,
+      "recall_pai5_mean": 0.7410714285714285,
+      "recall_pai5_std": 0.02258769757263129,
+      "pr_auc_pai5_mean": 0.8712054639888474,
+      "pr_auc_pai5_std": 0.004217857560773454,
+      "quadratic_kappa_mean": 0.7940428585607768,
+      "quadratic_kappa_std": 0.0050327361686965735,
+      "f1_pai3_mean": 0.8933032757201265,
+      "f1_pai3_std": 0.0025281311781596236,
+      "f1_pai4_mean": 0.6343375861502165,
+      "f1_pai4_std": 0.010989698435047036,
+      "f1_pai5_mean": 0.7723778758720694,
+      "f1_pai5_std": 0.014294119482703201,
+      "precision_pai5_mean": 0.8087081324754258,
+      "precision_pai5_std": 0.03960304703685144
     }
   ]
 }

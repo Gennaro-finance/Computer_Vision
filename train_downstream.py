@@ -47,7 +47,8 @@ from utils import load_checkpoint, save_json, set_seed
 # ==========================================================================
 @torch.no_grad()
 def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
-                  ckpt_tag="", casuale=False, tag="", imagenet=False):
+                  ckpt_tag="", casuale=False, tag="", imagenet=False,
+                  context_factor=None):
     """
     Estrae e salva i token dell'encoder congelato per tutte le lesioni.
 
@@ -99,7 +100,7 @@ def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
     out = {}
 
     for split, ids in splits.items():
-        ds = LesionCropDataset(records, ids)
+        ds = LesionCropDataset(records, ids, context_factor=context_factor)
         loader = make_loader(ds, batch_size=batch_size)
         toks, masks, labels, geoms = [], [], [], []
 
@@ -458,6 +459,11 @@ if __name__ == "__main__":
     ap.add_argument("--sweep-alpha", action="store_true")
     ap.add_argument("--layers", type=int, nargs="+", default=None,
                     help="blocchi da concatenare, es. --layers 2 7 11")
+    ap.add_argument("--context-factor", type=float, default=None,
+                    help="ABLATION cieca alla dimensione: finestra pari a "
+                         "questo multiplo del lato della bbox, ridimensionata. "
+                         "Con 3.0 ogni lesione appare uguale e il segnale "
+                         "geometrico sparisce. Senza, finestra fissa 224 px")
     ap.add_argument("--imagenet", action="store_true",
                     help="controllo esterno: ViT-B/16 ImageNet congelato, "
                          "stesso ritaglio e stesso --layers dei nostri")
@@ -476,7 +482,8 @@ if __name__ == "__main__":
 
     if a.cache:
         cache_latents(a.variant, layers=a.layers, ckpt_tag=a.ckpt_tag,
-                      casuale=a.random, tag=a.tag, imagenet=a.imagenet)
+                      casuale=a.random, tag=a.tag, imagenet=a.imagenet,
+                      context_factor=a.context_factor)
     elif a.sweep_alpha:
         sweep_alpha(a.variant, layers=a.layers, tag=a.tag)
     elif a.grid:
