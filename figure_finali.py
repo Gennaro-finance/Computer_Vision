@@ -61,10 +61,15 @@ plt.rcParams.update({
 PAVIMENTO = 0.2589
 SOGLIE_BBOX = 0.7567     # due tagli sul lato della bbox, senza rete
 
+# Il tag "" puntava a results_vit_small_L2-7-11.json, i cui latenti erano
+# del 23 agosto e provenivano da un checkpoint IGNOTO - un giorno prima che
+# completa_best raggiungesse l'epoca 179. Quel file e' archiviato e il
+# braccio punta ora a _geo_completa, estratto il 27 agosto da
+# completa_best con provenienza verificata. Vedi runs/PROVENIENZA.md.
 ENCODER = [
     ("_casuale", "casuale", BLU),
-    ("_spinto", "spinto (lr 3e-4)", ARANCIO),
-    ("", "completa (lr 3e-5)", ACQUA),
+    ("_spinto", "spinto, ep. 29", ARANCIO),
+    ("_geo_completa", "completa, ep. 179", ACQUA),
 ]
 
 
