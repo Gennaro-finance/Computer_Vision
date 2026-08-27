@@ -478,6 +478,13 @@ if __name__ == "__main__":
     ap.add_argument("--method", default="none", choices=IMBALANCE_METHODS)
     ap.add_argument("--head", default="flat", choices=HEAD_TYPES)
     ap.add_argument("--grid", action="store_true")
+    ap.add_argument("--metodi", nargs="+", default=None,
+                    help="sottoinsieme di IMBALANCE_METHODS per la griglia. "
+                         "Serve ai bracci di controllo, dove la domanda "
+                         "riguarda l'ENCODER e i metodi di sbilanciamento "
+                         "moltiplicherebbero il costo senza aggiungere niente")
+    ap.add_argument("--teste", nargs="+", default=None,
+                    help="sottoinsieme di HEAD_TYPES per la griglia")
     a = ap.parse_args()
 
     if a.cache:
@@ -487,7 +494,8 @@ if __name__ == "__main__":
     elif a.sweep_alpha:
         sweep_alpha(a.variant, layers=a.layers, tag=a.tag)
     elif a.grid:
-        run_grid(a.variant, layers=a.layers, tag=a.tag)
+        run_grid(a.variant, layers=a.layers, tag=a.tag,
+                 methods=a.metodi, heads=a.teste)
     else:
         from evaluation import evaluate_split, print_report
         cached = load_latents(a.variant, layers=a.layers)
