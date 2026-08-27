@@ -391,7 +391,7 @@ usata per localizzare — che è ciò che il brief chiede — senza che il loro
 | `P2b` griglia fissa | 36/36/36 | 0,5212 ±0,0159 | 0,5247 ±0,0206 | +0,0035 | 0,77 |
 | **`P3_K16`** | **16/16/16** | 0,5347 ±0,0087 | **0,5604 ±0,0072** | **+0,0257** | **0,0009** |
 | **`P3_K36`** | **36/36/36** | 0,5237 ±0,0091 | **0,5635 ±0,0179** | **+0,0398** | **0,0022** |
-| `P3_K64` | 64/64/64 | *(da produrre)* | | | |
+| `P3_K64` | 64/64/64 | 0,5131 ±0,0163 | **0,5718 ±0,0150** | **+0,0587** | **0,0003** |
 
 ### PR-AUC su PAI 5 — la metrica primaria
 
@@ -401,6 +401,44 @@ usata per localizzare — che è ciò che il brief chiede — senza che il loro
 | `P2b` | 0,3713 | 0,4156 | +0,0443 | 0,02 |
 | **`P3_K16`** | 0,4220 | **0,4849** | **+0,0629** | **0,0001** |
 | **`P3_K36`** | 0,3954 | **0,4967** | **+0,1013** | **<0,0001** |
+
+### Perché il divario cresce con K — e non è che la misura migliori
+
+La lettura ovvia sarebbe *"più token, più materia su cui distinguere"*. È
+sbagliata. Al crescere di K la maschera **smette di essere la lesione**:
+
+| K | quanti dei K token cadono **dentro** la bbox vera |
+|---|---|
+| | PAI 3 · PAI 4 · PAI 5 · media |
+| **16** | 99% · 100% · 100% · **99%** |
+| 36 | 52% · 84% · 99% · **65%** |
+| 64 | 29% · 53% · 88% · **42%** |
+
+A K=64 il **71% dei token di una PAI 3 è osso circostante**, non lesione.
+Quindi la domanda cambia: da *"sai leggere la lesione?"* a *"sai leggere
+lesione più contesto?"*.
+
+E i due encoder rispondono in modo opposto:
+
+| K | casuale | I-JEPA |
+|---|---|---|
+| 16 | 0,5347 | 0,5604 |
+| 36 | 0,5237 ↓ | 0,5635 → |
+| 64 | **0,5131 ↓** | **0,5718 ↑** |
+
+**Il casuale peggiora** man mano che entra osso sano (−0,022): per lui è
+rumore che diluisce. **I-JEPA migliora** (+0,011): sa leggere il contrasto
+fra radiotrasparenza e osso trabecolare attorno — che è **contenuto
+diagnostico vero**, quello che guarda un radiologo — e l'ha imparato dal
+pre-training, che gira su tile della panoramica intera senza mai vedere una
+bounding box.
+
+> **Conseguenza sul protocollo.** `K = 16` resta il primario: è l'unico che
+> rispetta la traccia alla lettera — *"i vettori latenti corrispondenti alle
+> aree lesionate"* — con il 99% dei token dentro la bbox, ed è anche il
+> **più conservativo**, perché dà il divario più piccolo dei tre.
+> `K = 36` e `K = 64` non sono una semplice analisi di sensibilità: sono
+> un'**analisi separata su cosa I-JEPA ha imparato**, e vale una slide.
 
 > **La riga `P1_bbox` è il controllo negativo perfetto.** Stessi encoder,
 > stessa testa, stessi seed — cambia solo che il conteggio dei token dice la
@@ -862,7 +900,6 @@ Portali se te li chiedono. Un progetto che dichiara i propri errori corretti
 
 | esperimento | costo | cosa aggiunge |
 |---|---|---|
-| **`P3_K64`** | ~12 min | terzo punto dell'analisi di sensibilità su K |
 | **Migliore architettura I-JEPA sotto `P3_K16`** | in corso | la riga che manca alla tabella sopra |
 | **La novità sotto `P3_K16`** | ~55 min (solo I-JEPA) o ~1h50 (entrambi) | l'obiettivo 3 misurato dove il conteggio non falsa |
 | **Curva PR + confusion matrix sotto `P3_K16`** | ~15 min | lo score focalizzato su PAI 5 |
