@@ -315,6 +315,91 @@ def fig_traiettoria():
 # --------------------------------------------------------------------------
 # 5. Lo sweep di alpha
 # --------------------------------------------------------------------------
+def fig_sonde():
+    """
+    Le due figure che il ribaltamento richiede, affiancate.
+
+    A SINISTRA la curva di apprendimento: la qualita' della rappresentazione
+    contro le epoche di pre-training, nel protocollo cieco alla dimensione.
+    E' la dimostrazione diretta dell'obiettivo 1 - non un confronto a due
+    punti ma una tendenza, e per giunta non satura a 179 epoche.
+
+    A DESTRA il decadimento del segnale geometrico con la profondita'. Nel
+    casuale e' piatto perche' qualunque proiezione casuale conserva l'area;
+    nell'addestrato scende, perche' il masked prediction costruisce
+    invarianza e l'invarianza costa la geometria. Le due curve del cieco
+    sono piatte e distanti: l'informazione d'aspetto c'e' gia' tutta al
+    blocco 2 e non cresce.
+
+    Tutto senza un solo parametro addestrato: e' una sonda k-NN sulla media
+    dei token dentro la bbox. Serve a rispondere in anticipo a "non sara' la
+    testa a fare il lavoro?".
+    """
+    percorso = os.path.join(OUT_DIR, "sonde_vit_small.json")
+    if not os.path.isfile(percorso):
+        print("  salto fin7_sonde: lanciare prima exp_sonde.py")
+        return None
+    with open(percorso, encoding="utf-8") as f:
+        d = json.load(f)["sonde"]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.2, 4.5))
+
+    # ---- sinistra: curva di apprendimento, solo la config confrontabile ----
+    curva = [(r["epoche"], r["tutti"]["macro_f1"])
+             for n, r in d["cieco"].items() if n in ("casuale", "notte", "completa")]
+    curva.sort()
+    x, y = zip(*curva)
+    ax1.plot(x, y, color=BLU, linewidth=2.4, marker="o", markersize=7,
+             markeredgecolor="white", markeredgewidth=1.2, zorder=3)
+    # Il primo punto E' l'encoder casuale: una riga di riferimento alla sua
+    # altezza sarebbe ridondante col punto stesso, e ci finiva sopra
+    # l'etichetta. Si etichetta il punto e basta.
+    for i, (xi, yi) in enumerate(curva):
+        ax1.annotate(f"{yi:.4f}", (xi, yi), textcoords="offset points",
+                     xytext=(14 if i == 0 else 0, 4 if i == 0 else 11),
+                     ha="left" if i == 0 else "center",
+                     fontsize=9, color=INK_MID)
+    ax1.annotate("0 epoche = encoder casuale", (x[0], y[0]),
+                 textcoords="offset points", xytext=(14, -13),
+                 ha="left", fontsize=8.5, color=INK_SOFT)
+    ax1.set_xlabel("epoche di pre-training I-JEPA")
+    ax1.set_ylabel("macro-F1, sonda k-NN")
+    ax1.set_title("La rappresentazione migliora, e non &egrave; satura"
+                  .replace("&egrave;", "e'"))
+    ax1.set_ylim(min(y) - 0.05, max(y) + 0.06)
+    ax1.yaxis.grid(True, zorder=0)
+    ax1.set_axisbelow(True)
+
+    # ---- destra: per blocco, nei due protocolli ----
+    bl = ["b2", "b7", "b11"]
+    xs = [2, 7, 11]
+    stile = {("geometrico", "casuale"):  dict(color=ARANCIO, ls="-",  marker="o"),
+             ("geometrico", "completa"): dict(color=ARANCIO, ls="--", marker="s"),
+             ("cieco", "casuale"):       dict(color=BLU, ls="-",  marker="o"),
+             ("cieco", "completa"):      dict(color=BLU, ls="--", marker="s")}
+    for (prot, enc), kw in stile.items():
+        if enc not in d.get(prot, {}):
+            continue
+        v = [d[prot][enc][b]["macro_f1"] for b in bl]
+        ax2.plot(xs, v, linewidth=2, markersize=6, markeredgecolor="white",
+                 markeredgewidth=0.9, zorder=3,
+                 label=f"{prot}, {enc}", **kw)
+    ax2.set_xticks(xs)
+    ax2.set_xlabel("blocco del ViT")
+    ax2.set_ylabel("macro-F1, sonda k-NN")
+    ax2.set_title("Il segnale geometrico decade, l'aspetto no")
+    # La legenda va sotto: con quattro serie qualunque posizione interna
+    # finisce addosso a una curva, e qui lo spazio verticale libero non c'e'.
+    ax2.legend(fontsize=8.5, loc="upper center", bbox_to_anchor=(0.5, -0.20),
+               ncol=2, columnspacing=1.4, handlelength=2.2)
+    ax2.yaxis.grid(True, zorder=0)
+    ax2.set_axisbelow(True)
+
+    fig.tight_layout()
+    print("  fin7_sonde da", os.path.basename(percorso))
+    return salva(fig, "fin7_sonde")
+
+
 def fig_curve_pr():
     """
     Le curve precision-recall su PAI 5 - la metrica primaria, non compressa.
@@ -477,7 +562,7 @@ def fig_alpha():
 if __name__ == "__main__":
     fatte = []
     for f in (fig_soffitto, fig_encoder, fig_novita, fig_traiettoria,
-              fig_alpha, fig_curve_pr):
+              fig_alpha, fig_curve_pr, fig_sonde):
         p = f()
         if p:
             fatte.append(p)
