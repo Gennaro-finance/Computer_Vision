@@ -8,8 +8,10 @@ senza guardare.
 Regola d'uso: **se un numero è in questo file, devi saperlo difendere. Se
 non lo sai difendere, toglilo dalle slide.**
 
-Aggiornato il 27 agosto 2026, dopo la rifattura della griglia e l'ablation
-cieca alla dimensione, che ha cambiato il segno del risultato centrale.
+Aggiornato il 28 agosto 2026. Il risultato centrale ha cambiato segno due
+volte: prima con l'ablation cieca alla dimensione, poi con il protocollo a
+K fisso, che è la versione definitiva perché lascia invariata la finestra
+di osservazione.
 
 ---
 
@@ -371,7 +373,66 @@ Precisione alle recall di lavoro, encoder casuale, testa flat, 5 seed:
 | none | 0,822 | 0,720 | 0,579 |
 | oversample | 0,834 | 0,731 | 0,575 |
 
-## L'ablation cieca alla dimensione — il risultato centrale
+## Il protocollo a K fisso — IL RISULTATO CENTRALE
+
+Pipeline completa: attention pooling addestrato (5,3M par.) + testa `flat`,
+5 seed, misura sul **test**. Cambia **solo la maschera**: stesso crop 224 px,
+stessa risoluzione, stessi token dell'encoder, stessa architettura.
+
+`P3_K` prende i **K token più vicini al centro della bbox**. La bbox resta
+usata per localizzare — che è ciò che il brief chiede — senza che il loro
+*numero* comunichi la dimensione.
+
+### macro-F1
+
+| protocollo | token PAI 3/4/5 | casuale | I-JEPA | Δ | p |
+|---|---|---|---|---|---|
+| `P1_bbox` — naïve | **16/36/64** | 0,7565 ±0,0090 | 0,7567 ±0,0029 | +0,0002 | **0,96** |
+| `P2b` griglia fissa | 36/36/36 | 0,5212 ±0,0159 | 0,5247 ±0,0206 | +0,0035 | 0,77 |
+| **`P3_K16`** | **16/16/16** | 0,5347 ±0,0087 | **0,5604 ±0,0072** | **+0,0257** | **0,0009** |
+| **`P3_K36`** | **36/36/36** | 0,5237 ±0,0091 | **0,5635 ±0,0179** | **+0,0398** | **0,0022** |
+| `P3_K64` | 64/64/64 | *(da produrre)* | | | |
+
+### PR-AUC su PAI 5 — la metrica primaria
+
+| protocollo | casuale | I-JEPA | Δ | p |
+|---|---|---|---|---|
+| `P1_bbox` | 0,8676 | 0,8691 | +0,0015 | 0,96 |
+| `P2b` | 0,3713 | 0,4156 | +0,0443 | 0,02 |
+| **`P3_K16`** | 0,4220 | **0,4849** | **+0,0629** | **0,0001** |
+| **`P3_K36`** | 0,3954 | **0,4967** | **+0,1013** | **<0,0001** |
+
+> **La riga `P1_bbox` è il controllo negativo perfetto.** Stessi encoder,
+> stessa testa, stessi seed — cambia solo che il conteggio dei token dice la
+> classe, e il divario sparisce (p = 0,96). Il confronto fra le due righe
+> *è* il risultato.
+
+`P2b` non contraddice: quella griglia copre tutto il crop, background
+compreso, quindi diluisce la lesione. Serve a mostrare che non basta fissare
+il numero — bisogna fissarlo **restando sulla lesione**.
+
+**I valori di p** sono calcolati con il **t di Student a 8 gradi di
+libertà**, non con la normale: con 5 seed per gruppo la normale sarebbe
+ottimistica di ordini di grandezza (darebbe 3,6×10⁻⁷ invece di 0,0009 per
+`P3_K16`). Riporta sempre il valore prudente.
+
+### La migliore architettura I-JEPA
+
+*(in corso — 6 teste + 3 pooling selezionati su validation sotto `P3_K16`,
+poi la scelta sul test con il pavimento `casuale + flat` accanto)*
+
+| | macro-F1 | PR-AUC5 | F1 PAI 5 | recall5 | prec5 |
+|---|---|---|---|---|---|
+| casuale + flat (pavimento) | 0,5347 | 0,4220 | | | |
+| I-JEPA + flat (alla pari) | 0,5604 | 0,4849 | | | |
+| **I-JEPA + testa migliore** | | | | | |
+
+> Le prime due righe sono il **confronto controllato**, stessa testa per
+> entrambi. La terza risponde a *"quanto si può ottenere da I-JEPA"*, col
+> casuale come **riferimento dichiarato**, non come avversario tarato. Vanno
+> presentate insieme: la prima difende la seconda.
+
+## L'ablation cieca alla dimensione — la prima versione
 
 Ritaglio a 3× il lato della bbox, ridimensionato a 224. Verificato:
 **36 token per PAI 3, 4 e 5**, separazione **1,00×** contro 5,00× del
@@ -801,6 +862,10 @@ Portali se te li chiedono. Un progetto che dichiara i propri errori corretti
 
 | esperimento | costo | cosa aggiunge |
 |---|---|---|
+| **`P3_K64`** | ~12 min | terzo punto dell'analisi di sensibilità su K |
+| **Migliore architettura I-JEPA sotto `P3_K16`** | in corso | la riga che manca alla tabella sopra |
+| **La novità sotto `P3_K16`** | ~55 min (solo I-JEPA) o ~1h50 (entrambi) | l'obiettivo 3 misurato dove il conteggio non falsa |
+| **Curva PR + confusion matrix sotto `P3_K16`** | ~15 min | lo score focalizzato su PAI 5 |
 | ~~Ablation cieca alla dimensione~~ | **FATTA** | Ha ribaltato l'atto 3: I-JEPA batte il casuale di 24 errori standard |
 | `exp_controlli` — `random_tokens` + budget pari | 2h20 | Attribuisce il risultato: ribilanciamento o augmentation? È l'ablation dell'obiettivo 4 |
 | `exp_pooling` — gated e top-k | 2h | L'unico che può produrre un positivo nuovo (0,7778 in una prova a 10 epoche) |

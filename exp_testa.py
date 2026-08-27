@@ -69,18 +69,28 @@ if __name__ == "__main__":
     ap.add_argument("--layers", type=int, nargs="+", default=[2, 7, 11])
     ap.add_argument("--pool", nargs="+", default=["attn", "gated", "topk"])
     ap.add_argument("--seeds", type=int, nargs="+", default=list(range(N_SEEDS)))
+    ap.add_argument("--protocollo", default=None,
+                    help="maschera alternativa, es. P3_K16: i K token piu' "
+                         "vicini al centro della bbox invece di tutti quelli "
+                         "dentro. Toglie il canale del conteggio")
     ap.add_argument("--carico", type=int, default=100)
     a = ap.parse_args()
 
     freno = Freno(a.carico)
     print(f"[freno] {freno}\n")
     cached = load_latents(a.variant, layers=a.layers, tag=a.tag)
+    if a.protocollo:
+        from exp_fixedk import con_maschera
+        cached = con_maschera(cached, a.protocollo)
+        n = cached["data"]["test"]["mask"].sum(1).float().mean()
+        print(f"protocollo {a.protocollo}: {n:.0f} token per lesione, "
+              f"uguali per tutte le classi")
     print(f"encoder{a.tag}, embed {cached['embed_dim']}, "
           f"{len(a.seeds)} seed, metodo `none`\n")
 
     fuori = {"tag": a.tag, "seeds": a.seeds, "teste": {}, "pooling": {},
              "test": {}}
-    percorso = os.path.join(OUT_DIR, f"testa_pooling{a.tag}.json")
+    percorso = os.path.join(OUT_DIR, f"testa_pooling{a.tag}{'_'+a.protocollo if a.protocollo else ''}.json")
 
     # ---------------- 1. le sei teste, pooling attuale ----------------
     print("SEI TESTE, pooling `attn`, misura su VALIDATION")
@@ -139,6 +149,9 @@ if __name__ == "__main__":
     print("-" * 78)
     for tag in (a.tag, a.controllo):
         c = cached if tag == a.tag else load_latents(a.variant, layers=a.layers, tag=tag)
+        if a.protocollo and tag != a.tag:
+            from exp_fixedk import con_maschera
+            c = con_maschera(c, a.protocollo)
         for h, pl in dict.fromkeys([(migliore, pool_migliore), ("flat", "attn")]):
             f1, pr, _ = misura(c, h, freno, a.seeds, pool=pl, split="test")
             fuori["test"][f"{tag}|{h}|{pl}"] = {
