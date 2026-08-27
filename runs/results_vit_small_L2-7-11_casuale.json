@@ -1,0 +1,40 @@
+{
+  "latenti": {
+    "file": "latents_vit_small_L2-7-11_casuale.pt",
+    "byte": 3045615809,
+    "modificato": 1787583697
+  },
+  "quando": "2026-08-27 16:12",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "righe": [
+    {
+      "method": "none",
+      "head": "flat",
+      "n_seeds": 5,
+      "macro_f1_mean": 0.7565002182550857,
+      "macro_f1_std": 0.008967958414022899,
+      "balanced_acc_mean": 0.7543560302706201,
+      "balanced_acc_std": 0.014313628395335763,
+      "recall_pai5_mean": 0.7553571428571428,
+      "recall_pai5_std": 0.02684517210423732,
+      "pr_auc_pai5_mean": 0.8675782896464825,
+      "pr_auc_pai5_std": 0.006489756939105853,
+      "quadratic_kappa_mean": 0.7840736195083409,
+      "quadratic_kappa_std": 0.008082858868771638,
+      "f1_pai3_mean": 0.885104331280802,
+      "f1_pai3_std": 0.003869924984173811,
+      "f1_pai4_mean": 0.6203991076951417,
+      "f1_pai4_std": 0.014676862942584126,
+      "f1_pai5_mean": 0.7639972157893136,
+      "f1_pai5_std": 0.012182892140902785,
+      "precision_pai5_mean": 0.7735427551549161,
+      "precision_pai5_std": 0.007388753532810767
+    }
+  ]
+}

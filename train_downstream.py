@@ -36,7 +36,9 @@ from imbalance import (
     balanced_sampler_weights, balanced_token_sampling, class_counts,
     compute_loss, n_views_per_class, n_views_uniform, random_token_sampling,
 )
-from network import LesionClassifier, bbox_to_token_mask, build_ijepa
+from network import (
+    FrozenImageNetEncoder, LesionClassifier, bbox_to_token_mask, build_ijepa,
+)
 from utils import load_checkpoint, save_json, set_seed
 
 
@@ -45,7 +47,7 @@ from utils import load_checkpoint, save_json, set_seed
 # ==========================================================================
 @torch.no_grad()
 def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
-                  ckpt_tag="", casuale=False, tag=""):
+                  ckpt_tag="", casuale=False, tag="", imagenet=False):
     """
     Estrae e salva i token dell'encoder congelato per tutte le lesioni.
 
@@ -66,7 +68,15 @@ def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
     # ckpt_tag sceglie QUALE run di pre-training usare: gli esperimenti
     # producono checkpoint distinti e il downstream deve puntare a quello
     # voluto, non al primo che c'e'.
-    if casuale:
+    if imagenet:
+        # CONTROLLO ESTERNO: ViT-B/16 pre-addestrato su ImageNet, congelato.
+        # Stessa griglia 14x14, stesso ritaglio, stesso `layers`: cambia
+        # l'encoder e nient'altro. E' l'unico modo di distinguere "il
+        # dominio non ha niente da imparare" da "la nostra implementazione
+        # non impara".
+        model = FrozenImageNetEncoder().to(DEVICE)
+        print("Encoder ImageNet ViT-B/16 congelato (torchvision, IMAGENET1K_V1)")
+    elif casuale:
         # ENCODER CASUALE: stessa architettura, pesi non addestrati.
         # Non e' un "braccio di confronto" opzionale, e' il RIFERIMENTO
         # senza cui i numeri del pre-training non significano niente: dice
@@ -448,6 +458,9 @@ if __name__ == "__main__":
     ap.add_argument("--sweep-alpha", action="store_true")
     ap.add_argument("--layers", type=int, nargs="+", default=None,
                     help="blocchi da concatenare, es. --layers 2 7 11")
+    ap.add_argument("--imagenet", action="store_true",
+                    help="controllo esterno: ViT-B/16 ImageNet congelato, "
+                         "stesso ritaglio e stesso --layers dei nostri")
     ap.add_argument("--random", action="store_true",
                     help="encoder con pesi CASUALI: il riferimento senza cui "
                          "i numeri del pre-training non significano nulla")
@@ -463,7 +476,7 @@ if __name__ == "__main__":
 
     if a.cache:
         cache_latents(a.variant, layers=a.layers, ckpt_tag=a.ckpt_tag,
-                      casuale=a.random, tag=a.tag)
+                      casuale=a.random, tag=a.tag, imagenet=a.imagenet)
     elif a.sweep_alpha:
         sweep_alpha(a.variant, layers=a.layers, tag=a.tag)
     elif a.grid:

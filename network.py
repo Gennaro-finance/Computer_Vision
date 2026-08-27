@@ -372,6 +372,91 @@ class IJEPA(nn.Module):
 
 
 # ==========================================================================
+# 4b. Braccio di confronto: encoder ImageNet congelato
+# ==========================================================================
+class FrozenImageNetEncoder(nn.Module):
+    """
+    ViT-B/16 pre-addestrato su ImageNet, congelato ed esposto con la STESSA
+    interfaccia di IJEPA (encode / grid / embed_dim).
+
+    E' il braccio 2 della sez.9 dell'analisi, quello definito "critico e non
+    negoziabile": se il JEPA in-domain su ~4k immagini non batte il transfer
+    da ImageNet, quello E' il risultato del progetto e va detto. Senza questo
+    confronto, un numero come "Macro-F1 0.62" non dimostra niente, ed e' la
+    prima domanda che arriva in sede d'esame.
+
+    Il patch da 16 su tile da 224 da' la stessa griglia 14x14 del nostro ViT,
+    quindi bbox_to_token_mask e l'attention pooling funzionano identici e il
+    confronto e' davvero alla pari: cambia l'encoder, nient'altro.
+    """
+
+    def __init__(self, img_size=TILE_SIZE, patch_size=PATCH_SIZE):
+        super().__init__()
+        from torchvision.models import ViT_B_16_Weights, vit_b_16
+
+        weights = ViT_B_16_Weights.IMAGENET1K_V1
+        self.net = vit_b_16(weights=weights)
+        self.net.eval()
+        for p in self.net.parameters():
+            p.requires_grad = False
+
+        self.grid = img_size // patch_size
+        self.embed_dim = self.net.hidden_dim
+
+        # I tile arrivano da data.py in [-1, 1] (grayscale replicato su 3
+        # canali). Il ViT di torchvision vuole invece le statistiche di
+        # ImageNet: si torna in [0, 1] e si ri-normalizza. Saltare questo
+        # passaggio non da' errore, da' solo feature peggiori - cioe'
+        # sabotarebbe silenziosamente proprio il braccio di confronto.
+        t = weights.transforms()
+        self.register_buffer("mean", torch.tensor(t.mean).view(1, 3, 1, 1), persistent=False)
+        self.register_buffer("std", torch.tensor(t.std).view(1, 3, 1, 1), persistent=False)
+
+    @torch.no_grad()
+    def encode(self, images, return_layers=None):
+        """
+        `return_layers` concatena piu' profondita', come per il nostro ViT.
+        Serve perche' il confronto fra bracci resti alla pari: se il JEPA
+        usa piu' layer e ImageNet solo l'ultimo, non si confrontano piu' gli
+        encoder ma i protocolli di estrazione.
+        """
+        x = (images * 0.5 + 0.5 - self.mean) / self.std
+        x = self.net._process_input(x)
+        cls = self.net.class_token.expand(x.shape[0], -1, -1)
+        x = torch.cat([cls, x], dim=1)
+
+        if return_layers is None:
+            return self.net.encoder(x)[:, 1:]
+
+        # torchvision tiene i blocchi in encoder.layers; qui si replica il
+        # percorso a mano per poter intercettare le profondita' intermedie.
+        x = self.net.encoder.dropout(x + self.net.encoder.pos_embedding)
+        blocchi = self.net.encoder.layers
+        ultimo = len(blocchi) - 1
+        voluti = set(return_layers)
+        out = []
+        for i, blk in enumerate(blocchi):
+            x = blk(x)
+            if i in voluti:
+                y = self.net.encoder.ln(x) if i == ultimo else x
+                out.append(y[:, 1:])
+        return torch.cat(out, dim=-1)
+
+# RIPRISTINATA IL 27 AGOSTO, dopo essere stata tolta da `pulizia_uno` come
+# codice non richiesto dal brief. Serve a rispondere alla sola domanda che
+# i nostri tre encoder non possono rispondere da soli: se il pre-training
+# in-domain non batte l'inizializzazione casuale, e' un limite del dominio
+# o della nostra implementazione? Un encoder pre-addestrato DA ALTRI, su
+# milioni di immagini, con un'implementazione notoriamente corretta, e'
+# l'unico controllo esterno possibile.
+#
+# ATTENZIONE AL CONFRONTO. E' un ViT-B/16 (768 dim) contro il nostro
+# ViT-S/16 (384): con `--layers 2 7 11` sono 2304 dimensioni contro 1152.
+# Il vantaggio e' suo. Questo rende un risultato NULLO piu' forte, non piu'
+# debole: se non batte il casuale neanche col doppio delle dimensioni, il
+# tetto non e' dell'architettura.
+
+# ==========================================================================
 # 5. Teste downstream
 # ==========================================================================
 class AttentionPooling(nn.Module):
