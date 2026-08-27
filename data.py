@@ -645,9 +645,23 @@ class LesionCropDataset(Dataset):
                                  self.size - bbox[0], bbox[3]])
 
         # Geometria della bbox in pixel NATIVI, normalizzata. E' il segnale
-        # piu' predittivo del dataset (due soglie sul lato danno macro-F1
-        # 0.7567) e con il crop 'relative' andava perduto. Il Task dice
-        # "using the provided bounding box coordinates": e' un input fornito.
+        # piu' predittivo del dataset: due soglie sul lato danno macro-F1
+        # 0.7567 senza alcuna rete.
+        #
+        # NON VA DATA AL CLASSIFICATORE. Il brief dice di usare le bounding
+        # box "per estrarre i vettori latenti corrispondenti alle aree
+        # lesionate": la bbox e' un SELETTORE di token, non un ingresso del
+        # classificatore. Passarla come feature misurerebbe rappresentazione
+        # piu' una feature costruita a mano, e il numero non direbbe piu'
+        # niente sull'encoder - che e' esattamente cio' che l'obiettivo 2
+        # vuole misurare.
+        #
+        # Una versione precedente di questo commento si giustificava con
+        # "e' un input fornito dal dataset": era una razionalizzazione.
+        # `use_geom` resta a False in ogni risultato riportato, e questa
+        # geometria serve solo all'ANALISI - per esempio a partizionare il
+        # test fra casi in cui la dimensione basta e casi in cui inganna
+        # (exp_stratificata.py).
         w_nat = it["xmax"] - it["xmin"]
         h_nat = it["ymax"] - it["ymin"]
         geom = torch.tensor([w_nat / 200.0, h_nat / 200.0,

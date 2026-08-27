@@ -101,6 +101,19 @@ addestrato contro casuale.**
 > **ridondante** nel compito specificato. Il brief fornisce le bounding box,
 > e la dimensione — che è quasi tutto il PAI — si legge dalle box da sola.
 
+**Due conferme che non passano per nessuna testa addestrata**, e servono a
+rispondere a *"non sarà la testa a fare il lavoro?"*:
+
+1. **Sonda k-NN sulla media dei token dentro la bbox** — zero parametri,
+   nessun `Linear`, nessun attention pooling. Protocollo cieco: macro-F1
+   **0,3173** per il casuale contro **0,6092** per `completa`; kappa
+   **0,0905** contro **0,5786**. Il kappa del casuale è accordo quasi
+   casuale: quei vettori non separano le classi.
+2. **La testa non deve costruire niente, deve leggere.** Dopo **una sola
+   epoca** di addestramento della testa, `completa` è a 0,5457 di macro-F1
+   — già sopra il **massimo di sempre** del casuale (0,5416). Raggiunge il
+   95% del proprio massimo all'**epoca 4**; al casuale ne servono **54**.
+
 **10. Perché il compito rende ridondante la rappresentazione** — 60 s
 R² intensità 0,991 → 0,992 e dimensione 0,886 → 0,884 in 40 epoche: un ViT
 **casuale** codifica già le due grandezze che contano. CKA fra casuale e
@@ -560,7 +573,37 @@ deviazione. Nel progetto compare tre volte:
 
 Saperlo dire è meta' del valore della slide 13.
 
-## 4.11 Ridondante non vuol dire inutile — il concetto chiave
+## 4.11 I due encoder imparano cose diverse — la scoperta di fondo
+
+La sonda k-NN sulla media mascherata, **senza alcun parametro addestrato**,
+nei due protocolli e con lo stesso checkpoint:
+
+| | casuale | completa |
+|---|---|---|
+| geometrico | **0,7638** | 0,5166 |
+| cieco | 0,3173 | **0,6092** |
+
+**L'encoder casuale è un misuratore d'area travestito da rete.** La media
+dei token dentro una bbox dipende direttamente da quanti token ci sono, e
+il numero di token *è* l'area. Senza alcun addestramento arriva a 0,7638 di
+macro-F1 — praticamente quanto la testa addestrata (0,7565).
+
+**Il pre-training quella scorciatoia in parte la disimpara.** Il masked
+prediction rende la rappresentazione più invariante, e l'invarianza costa
+il segnale geometrico grezzo: `completa` scende a 0,5166. In cambio guadagna
+l'**aspetto**, che nel protocollo cieco vale 0,6092 contro 0,3173.
+
+Con la testa addestrata pareggiano nel protocollo geometrico perché la
+testa — 5,3M parametri di attention pooling — **recupera la dimensione** dai
+token del casuale. Ma il vettore grezzo dice che i due encoder hanno
+imparato **cose diverse**, non "uno niente e l'altro qualcosa".
+
+> Da dire così: *un ViT non addestrato è già un ottimo misuratore d'area, e
+> il grado PAI è quasi tutto area. Il pre-training scambia parte di quel
+> segnale per informazione sull'aspetto — un cattivo affare nel compito
+> specificato, un ottimo affare quando l'area non basta.*
+
+## 4.12 Ridondante non vuol dire inutile
 
 Due misure che sembrano contraddirsi e non lo sono:
 
@@ -582,7 +625,7 @@ decisione — perché la decisione dipende dalla geometria che entrambi hanno.
 brief, e contiene già la risposta; il pre-training impara la stessa cosa per
 un'altra strada, e nel compito specificato arriva secondo.*
 
-## 4.12 Il tetto geometrico, in una frase
+## 4.13 Il tetto geometrico, in una frase
 
 Il grado PAI è **dimensione + scurezza** della radiotrasparenza. Il brief
 fornisce le bounding box, quindi fornisce la dimensione. Due soglie sul lato
@@ -633,6 +676,13 @@ niente perché il brief fornisce le bounding box e la dimensione della
 lesione si legge da quelle. La rappresentazione è **ridondante**, non
 inutile. Le due misure non si contraddicono: una dice quanto serve, l'altra
 quanto vale.
+
+**"Non è la testa addestrata a fare il lavoro, invece dell'encoder?"**
+No, e lo mostriamo senza testa: sonda k-NN sulla media dei token dentro la
+bbox, zero parametri addestrati. Protocollo cieco, kappa 0,0905 per il
+casuale contro 0,5786 per l'addestrato. E la testa impiega **4 epoche**
+sull'addestrato contro 54 sul casuale per arrivare al 95% del proprio
+massimo: la rappresentazione è già linearmente separabile.
 
 **"Perché il vostro protocollo cieco alla dimensione sarebbe legittimo?"**
 Non sostituisce il protocollo del brief, lo affianca come **ablation**.
