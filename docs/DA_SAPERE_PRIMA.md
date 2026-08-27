@@ -77,13 +77,21 @@ all'encoder casuale.** Non dire "il pre-training non funziona": di' *"nel
 compito così com'è specificato non aggiunge niente di misurabile"*. La
 distinzione regge tutta la slide 9.
 
-**8. La misura è satura, e si vede** ⭐ — 50 s
-Il pavimento geometrico è 0,7567 e il massimo mai misurato 0,7705: **0,0138
-di spazio**. In quel margine nessuna differenza fra encoder può emergere.
-*"Non aggiunge"* e *"non si vede"* sono indistinguibili finché la misura
-resta lì.
-Analogia: due termometri in una stanza a temperatura costante segnano
-entrambi 20 °C. Non significa che siano ugualmente precisi.
+**8. Non è l'encoder a classificare: è la bounding box** ⭐⭐ — 70 s
+La maschera della bbox seleziona i token da aggregare, e il loro **numero**
+dipende dalla dimensione della lesione: **16 / 36 / 64** token mediani per
+PAI 3 / 4 / 5. Siccome il grado PAI è quasi tutto dimensione, quel numero è
+quasi la risposta.
+
+> **La maschera da sola, trasformata in un vettore one-hot senza un solo
+> pixel dell'immagine, dà macro-F1 0,7708** — più del vettore completo
+> dell'encoder casuale (0,7638).
+
+È il numero che spiega tutto il resto. L'encoder casuale conserva quel
+canale intatto; il pre-training, costruendo invarianza, **in parte lo
+scarta** — e quindi appare peggiore in un protocollo dove il canale è quasi
+tutta la risposta. Non è che non impari: **disimpara una scorciatoia che il
+protocollo premia**.
 
 **9. Tolta la geometria, I-JEPA vince di venti sigma** ⭐⭐ — 80 s
 Ritagliando 3× il lato della bbox ogni lesione appare uguale: **36 token per
@@ -113,6 +121,41 @@ rispondere a *"non sarà la testa a fare il lavoro?"*:
    epoca** di addestramento della testa, `completa` è a 0,5457 di macro-F1
    — già sopra il **massimo di sempre** del casuale (0,5416). Raggiunge il
    95% del proprio massimo all'**epoca 4**; al casuale ne servono **54**.
+
+**9-bis. Il controllo che chiude il caso: togliere il canale, non l'immagine** ⭐⭐ — 70 s
+Il ritaglio 3× rimuove la dimensione ma **ridimensiona l'immagine**, e la
+dimensione rientra come magnificazione (R² 0,55-0,70 nel predire il lato
+della bbox dal vettore). Un controllo più pulito tiene **la finestra di
+osservazione invariata** — stesso crop 224 px, stessa risoluzione, stessa
+scala apparente della lesione — e toglie solo il canale: la bbox resta usata
+per **localizzare**, non per dire quanto è grande.
+
+| protocollo | token | casuale | I-JEPA | divario |
+|---|---|---|---|---|
+| maschera bbox (attuale) | 16/36/64 | **0,7638** | 0,5166 | **−0,2472** |
+| conteggio scorrelato dalla classe | ~29 | 0,3361 | **0,4122** | **+0,0761** |
+| griglia 6×6 a posizioni fisse | 36 | 0,2916 | **0,3809** | **+0,0892** |
+| 36 token a caso, bbox ignorata | 36 | 0,2810 | **0,3480** | +0,0670 |
+
+**Il segno si ribalta in tutti.** E con K fisso e uguale per tutte le classi
+— i K token più vicini al centro della bbox — il casuale passa da 0,7638 a
+**0,28-0,39** a ogni K, mentre I-JEPA vince sempre:
+
+| K | 9 | 16 | 36 | 64 | 100 |
+|---|---|---|---|---|---|
+| casuale | 0,3708 | 0,3902 | 0,3817 | 0,3012 | 0,2781 |
+| **I-JEPA** | **0,4032** | **0,4295** | **0,3906** | **0,3818** | **0,3709** |
+
+> **Da dire**: non abbiamo tolto la lesione dall'immagine, né la sua
+> dimensione visibile. Abbiamo tolto **la dimensione come metadato del
+> protocollo**. La finestra di osservazione è identica.
+
+**Un controllo che NON funziona, e vale la pena raccontarlo**: pareggiare
+solo il *conteggio* non basta. **RoIAlign** (He et al., 2017) ricampiona la
+regione su una griglia fissa k×k, quindi ogni lesione dà esattamente k²
+token — e il casuale resta a **0,7689**. Perché RoIAlign campiona sempre
+*dentro* la bbox: il conteggio è pareggiato, l'**estensione** no. Il
+conteggio era un correlato; la causa è l'estensione.
 
 **10. Perché il compito rende ridondante la rappresentazione** — 60 s
 R² intensità 0,991 → 0,992 e dimensione 0,886 → 0,884 in 40 epoche: un ViT
@@ -573,7 +616,29 @@ deviazione. Nel progetto compare tre volte:
 
 Saperlo dire è meta' del valore della slide 13.
 
-## 4.11 I due encoder imparano cose diverse — la scoperta di fondo
+## 4.11 Il canale nascosto: estensione della maschera, non conteggio
+
+Il protocollo del brief aggrega i token dentro la bbox. La **regione
+aggregata** ha quindi l'estensione della lesione, e il ViT somma un
+**positional embedding** a ogni token: la media su una regione larga
+contiene posizioni più disperse di una stretta. L'estensione entra nel
+vettore a prescindere dal contenuto dell'immagine.
+
+Prova diretta: la **maschera one-hot da sola**, senza pixel, dà 0,7708.
+
+Due controlli che separano estensione da conteggio:
+
+| | conteggio | estensione | casuale |
+|---|---|---|---|
+| maschera bbox | variabile | variabile | 0,7638 |
+| **RoIAlign k=4** | **fisso** | variabile | **0,7689** |
+| **conteggio scorrelato** | scorrelato | scorrelato | **0,3361** |
+
+RoIAlign fissa il conteggio e non cambia niente; scorrelare il conteggio
+dalla classe — che cambia anche l'estensione — fa crollare il casuale.
+**La causa è l'estensione, il conteggio ne è la manifestazione.**
+
+## 4.12 I due encoder imparano cose diverse
 
 La sonda k-NN sulla media mascherata, **senza alcun parametro addestrato**,
 nei due protocolli e con lo stesso checkpoint:
@@ -603,7 +668,7 @@ imparato **cose diverse**, non "uno niente e l'altro qualcosa".
 > segnale per informazione sull'aspetto — un cattivo affare nel compito
 > specificato, un ottimo affare quando l'area non basta.*
 
-## 4.12 Ridondante non vuol dire inutile
+## 4.13 Ridondante non vuol dire inutile
 
 Due misure che sembrano contraddirsi e non lo sono:
 
@@ -625,7 +690,7 @@ decisione — perché la decisione dipende dalla geometria che entrambi hanno.
 brief, e contiene già la risposta; il pre-training impara la stessa cosa per
 un'altra strada, e nel compito specificato arriva secondo.*
 
-## 4.13 Il tetto geometrico, in una frase
+## 4.14 Il tetto geometrico, in una frase
 
 Il grado PAI è **dimensione + scurezza** della radiotrasparenza. Il brief
 fornisce le bounding box, quindi fornisce la dimensione. Due soglie sul lato
@@ -676,6 +741,13 @@ niente perché il brief fornisce le bounding box e la dimensione della
 lesione si legge da quelle. La rappresentazione è **ridondante**, non
 inutile. Le due misure non si contraddicono: una dice quanto serve, l'altra
 quanto vale.
+
+**"Il vostro protocollo cieco cambia troppe cose insieme."**
+Per questo c'è il controllo a finestra invariata: stesso crop 224 px,
+stessa risoluzione, stessa scala apparente della lesione, e si toglie
+**solo** la dipendenza della maschera dalla dimensione della bbox. Il
+casuale passa da 0,7638 a 0,28-0,39 a ogni K, I-JEPA vince sempre. La
+finestra di osservazione non è mai cambiata.
 
 **"Non è la testa addestrata a fare il lavoro, invece dell'encoder?"**
 No, e lo mostriamo senza testa: sonda k-NN sulla media dei token dentro la
