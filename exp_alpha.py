@@ -43,7 +43,7 @@ import torch
 
 from evaluation import evaluate_split
 from train_downstream import load_latents, train_head
-from utils import Freno
+from utils import Freno, leggi_righe_risultati
 
 CARICO = 70        # GPU attiva il 70% del tempo
 TAG = "_casuale"   # l'encoder dove vive il picco della novita'
@@ -109,8 +109,7 @@ if __name__ == "__main__":
 
     # riferimenti gia' misurati sullo stesso encoder, stessa testa, stesso test
     rif = {r["method"]: r for r in
-           json.load(open(f"runs/results_vit_small_L2-7-11{TAG}.json",
-                          encoding="utf-8"))
+           leggi_righe_risultati(f"runs/results_vit_small_L2-7-11{TAG}.json")
            if r["head"] == HEAD}
     print(f"\nCONFRONTO (encoder{TAG}, testa {HEAD}, test)")
     print(f"{'':30s} {'PR-AUC5':>10s} {'macro-F1':>10s} {'recall5':>9s} {'prec5':>8s}")

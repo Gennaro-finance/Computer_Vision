@@ -21,6 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+from utils import leggi_righe_risultati
 from globals import FIG_DIR, OUT_DIR
 
 # --------------------------------------------------------------------------
@@ -70,8 +71,7 @@ def carica(tag):
     p = os.path.join(OUT_DIR, f"results_vit_small_L2-7-11{tag}.json")
     if not os.path.isfile(p):
         return None
-    with open(p, encoding="utf-8") as f:
-        return json.load(f)
+    return leggi_righe_risultati(p)
 
 
 def salva(fig, nome):

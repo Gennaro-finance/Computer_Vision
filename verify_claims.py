@@ -16,6 +16,7 @@ import os
 
 import numpy as np
 
+from utils import leggi_righe_risultati
 from globals import NUM_CLASSES, OUT_DIR, PAI_GRADES
 
 def carica(variant="vit_small", layers=None):
@@ -43,8 +44,7 @@ def carica(variant="vit_small", layers=None):
         if not cand:
             return None
         p = max(cand, key=os.path.getmtime)
-    with open(p, encoding="utf-8") as f:
-        rows = json.load(f)
+    rows = leggi_righe_risultati(p)
     for r in rows:
         r["_file"] = os.path.basename(p)
     return rows

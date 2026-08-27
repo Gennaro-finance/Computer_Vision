@@ -24,6 +24,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+from utils import leggi_righe_risultati
 from globals import FIG_DIR, NUM_CLASSES, OUT_DIR, PAI_GRADES
 
 # Palette ad alto contrasto, leggibile anche stampata in scala di grigi.
@@ -42,8 +43,7 @@ def _carica():
     p = cand[-1] if cand else ""
     if not os.path.isfile(p):
         return None
-    with open(p, encoding="utf-8") as f:
-        return json.load(f)
+    return leggi_righe_risultati(p)
 
 
 def _salva(fig, nome):

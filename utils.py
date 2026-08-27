@@ -90,6 +90,20 @@ def save_json(obj, path):
         json.dump(obj, fh, indent=2)
 
 
+def leggi_righe_risultati(path):
+    """
+    Le righe di un file di risultati, nei due formati che esistono.
+
+    Dal 27 agosto run_grid avvolge le righe in un dizionario con la
+    provenienza dei latenti: {"latenti": ..., "quando": ..., "righe": [...]}.
+    I file prodotti prima sono una lista nuda. Entrambi vanno letti, perche'
+    i vecchi restano su disco come prova di com'erano.
+    """
+    with open(path, encoding="utf-8") as f:
+        d = json.load(f)
+    return d["righe"] if isinstance(d, dict) and "righe" in d else d
+
+
 def load_json(path):
     if not os.path.isfile(path):
         return None

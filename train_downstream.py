@@ -20,6 +20,7 @@ import argparse
 import itertools
 import json
 import os
+import time
 
 import numpy as np
 import torch
@@ -121,9 +122,38 @@ def cache_latents(variant=DEFAULT_VARIANT, batch_size=64, layers=None,
     return path
 
 
-def load_latents(variant=DEFAULT_VARIANT, layers=None, tag=""):
+def percorso_latenti(variant=DEFAULT_VARIANT, layers=None, tag=""):
     suffisso = "" if layers is None else "_L" + "-".join(map(str, layers))
-    path = os.path.join(CACHE_DIR, f"latents_{variant}{suffisso}{tag}.pt")
+    return os.path.join(CACHE_DIR, f"latents_{variant}{suffisso}{tag}.pt")
+
+
+def impronta_latenti(variant=DEFAULT_VARIANT, layers=None, tag=""):
+    """
+    Identifica il file di latenti che ha prodotto un risultato.
+
+    PERCHE' SERVE. `run_grid` riprende da file saltando le celle
+    (metodo, testa) gia' presenti, e fino a oggi non verificava NIENTE su
+    quale encoder le avesse prodotte. Il 27 agosto la riga `none/flat`
+    della griglia del 24 dava 0.8758 e non si e' riprodotta: rimisurata tre
+    volte da' 0.8676, mentre `class_weighted` combacia alla quarta cifra.
+    Una riga conservata da uno stato precedente non era escludibile perche'
+    il file non portava alcuna provenienza.
+
+    Dimensione e data di modifica bastano: i latenti si rigenerano solo con
+    --cache, che riscrive il file per intero. Non e' un hash crittografico,
+    e' un'impronta contro la ripartenza distratta - che e' il problema
+    reale che si e' presentato.
+    """
+    path = percorso_latenti(variant, layers, tag)
+    if not os.path.isfile(path):
+        return None
+    st = os.stat(path)
+    return {"file": os.path.basename(path), "byte": st.st_size,
+            "modificato": int(st.st_mtime)}
+
+
+def load_latents(variant=DEFAULT_VARIANT, layers=None, tag=""):
+    path = percorso_latenti(variant, layers, tag)
     if not os.path.isfile(path):
         raise FileNotFoundError(f"{path} mancante. Lanciate --cache")
     return torch.load(path, map_location="cpu", weights_only=False)
@@ -284,13 +314,30 @@ def run_grid(variant=DEFAULT_VARIANT, methods=None, heads=None,
     # risultati stavano solo in memoria.
     suff = "" if layers is None else "_L" + "-".join(map(str, layers))
     percorso = os.path.join(OUT_DIR, f"results_{variant}{suff}{tag}.json")
+    impronta = impronta_latenti(variant, layers, tag)
+
     rows = []
     if os.path.isfile(percorso):
         with open(percorso, encoding="utf-8") as f:
-            rows = json.load(f)
-        if rows:
+            vecchio = json.load(f)
+        righe_vecchie = vecchio.get("righe", vecchio) if isinstance(vecchio, dict) else vecchio
+        imp_vecchia = vecchio.get("latenti") if isinstance(vecchio, dict) else None
+        if imp_vecchia == impronta and righe_vecchie:
+            rows = righe_vecchie
             print(f"Riprendo: {len(rows)} righe gia' su disco in "
                   f"{os.path.basename(percorso)}")
+        elif righe_vecchie:
+            # RIFIUTO DI RIPRENDERE. Un file senza impronta viene da prima
+            # che questo controllo esistesse: non si sa con quali latenti
+            # sia stato prodotto, e mescolare due encoder nella stessa
+            # tabella e' peggio che rifare due ore di calcolo.
+            motivo = ("non porta l'impronta dei latenti"
+                      if imp_vecchia is None else
+                      f"e' stato prodotto con {imp_vecchia.get('file')} "
+                      f"({imp_vecchia.get('byte')} byte)")
+            print(f"NON riprendo da {os.path.basename(percorso)}: {motivo}, "
+                  f"mentre ora userei {impronta['file'] if impronta else '?'}.")
+            print("Rifaccio tutte le righe da zero.")
     fatte = {(r["method"], r["head"]) for r in rows}
 
     for method, head in itertools.product(methods, heads):
@@ -323,7 +370,8 @@ def run_grid(variant=DEFAULT_VARIANT, methods=None, heads=None,
         rows.append(agg)
         # Salvataggio incrementale: il costo di un crash scende da "tutta la
         # griglia" a "la riga in corso".
-        save_json(rows, percorso)
+        save_json({"latenti": impronta, "quando": time.strftime("%Y-%m-%d %H:%M"),
+                   "seeds": list(seeds), "righe": rows}, percorso)
         print(f"  {method:16s} {head:8s} macroF1={agg['macro_f1_mean']:.4f}"
               f"+-{agg['macro_f1_std']:.4f}  F1(3/4/5)="
               f"{agg['f1_pai3_mean']:.3f}/{agg['f1_pai4_mean']:.3f}/{agg['f1_pai5_mean']:.3f}"
