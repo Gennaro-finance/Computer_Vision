@@ -250,8 +250,12 @@ progetto passa da li'. Tutto il resto e' diagnostica.
 ## 6. Stato e cosa manca
 
 **Modello scelto**: `runs/checkpoints/ijepa_vit_small_completa_best.pt`,
-epoca 59, selezionato sul validation (downstream 0.7700), configurazione del
-paper con EMA 0.9996.
+epoca 179, selezionato sul validation, configurazione del paper con EMA
+0.9996. ATTENZIONE: questo documento diceva 'epoca 59, downstream 0.7700'
+fino al 27 agosto. Il checkpoint _best si aggiorna ogni volta che una
+epoca batte la precedente sul validation, la run e' proseguita e l'ha
+superata. Il file contiene la 179; lo 0.7700 era della 59 e non e' piu'
+il valore di questo checkpoint.
 
 Mancano:
 
