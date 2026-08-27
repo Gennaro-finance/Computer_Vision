@@ -5,25 +5,25 @@
     {
       "classe": 0,
       "pai": 3,
-      "n_lesioni": 400,
+      "n_lesioni": 600,
       "n_viste": 8,
       "token": {
         "mediana": 16.0,
         "q1": 16.0,
-        "q3": 16.0,
+        "q3": 20.0,
         "min": 4,
         "max": 48
       },
-      "coseno_dentro_lesione": 0.9991254161298275,
-      "coseno_fra_lesioni": 0.975563108921051,
-      "rho": 0.9655461205621759,
-      "var_fra": 25.513507454403168,
-      "var_dentro": 0.910406340153099
+      "coseno_dentro_lesione": 0.9991474337379138,
+      "coseno_fra_lesioni": 0.9747639894485474,
+      "rho": 0.9674411648111376,
+      "var_fra": 26.36418962649417,
+      "var_dentro": 0.887275977247169
     },
     {
       "classe": 1,
       "pai": 4,
-      "n_lesioni": 400,
+      "n_lesioni": 600,
       "n_viste": 8,
       "token": {
         "mediana": 36.0,
@@ -32,31 +32,32 @@
         "min": 8,
         "max": 100
       },
-      "coseno_dentro_lesione": 0.9993490485846996,
-      "coseno_fra_lesioni": 0.9761335253715515,
-      "rho": 0.9736221976307531,
-      "var_fra": 24.517042362924823,
-      "var_dentro": 0.664226534379969
+      "coseno_dentro_lesione": 0.9993437869350116,
+      "coseno_fra_lesioni": 0.9746785163879395,
+      "rho": 0.9748679439342115,
+      "var_fra": 25.99461033533805,
+      "var_dentro": 0.6701400004184839
     },
     {
       "classe": 2,
       "pai": 5,
-      "n_lesioni": 400,
+      "n_lesioni": 473,
       "n_viste": 8,
       "token": {
         "mediana": 64.0,
         "q1": 48.0,
-        "q3": 90.0,
+        "q3": 96.0,
         "min": 24,
         "max": 196
       },
-      "coseno_dentro_lesione": 0.9995821040868759,
-      "coseno_fra_lesioni": 0.9721211194992065,
-      "rho": 0.9852627775640347,
-      "var_fra": 27.653305502957174,
-      "var_dentro": 0.4136286517332672
+      "coseno_dentro_lesione": 0.9995759220254345,
+      "coseno_fra_lesioni": 0.9693989157676697,
+      "rho": 0.9864092969162684,
+      "var_fra": 30.49602425438646,
+      "var_dentro": 0.42017285539719107
     }
   ],
+  "pooling": "media mascherata",
   "counts": [
     3017,
     1229,

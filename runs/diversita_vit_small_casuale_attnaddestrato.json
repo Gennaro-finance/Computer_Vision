@@ -5,25 +5,25 @@
     {
       "classe": 0,
       "pai": 3,
-      "n_lesioni": 400,
+      "n_lesioni": 600,
       "n_viste": 8,
       "token": {
         "mediana": 16.0,
         "q1": 16.0,
-        "q3": 16.0,
+        "q3": 20.0,
         "min": 4,
         "max": 48
       },
-      "coseno_dentro_lesione": 0.989997532516718,
-      "coseno_fra_lesioni": 0.9423712491989136,
-      "rho": 0.8242560396021282,
-      "var_fra": 27.258263356375906,
-      "var_dentro": 5.811877530348543
+      "coseno_dentro_lesione": 0.9891082141796748,
+      "coseno_fra_lesioni": 0.9216750264167786,
+      "rho": 0.8385647399959678,
+      "var_fra": 19.0460467428815,
+      "var_dentro": 3.666626273841194
     },
     {
       "classe": 1,
       "pai": 4,
-      "n_lesioni": 400,
+      "n_lesioni": 600,
       "n_viste": 8,
       "token": {
         "mediana": 36.0,
@@ -32,29 +32,29 @@
         "min": 8,
         "max": 100
       },
-      "coseno_dentro_lesione": 0.9915698647499085,
-      "coseno_fra_lesioni": 0.9317553639411926,
-      "rho": 0.8903565645969825,
-      "var_fra": 30.051787959264047,
-      "var_dentro": 3.7007435030798166
+      "coseno_dentro_lesione": 0.985415496925513,
+      "coseno_fra_lesioni": 0.8973755836486816,
+      "rho": 0.8767749864496571,
+      "var_fra": 22.880563329215118,
+      "var_dentro": 3.2157141454261846
     },
     {
       "classe": 2,
       "pai": 5,
-      "n_lesioni": 400,
+      "n_lesioni": 473,
       "n_viste": 8,
       "token": {
         "mediana": 64.0,
         "q1": 48.0,
-        "q3": 90.0,
+        "q3": 96.0,
         "min": 24,
         "max": 196
       },
-      "coseno_dentro_lesione": 0.9948327074944973,
-      "coseno_fra_lesioni": 0.9458673000335693,
-      "rho": 0.9231579837707279,
-      "var_fra": 28.07294420025906,
-      "var_dentro": 2.3367415672759932
+      "coseno_dentro_lesione": 0.9920958850146853,
+      "coseno_fra_lesioni": 0.8929464817047119,
+      "rho": 0.9463523802842511,
+      "var_fra": 38.75158509216182,
+      "var_dentro": 2.19678244987596
     }
   ],
   "pooling": "attn addestrato",
