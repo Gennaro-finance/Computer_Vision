@@ -166,14 +166,65 @@ def balanced_token_sampling(tokens, token_mask, labels, counts,
     il punto - viste identiche non aggiungono niente) e non si duplica in
     memoria l'intero tensore dei token.
 
-    Ritorna: (tokens_espansi, mask_espansa, labels_espanse)
+    Ritorna: (tokens_espansi, mask_espansa, labels_espanse, indice_origine)
+
+    La generazione delle viste vive in `_espandi`, condivisa con
+    `random_token_sampling`: l'unica differenza fra i due e' la riga qui
+    sotto, cioe' quante viste riceve ogni classe. Tenerla condivisa e' il
+    motivo per cui il controllo a budget uguale misura la politica di
+    allocazione e non due implementazioni diverse.
     """
     views = n_views_per_class(counts, alpha, num_classes).to(labels.device)
     per_sample = views[labels.long()]                      # viste per campione
+    return _espandi(tokens, token_mask, labels, per_sample, generator,
+                    p_min, p_max, min_tokens, attn_weights)
+
+
+def n_views_uniform(counts, alpha=0.5, num_classes=NUM_CLASSES):
+    """
+    Lo STESSO budget di viste di `n_views_per_class`, ma diviso in parti
+    uguali fra le classi invece che a favore della minoritaria.
+
+    Serve al controllo dell'obiettivo 4: `balanced_token_sampling` fa DUE
+    cose insieme, e finche' restano insieme non si sa quale delle due
+    produce il risultato.
+      (a) genera viste - sottoinsiemi di token della stessa lesione, che e'
+          una forma di augmentation
+      (b) ne assegna di piu' alle classi rare, che e' ribilanciamento
+    Il campionamento uniforme tiene (a) e toglie (b). Se le due misure
+    coincidono, il merito e' dell'augmentation e la novita' non ribilancia
+    niente; se la versione bilanciata vince, il merito e' del
+    ribilanciamento nello spazio dei token.
+
+    Il budget e' il numero TOTALE di istanze per epoca, non il numero di
+    viste per campione: e' quello che determina quanti passi di gradiente
+    vede la testa, ed e' quello che va tenuto uguale.
+
+    Restituisce viste frazionarie (float): il numero intero di viste per
+    campione si estrae poi a caso in modo che la MEDIA sia questa. Con
+    conteggi 3017/1229/473 e alpha 0.5 il budget e' 6894 istanze su 4719
+    campioni, cioe' 1.461 viste ciascuno per tutte e tre le classi.
+    """
+    c = counts.float().clamp(min=1)
+    budget = float((n_views_per_class(counts, alpha, num_classes).float() * c).sum())
+    return torch.full((num_classes,), budget / float(c.sum()), device=counts.device)
+
+
+def _espandi(tokens, token_mask, labels, per_sample, generator=None,
+             p_min=0.6, p_max=1.0, min_tokens=4, attn_weights=None):
+    """
+    Nucleo condiviso: dato un numero di viste per campione, produce le viste.
+
+    Estratto da `balanced_token_sampling` perche' la variante uniforme deve
+    usare ESATTAMENTE la stessa procedura di generazione delle viste. Se le
+    due la reimplementassero separatamente, una differenza nel confronto
+    potrebbe venire da un dettaglio dell'implementazione invece che dalla
+    politica di allocazione, che e' l'unica cosa che il controllo vuole
+    isolare.
+    """
     idx = torch.repeat_interleave(
         torch.arange(labels.shape[0], device=labels.device), per_sample
     )
-
     tok = tokens[idx]
     base = token_mask[idx]
     y = labels[idx]
@@ -182,7 +233,8 @@ def balanced_token_sampling(tokens, token_mask, labels, counts,
     # Senza questa garanzia anche la maggioritaria verrebbe sottocampionata e
     # il confronto con le baseline non sarebbe piu' alla pari.
     first = torch.zeros(idx.shape[0], dtype=torch.bool, device=labels.device)
-    first[torch.cumsum(per_sample, 0) - per_sample] = True
+    conf = torch.cumsum(per_sample, 0) - per_sample
+    first[conf[per_sample > 0]] = True
 
     n, t = base.shape
     p = torch.empty(n, device=base.device).uniform_(p_min, p_max, generator=generator)
@@ -214,7 +266,46 @@ def balanced_token_sampling(tokens, token_mask, labels, counts,
     if vuote.any():
         new_mask[vuote] = base[vuote]
 
-    return tok, new_mask, y
+    # `idx` dice da quale campione originale viene ogni vista. Serve a far
+    # seguire alle viste qualunque altro attributo del campione - la
+    # geometria della bbox, per esempio. Ricavarlo a valle dividendo per un
+    # numero fisso di viste funziona solo quando le viste per campione sono
+    # tutte uguali, che con il campionamento uniforme non e' vero: li'
+    # varia da 1 a 2 e un fallback per posizione allineerebbe la bbox
+    # sbagliata alla vista sbagliata, in silenzio.
+    return tok, new_mask, y, idx
+
+
+def random_token_sampling(tokens, token_mask, labels, counts,
+                          num_classes=NUM_CLASSES, generator=None,
+                          alpha=0.5, p_min=0.6, p_max=1.0, min_tokens=4,
+                          attn_weights=None):
+    """
+    Controllo a budget uguale: stesse viste, allocate senza guardare la classe.
+
+    E' `balanced_token_sampling` con l'unica differenza che conta: il numero
+    di viste NON dipende dalla frequenza della classe. Il totale di istanze
+    per epoca resta lo stesso a meno dell'arrotondamento casuale, quindi la
+    testa vede lo stesso numero di passi di gradiente e la stessa quantita'
+    di augmentation. Cambia solo CHI la riceve.
+
+    Le viste per campione sono frazionarie (1.461 con alpha 0.5), e un
+    campione non puo' ricevere 1.461 viste: se ne assegnano 1 con
+    probabilita' 0.539 e 2 con probabilita' 0.461, cosi' la MEDIA e' esatta
+    e il budget e' rispettato in valore atteso invece che in ogni batch.
+    Arrotondare per difetto avrebbe dato un budget sistematicamente piu'
+    basso e il controllo avrebbe confrontato anche il numero di passi.
+
+    Ritorna: (tokens_espansi, mask_espansa, labels_espanse, indice_origine)
+    """
+    v = n_views_uniform(counts, alpha, num_classes).to(labels.device)
+    atteso = v[labels.long()]
+    base_n = atteso.floor()
+    extra = torch.rand(atteso.shape[0], device=atteso.device,
+                       generator=generator) < (atteso - base_n)
+    per_sample = (base_n + extra.float()).long().clamp(min=1)
+    return _espandi(tokens, token_mask, labels, per_sample, generator,
+                    p_min, p_max, min_tokens, attn_weights)
 
 
 # ==========================================================================

@@ -377,6 +377,14 @@ HEAD_LR = 1e-3
 HEAD_WEIGHT_DECAY = 1e-4
 ATTN_POOL_HEADS = 4
 
+# Come i token dentro la bbox diventano un vettore solo. Tre ipotesi
+# diverse su dove sta il collo di bottiglia, vedi network.py:
+#   attn   query appresa ma FISSA, softmax denso su tutti i token (attuale)
+#   gated  punteggio non lineare per token, stile MIL (Ilse et al. 2018)
+#   topk   solo i TOP_K token piu' forti, il resto scartato
+POOL_TYPES = ["attn", "gated", "topk"]
+TOP_K = 8      # bbox mediane: 9 / 16 / 64 token per PAI 3 / 4 / 5
+
 # Metodi per lo sbilanciamento da confrontare. 'balanced_tokens' e' la
 # novita' proposta (vedi imbalance.py).
 IMBALANCE_METHODS = [
@@ -386,6 +394,13 @@ IMBALANCE_METHODS = [
     "oversample",       # oversampling della minoritaria
     "balanced_tokens",  # NOVITA' proposta
 ]
+
+# Controlli, non baseline: non entrano nella griglia dell'obiettivo 4
+# perche' non sono metodi che qualcuno userebbe: servono ad ATTRIBUIRE il
+# risultato della novita'. `random_tokens` toglie il ribilanciamento e
+# lascia l'augmentation a budget identico; se le due misure coincidono, la
+# novita' non ribilancia niente e vince per un altro motivo.
+METODI_CONTROLLO = ["random_tokens"]
 FOCAL_GAMMA = 2.0
 
 # Teste: piatta (come da brief) vs ordinale (piu' appropriata al PAI).

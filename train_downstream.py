@@ -33,7 +33,7 @@ from globals import (
 )
 from imbalance import (
     balanced_sampler_weights, balanced_token_sampling, class_counts,
-    compute_loss,
+    compute_loss, n_views_per_class, n_views_uniform, random_token_sampling,
 )
 from network import LesionClassifier, bbox_to_token_mask, build_ijepa
 from utils import load_checkpoint, save_json, set_seed
@@ -132,14 +132,40 @@ def load_latents(variant=DEFAULT_VARIANT, layers=None, tag=""):
 # ==========================================================================
 # 2. Training della testa sui latenti cachati
 # ==========================================================================
+def istanze_per_epoca(train_labels, method, bts_alpha=0.5):
+    """
+    Quante istanze vede la testa in un'epoca con questo metodo.
+
+    Non e' la stessa cosa per tutti, ed e' un confronto viziato finche' non
+    lo si dice. `none`, `class_weighted`, `focal` e `oversample` fanno un
+    passo per lesione: 4719. I metodi a viste ne fanno uno per VISTA: 6894
+    ad alpha 0.5, cioe' il 46% di passi di gradiente in piu' a parita' di
+    epoche. Parte del vantaggio della novita' potrebbe essere solo questo, e
+    finche' non si pareggia il budget non si puo' escludere.
+    """
+    n = len(train_labels)
+    if method in ("balanced_tokens", "random_tokens"):
+        counts = class_counts(train_labels)
+        v = (n_views_per_class(counts, bts_alpha) if method == "balanced_tokens"
+             else n_views_uniform(counts, bts_alpha))
+        return float((v.float() * counts).sum())
+    return float(n)
+
+
 def train_head(cached, method="none", head_type="flat", seed=0,
-               epochs=HEAD_EPOCHS, verbose=False, bts_alpha=0.5, use_geom=False):
+               epochs=HEAD_EPOCHS, verbose=False, bts_alpha=0.5, use_geom=False,
+               pool_type="attn", budget_istanze=None):
     """
     Addestra attention pooling + testa sui latenti congelati.
 
     Gira in secondi: e' il motivo per cui potete permettervi N_SEEDS seed e
     intervalli di confidenza. Con sbilanciamento 7:1 i margini tra i metodi
     sono stretti e un singolo run non distingue niente.
+
+    `budget_istanze` fissa il numero TOTALE di istanze di training invece
+    del numero di epoche, e le epoche si ricavano di conseguenza. Serve al
+    controllo a pari esempi visti: senza, i metodi a viste ricevono piu'
+    passi di gradiente delle baseline e il confronto misura anche quello.
     """
     set_seed(seed)
     data, dim, grid = cached["data"], cached["embed_dim"], cached["grid"]
@@ -147,8 +173,13 @@ def train_head(cached, method="none", head_type="flat", seed=0,
     tr, va = data["train"], data["val"]
     train_labels = tr["labels"]
 
+    if budget_istanze is not None:
+        per_ep = istanze_per_epoca(train_labels, method, bts_alpha)
+        epochs = max(1, int(round(budget_istanze / per_ep)))
+
     gdim = tr["geom"].shape[1] if (use_geom and "geom" in tr) else 0
-    clf = LesionClassifier(dim, grid, head_type, geom_dim=gdim).to(DEVICE)
+    clf = LesionClassifier(dim, grid, head_type, geom_dim=gdim,
+                           pool_type=pool_type).to(DEVICE)
     opt = torch.optim.AdamW(clf.parameters(), lr=HEAD_LR, weight_decay=HEAD_WEIGHT_DECAY)
 
     n = len(train_labels)
@@ -195,17 +226,16 @@ def train_head(cached, method="none", head_type="flat", seed=0,
             y = tr_labels_ep[idx]
             gm = tr_geom[idx] if gdim else None
 
-            if method == "balanced_tokens":
-                # La geometria segue le viste: ogni vista e' la STESSA
-                # lesione, quindi eredita la sua bbox.
-                n0 = tok.shape[0]
-                tok, msk, y = balanced_token_sampling(
+            if method in ("balanced_tokens", "random_tokens"):
+                campiona = (balanced_token_sampling if method == "balanced_tokens"
+                            else random_token_sampling)
+                tok, msk, y, orig = campiona(
                     tok, msk, y, bts_counts, generator=bts_gen, alpha=bts_alpha
                 )
+                # La geometria segue le viste tramite l'indice di origine:
+                # ogni vista e' la STESSA lesione, quindi eredita la sua bbox.
                 if gdim:
-                    rip = tok.shape[0] // n0 if tok.shape[0] % n0 == 0 else None
-                    gm = (gm.repeat_interleave(rip, 0) if rip
-                          else gm[:tok.shape[0]])
+                    gm = gm[orig]
 
             tok, msk, y = tok.to(DEVICE), msk.to(DEVICE), y.to(DEVICE)
             if gdim:

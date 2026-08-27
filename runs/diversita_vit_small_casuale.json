@@ -1,0 +1,65 @@
+{
+  "tag": "_casuale",
+  "viste": 8,
+  "classi": [
+    {
+      "classe": 0,
+      "pai": 3,
+      "n_lesioni": 400,
+      "n_viste": 8,
+      "token": {
+        "mediana": 16.0,
+        "q1": 16.0,
+        "q3": 16.0,
+        "min": 4,
+        "max": 48
+      },
+      "coseno_dentro_lesione": 0.9991254161298275,
+      "coseno_fra_lesioni": 0.975563108921051,
+      "rho": 0.9655461205621759,
+      "var_fra": 25.513507454403168,
+      "var_dentro": 0.910406340153099
+    },
+    {
+      "classe": 1,
+      "pai": 4,
+      "n_lesioni": 400,
+      "n_viste": 8,
+      "token": {
+        "mediana": 36.0,
+        "q1": 24.0,
+        "q3": 36.0,
+        "min": 8,
+        "max": 100
+      },
+      "coseno_dentro_lesione": 0.9993490485846996,
+      "coseno_fra_lesioni": 0.9761335253715515,
+      "rho": 0.9736221976307531,
+      "var_fra": 24.517042362924823,
+      "var_dentro": 0.664226534379969
+    },
+    {
+      "classe": 2,
+      "pai": 5,
+      "n_lesioni": 400,
+      "n_viste": 8,
+      "token": {
+        "mediana": 64.0,
+        "q1": 48.0,
+        "q3": 90.0,
+        "min": 24,
+        "max": 196
+      },
+      "coseno_dentro_lesione": 0.9995821040868759,
+      "coseno_fra_lesioni": 0.9721211194992065,
+      "rho": 0.9852627775640347,
+      "var_fra": 27.653305502957174,
+      "var_dentro": 0.4136286517332672
+    }
+  ],
+  "counts": [
+    3017,
+    1229,
+    473
+  ]
+}

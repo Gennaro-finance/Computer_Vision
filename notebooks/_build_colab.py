@@ -43,8 +43,9 @@ in un paio di minuti.
 `splits.json` **non** va portato: e' versionato nel repo e arriva col clone.
 Anche i risultati gia' misurati arrivano da GitHub.
 
-Per lo sweep di alpha basta il dataset: gira sull'encoder casuale, che e'
-il riferimento e detiene i due primati assoluti.
+Per i cinque esperimenti della sezione 8 basta il dataset: girano tutti
+sull'encoder casuale, che e' il riferimento e detiene i due primati
+assoluti.
 
 Esegui le celle in ordine. **La cella 5 verifica che l'ambiente sia
 corretto**: se passa, i risultati saranno confrontabili con quelli gia'
@@ -123,8 +124,9 @@ md("""
 - `splits.json` arriva **col clone**: e' versionato nel repo, non serve
   portarlo su Drive.
 - Il **checkpoint serve solo** se nella cella 7 metti `CASUALE = False`.
-  Per lo sweep di alpha non serve: gira sull'encoder casuale, che e' il
-  riferimento e detiene i due primati assoluti.
+  Per i cinque esperimenti della sezione 8 non serve: girano tutti
+  sull'encoder casuale, che e' il riferimento e detiene i due primati
+  assoluti.
 
 Il dataset si prende dall'archivio su Drive e si scompatta sul disco locale
 di Colab. Costa un paio di minuti per sessione, ma poi le letture sono
@@ -304,83 +306,201 @@ cache_latents('vit_small', layers=[2, 7, 11], casuale=CASUALE,
 """)
 
 md("""
-## 8 - L'esperimento
+## 8 - Gli esperimenti
 
-Sotto c'e' lo sweep di alpha, l'unico rimasto in sospeso. Per la griglia
-completa dell'obiettivo 4 usa invece `run_grid(...)` da `train_downstream`.
+Lo sweep di alpha e' **chiuso** (massimo interno a 0.50, vedi i riferimenti
+in fondo). Restano i cinque della lista, ognuno nella sua cella. Sono
+indipendenti: puoi lanciarne uno solo, e ognuno **riparte da dove si era
+fermato** se la sessione cade.
 
-Protocollo in due fasi: screening su 3 seed, poi le due migliori su 5 seed
-**disgiunti**. I seed non si riusano perche' selezionare su una misura
-rumorosa e poi riportare quella stessa misura gonfia il vincitore di circa
-una deviazione - dello stesso ordine dell'effetto cercato.
+| cella | esperimento | a cosa risponde | GPU |
+|---|---|---|---|
+| 8a | controlli | il merito e' del ribilanciamento o dell'augmentation? e dei passi di gradiente in piu'? | si', ~2-4 h |
+| 8b | pooling | il collo di bottiglia e' l'aggregazione dei token? | si', ~1-2 h |
+| 8c | curve PR | che precisione resta a recall 0.80 su PAI 5? | si', ~30-60 min |
+| 8d | diversita' | quante viste INDIPENDENTI valgono quelle assegnate? | poca, ~5 min |
+| 8e | figure | ridisegna tutte le figure dai JSON | no |
+
+I tempi sono stime su T4 ricavate dai tempi misurati in locale (una testa a
+100 epoche: 102 s per `none`, 166 s per `balanced_tokens` su RTX 4080).
+Prendili come ordine di grandezza, non come promesse.
+
+`--carico 100` toglie il freno termico: serve solo al portatile di casa, su
+Colab e' tempo buttato.
+
+**Se hai poco tempo, l'ordine di valore e' 8d, 8c, 8a, 8b.** La 8d costa
+cinque minuti e da' il numero che spiega il risultato su alpha.
+""")
+
+md("""
+### 8a - I due controlli (punti 2 e 4)
+
+`balanced_token_sampling` fa **due cose insieme**: genera viste
+(augmentation) e ne da' di piu' alle classi rare (ribilanciamento). Finche'
+restano insieme non si sa quale delle due produce il risultato.
+
+- `random_tokens` tiene le viste e toglie il ribilanciamento, a **budget di
+  viste identico**. La differenza `balanced - random` isola il
+  ribilanciamento; `random - none` isola l'augmentation.
+- Il secondo controllo pareggia il **numero totale di istanze**: a parita'
+  di epoche la novita' fa 6894 passi contro i 4719 delle baseline, cioe' il
+  **46% di gradiente in piu'**. Qui le baseline ricevono le epoche che
+  servono a pareggiare, 146 invece di 100.
+
+Il secondo controllo peggiora deliberatamente il confronto per la novita'.
+Se sopravvive, il risultato vale piu' di prima.
 """)
 code("""
-ALPHAS    = [0.25, 0.50, 0.75, 1.00]
-SCREENING = [0, 1, 2]
-FINALI    = [10, 11, 12, 13, 14]      # disgiunti dai precedenti
+!python exp_controlli.py --tag {TAG} --carico 100
+""")
 
-import numpy as np, torch
-from train_downstream import load_latents, train_head
-from evaluation import evaluate_split
+md("""
+### 8b - Pooling gated e top-k (punto 5)
 
-cached = load_latents('vit_small', layers=[2, 7, 11], tag=TAG)
+L'encoder e' congelato, quindi tutto cio' che si addestra sta in due pezzi:
+**come i token della bbox diventano un vettore** (pooling) e come quel
+vettore diventa tre logit (testa). Se l'aggregazione butta via
+l'informazione, nessuna testa la recupera.
 
+- `gated` - punteggio non lineare per token, stile MIL (Ilse et al. 2018):
+  `a ~ w' (tanh(Vh) * sigmoid(Uh))`. Esprime *questo token conta SE anche
+  quest'altra caratteristica c'e'*, che sul PAI e' la struttura del
+  problema: una regione conta se e' insieme grande **e** scura. Con
+  nascosto 128 sono 0.3M parametri contro i 5.3M dell'attention che
+  sostituisce, quindi e' **piu' leggero**, non piu' pesante.
+- `topk` - solo i k token piu' forti. E' l'ipotesi **opposta** alla
+  novita': la novita' dice *non appoggiarti a pochi token*, il top-k dice
+  *appoggiati solo ai migliori*. Se vince, l'argomento della novita' si
+  indebolisce - ed e' meglio saperlo prima della presentazione che durante.
 
-def misura(alpha, seeds):
-    v = {'macro_f1': [], 'pr_auc': [], 'recall5': [], 'prec5': []}
-    for s in seeds:
-        clf, _ = train_head(cached, 'balanced_tokens', 'flat',
-                            seed=s, bts_alpha=alpha)
-        r = evaluate_split(clf, cached['data']['test'], 'flat')
-        del clf
-        torch.cuda.empty_cache()
-        v['macro_f1'].append(r['macro_f1'])
-        v['pr_auc'].append(r['pr_auc_pai5'])
-        v['recall5'].append(r['recall_pai5'])
-        v['prec5'].append(r['precision_pai5'])
-    return {k: (float(np.mean(x)), float(np.std(x))) for k, x in v.items()}
+Selezione su **validation**; sul test va solo la configurazione scelta.
+""")
+code("""
+!python exp_pooling.py --tag {TAG} --carico 100
+""")
 
+md("""
+### 8c - Curve PR su PAI 5 (punto 3)
 
-def riga(a, m):
-    return (f"{a:6.2f} {m['pr_auc'][0]:9.4f}+-{m['pr_auc'][1]:.4f} "
-            f"{m['macro_f1'][0]:9.4f}+-{m['macro_f1'][1]:.4f} "
-            f"{m['recall5'][0]:8.4f} {m['prec5'][0]:8.3f}")
+La PR-AUC e' un integrale, e integrali uguali vengono da curve diverse. Su
+una minoritaria clinica non serve *tutta la curva*: serve **la precisione
+che resta quando pretendi di trovare l'80% dei PAI 5**. Quella si legge
+sulla curva, non nell'area.
 
+Le curve dei 5 seed si mediano in verticale su una griglia comune di
+recall, perche' ogni seed produce un numero diverso di punti a valori di
+recall diversi e mediarle punto a punto non si puo'.
+""")
+code("""
+!python exp_curve_pr.py --tag {TAG} --carico 100
+""")
 
-testata = f"{'alpha':>6s} {'PR-AUC5':>17s} {'macro-F1':>17s} {'rec5':>8s} {'prec5':>8s}"
-print('FASE 1 - screening,', len(SCREENING), 'seed')
-print(testata)
-print('-' * 60)
-scr = {}
-for a in ALPHAS:
-    scr[a] = misura(a, SCREENING)
-    print(riga(a, scr[a]), flush=True)
+md("""
+### 8d - Diversita' dei token (punto 6)
 
-migliori = sorted(ALPHAS, key=lambda a: -scr[a]['pr_auc'][0])[:2]
-print('\\nFASE 2 - le due migliori', migliori, '- seed DISGIUNTI')
-print(testata)
-print('-' * 60)
-fin = {}
-for a in migliori:
-    fin[a] = misura(a, FINALI)
-    print(riga(a, fin[a]), flush=True)
+**E' il numero che spiega il risultato dello sweep di alpha**, e costa
+cinque minuti.
+
+Lo sweep dice che dare 7 viste a un PAI 5 rende **meno** che dargliene 3.
+L'interpretazione e' che le viste siano ridondanti. Qui diventa una misura:
+dal campionamento statistico, k osservazioni con correlazione interna rho
+non valgono k campioni indipendenti, ne valgono
+
+    n_eff = k / (1 + (k - 1) * rho)
+
+che e' l'inverso del design effect. `rho` e' l'ICC multivariato - varianza
+fra lesioni su varianza totale.
+
+Misurato in locale sull'encoder casuale: **rho = 0.985 su PAI 5**, cioe'
+**7 viste valgono 1.01 esempi indipendenti**. Col pooling addestrato rho
+scende a 0.923 e n_eff sale a 1.07: la conclusione tiene.
+
+Si esegue due volte - media mascherata (senza parametri) e pooling
+addestrato - perche' la prima obiezione a questa misura e' *hai usato un
+aggregatore finto*.
+""")
+code("""
+!python exp_diversita.py --tag {TAG}
+!python exp_diversita.py --tag {TAG} --addestrato
+""")
+
+md("""
+### 8e - Le figure
+
+Nessuna GPU: legge i JSON in `runs/` e salta le figure di cui non trova i
+dati, invece di fallire.
+""")
+code("""
+!python figure_finali.py
+
+from IPython.display import Image, display
+import glob, os
+for f in sorted(glob.glob('runs/figures/fin*.png')):
+    print(os.path.basename(f))
+    display(Image(f))
 """)
 
 md("""
 ## 9 - Salvare su Drive
 
 **Falla subito.** La sessione Colab si chiude e `/content` sparisce.
+
+Copia tutti i JSON e le figure in una cartella con la data, cosi' due
+sessioni diverse non si sovrascrivono a vicenda.
 """)
 code("""
-import json, datetime
+import datetime, glob, os, shutil
 
-nome = f"sweep_alpha{TAG}_{datetime.datetime.now():%Y%m%d_%H%M}.json"
-with open(f'{BASE}/risultati/{nome}', 'w') as f:
-    json.dump({'screening': {str(k): v for k, v in scr.items()},
-               'finali': {str(k): v for k, v in fin.items()},
-               'seed_screening': SCREENING, 'seed_finali': FINALI,
-               'encoder': TAG}, f, indent=2)
-print('salvato su Drive:', nome)
+quando = f"{datetime.datetime.now():%Y%m%d_%H%M}"
+dest = f'{BASE}/risultati/{quando}{TAG}'
+os.makedirs(dest, exist_ok=True)
+
+copiati = 0
+for pattern in ('runs/controlli_*.json', 'runs/pooling_*.json',
+                'runs/curve_pr_*.json', 'runs/diversita_*.json',
+                'runs/sweep_alpha_*.json', 'runs/results_*.json',
+                'runs/figures/*.png'):
+    for f in glob.glob(pattern):
+        shutil.copy2(f, dest)
+        copiati += 1
+
+print(f'{copiati} file copiati in', dest.replace(BASE, 'Drive:'))
+for f in sorted(os.listdir(dest)):
+    print('  ', f)
+""")
+
+md("""
+### 9b - Rimandarli nel repo (facoltativo, consigliato)
+
+I JSON sono piccoli e sono **i dati della presentazione**: nel repo sono al
+sicuro e versionati, su Drive no. Serve un token GitHub con permesso
+`repo`; se non ce l'hai, scarica i file da Drive e committali da casa.
+
+Il token e' una credenziale: incollalo, esegui, e **non salvare il
+notebook** dopo averlo fatto.
+""")
+code("""
+TOKEN = ''      # incolla qui, poi NON salvare il notebook
+
+if TOKEN:
+    import subprocess
+    REPO_TOK = REPO.replace('https://', f'https://{TOKEN}@')
+    passi = (['git', 'config', 'user.email', 'colab@local'],
+             ['git', 'config', 'user.name', 'Colab'],
+             ['git', 'add', 'runs/'],
+             ['git', 'commit', '-m', f'risultati da Colab {quando}'],
+             ['git', 'push', REPO_TOK, 'HEAD:main'])
+    for cmd in passi:
+        r = subprocess.run(cmd, cwd=DEST, capture_output=True, text=True)
+        mostra = ' '.join(cmd[:3]).replace(TOKEN, '***')
+        print(mostra, '->', r.returncode)
+        if r.returncode and 'nothing to commit' not in (r.stdout or ''):
+            print(((r.stdout or '') + (r.stderr or '')).replace(TOKEN, '***'))
+            break
+    else:
+        print('fatto')
+else:
+    print('nessun token: scarica i file da Drive e committali da casa')
 """)
 
 md("""
@@ -395,18 +515,40 @@ capire subito se un numero nuovo e' buono:
 |---|---|---|---|---|---|
 | `balanced_tokens` (alpha 0.5) | **0.8813** | 0.7676 | **0.790** | 0.7696 | 0.814 |
 | `none` | 0.8758 | **0.7705** | 0.777 | 0.7232 | 0.840 |
+| `focal` | 0.8734 | 0.7577 | - | 0.7964 | 0.751 |
+| `class_weighted` | 0.8706 | 0.7533 | - | 0.7875 | 0.753 |
 | `oversample` | 0.8636 | 0.7603 | 0.771 | 0.7929 | 0.752 |
 
 Pavimento (classificatore costante): **0.2589**.
 
+**Sweep di alpha, chiuso.** Screening a 3 seed: 0.25 -> 0.8793, **0.50 ->
+0.8814**, 0.75 -> 0.8747, 1.00 -> 0.8689. Il massimo e' **interno**: alpha
+0.50 batte alpha 1.00 di +0.0125 a 2.2 errori standard. Rimisurato su 5
+seed disgiunti: 0.50 -> 0.8797, 0.25 -> 0.8775. Alpha 0.50 misurato tre
+volte in modo indipendente da' 0.8813 / 0.8814 / 0.8797, scarto 0.0017.
+
+**Diversita' dei token** (encoder casuale, media mascherata): rho = 0.966 /
+0.974 / **0.985** per PAI 3 / 4 / 5. Sette viste di un PAI 5 valgono
+**1.01** esempi indipendenti. Col pooling addestrato rho = 0.824 / 0.890 /
+0.923, e n_eff = 1.07.
+
+### Attenzione al confronto fra encoder
+
+La novita' e' prima sull'encoder **casuale**, seconda sul completo, **ultima
+sullo spinto** (0.8711, dietro tutte e quattro le baseline). Il vantaggio
+dipende dall'encoder, e va detto: non e' *la novita' vince*, e' *la novita'
+vince dove il pre-training non ha appiattito le rappresentazioni*.
+
 ### Se la sessione cade
 
 Colab stacca dopo ~12 ore, o prima se resta inattiva. Le celle 1-7 vanno
-rieseguite (~10 minuti, quasi tutto per i latenti); la 8 riparte da capo.
+rieseguite (~10 minuti, quasi tutto per i latenti). Le celle 8a e 8b invece
+**riprendono da dove erano**: rileggono il loro JSON in `runs/` e saltano le
+celle gia' misurate, purche' il protocollo coincida - stessi seed, stessa
+testa, stesso alpha. Con un protocollo diverso ripartono da capo invece di
+mescolare due esperimenti nella stessa tabella.
 
-Per esperimenti lunghi, salva i risultati **parziali** dentro il ciclo
-invece che alla fine - e' lo stesso motivo per cui la griglia in locale
-scrive una riga alla volta.
+Le 8c, 8d ed 8e durano poco e si rifanno interamente.
 
 ### Cosa NON portare su Drive
 

@@ -19,7 +19,7 @@ import torch.nn.functional as F
 from globals import (
     ATTN_POOL_HEADS, CONTEXT_SCALE, NUM_CLASSES, NUM_TARGET_BLOCKS,
     PATCH_SIZE, PREDICTOR_DEPTH, PREDICTOR_DIM, PREDICTOR_HEADS,
-    TARGET_ASPECT, TARGET_SCALE, TILE_SIZE, VIT_VARIANTS,
+    TARGET_ASPECT, TARGET_SCALE, TILE_SIZE, TOP_K, VIT_VARIANTS,
 )
 
 
@@ -398,6 +398,105 @@ class AttentionPooling(nn.Module):
         return self.norm(out.squeeze(1)), w
 
 
+class GatedAttentionPooling(nn.Module):
+    """
+    Attention pooling gated in stile MIL (Ilse et al. 2018, "Attention-based
+    Deep Multiple Instance Learning").
+
+    PERCHE' QUI. Il problema e' letteralmente un problema di multiple
+    instance learning: la bbox contiene un sacchetto di token e l'etichetta
+    e' del sacchetto, non dei singoli token. L'attention pooling attuale usa
+    una query APPRESA MA FISSA - lo stesso vettore per ogni lesione - quindi
+    i pesi dipendono dal token solo attraverso un prodotto scalare con una
+    direzione unica. Il gating rende il punteggio del token una funzione non
+    lineare del token stesso:
+
+        a_i proporzionale a  w^T ( tanh(V h_i)  *  sigmoid(U h_i) )
+
+    Il ramo tanh propone quanto il token e' rilevante, il ramo sigmoid
+    decide quanto lasciarlo passare. Il prodotto fra i due e' cio' che la
+    query fissa non puo' esprimere: "questo token conta SE anche
+    quest'altra caratteristica e' presente". Sul PAI e' esattamente la
+    struttura del problema - una regione conta se e' insieme grande E scura.
+
+    COSTO. Con dim=1152 e nascosto=128 sono ~0.3M parametri, contro i 5.3M
+    dell'attention multi-testa che sostituisce: e' piu' LEGGERO, non piu'
+    pesante. Il brief chiede una testa leggera e questo la rispetta.
+    """
+
+    def __init__(self, dim, nascosto=128):
+        super().__init__()
+        self.V = nn.Linear(dim, nascosto)
+        self.U = nn.Linear(dim, nascosto)
+        self.w = nn.Linear(nascosto, 1)
+        self.norm = nn.LayerNorm(dim)
+
+    def forward(self, tokens, token_mask=None):
+        a = self.w(torch.tanh(self.V(tokens)) * torch.sigmoid(self.U(tokens)))
+        a = a.squeeze(-1)                                   # (B, T)
+        if token_mask is not None:
+            # I token fuori bbox non sono candidati: -inf li azzera dopo il
+            # softmax. Mascherare DOPO il softmax non basterebbe, i pesi
+            # rimasti non sommerebbero piu' a uno.
+            a = a.masked_fill(~token_mask, float("-inf"))
+        w = torch.softmax(a, dim=-1)
+        # Una riga interamente mascherata darebbe softmax di soli -inf, cioe'
+        # NaN. Non dovrebbe succedere - bbox_to_token_mask garantisce almeno
+        # un token - ma un NaN qui si propaga a tutti i pesi e il run muore
+        # senza dire perche'.
+        w = torch.nan_to_num(w)
+        out = torch.einsum("bt,btd->bd", w, tokens)
+        return self.norm(out), w[:, None, :]
+
+
+class TopKAttentionPooling(nn.Module):
+    """
+    Attenzione ristretta ai k token con punteggio piu' alto.
+
+    PERCHE'. Il softmax e' denso: distribuisce peso su TUTTI i token della
+    bbox, anche quelli che contengono solo osso sano al bordo della
+    radiotrasparenza. Le bbox mediane per classe hanno lati 57/80/127 px,
+    cioe' da ~9 a ~64 token, e su quelle grandi la lesione vera occupa una
+    frazione del rettangolo: il resto e' contorno. Un softmax denso lo media
+    dentro comunque.
+
+    Il top-k tiene i k token piu' forti e rinormalizza solo fra loro. E'
+    l'ipotesi opposta a quella della novita': la novita' dice "non
+    appoggiarti a pochi token", il top-k dice "appoggiati solo ai migliori".
+    Vale la pena misurarle contro, perche' se il top-k vince l'argomento
+    della novita' si indebolisce, e questo va saputo prima della
+    presentazione invece che durante.
+
+    k e' un CAP, non un numero fisso: se la bbox ha meno di k token si
+    tengono quelli che ci sono. Con k >= max token la funzione degenera
+    esattamente nel softmax denso, che e' il controllo giusto.
+    """
+
+    def __init__(self, dim, k=8, heads=ATTN_POOL_HEADS):
+        super().__init__()
+        self.query = nn.Parameter(torch.zeros(1, 1, dim))
+        nn.init.trunc_normal_(self.query, std=0.02)
+        self.punteggio = nn.Linear(dim, 1)
+        self.norm = nn.LayerNorm(dim)
+        self.k = k
+
+    def forward(self, tokens, token_mask=None):
+        a = self.punteggio(tokens).squeeze(-1)              # (B, T)
+        if token_mask is not None:
+            a = a.masked_fill(~token_mask, float("-inf"))
+
+        k = min(self.k, a.shape[1])
+        soglia = a.topk(k, dim=-1).values[:, -1:]           # k-esimo valore
+        # `>=` e non `>`: con pareggi al k-esimo posto un `>` scarterebbe
+        # tutti gli ex aequo e potrebbe svuotare la riga.
+        tenuti = (a >= soglia) & torch.isfinite(a)
+        a = a.masked_fill(~tenuti, float("-inf"))
+
+        w = torch.nan_to_num(torch.softmax(a, dim=-1))
+        out = torch.einsum("bt,btd->bd", w, tokens)
+        return self.norm(out), w[:, None, :]
+
+
 def bbox_to_token_mask(bbox, grid, patch_size=PATCH_SIZE):
     """
     Converte bbox in coordinate pixel in una maschera booleana sui token.
@@ -551,9 +650,24 @@ class LesionClassifier(nn.Module):
     quanto pesa l'encoder e quanto la geometria.
     """
 
-    def __init__(self, embed_dim, grid, head_type="flat", geom_dim=0):
+    def __init__(self, embed_dim, grid, head_type="flat", geom_dim=0,
+                 pool_type="attn", top_k=TOP_K):
         super().__init__()
-        self.pool = AttentionPooling(embed_dim)
+        # Il pooling e' l'altra meta' della parte addestrabile, ed e' quella
+        # che decide COME i token della bbox diventano un vettore solo.
+        # Tenerlo scambiabile permette di misurare se il collo di bottiglia
+        # sta li' invece che nella testa - due ipotesi diverse che senza
+        # questo interruttore non si separano.
+        pooling = {
+            "attn":  lambda: AttentionPooling(embed_dim),
+            "gated": lambda: GatedAttentionPooling(embed_dim),
+            "topk":  lambda: TopKAttentionPooling(embed_dim, k=top_k),
+        }
+        if pool_type not in pooling:
+            raise ValueError(f"pooling sconosciuto: {pool_type}. "
+                             f"Disponibili: {sorted(pooling)}")
+        self.pool = pooling[pool_type]()
+        self.pool_type = pool_type
         self.geom_dim = geom_dim
         dim = embed_dim + geom_dim
         if geom_dim:

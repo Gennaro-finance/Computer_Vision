@@ -73,6 +73,63 @@ def pr_auc(scores, binary_labels):
     return float(np.sum(np.diff(np.concatenate([[0.0], recall])) * precision))
 
 
+def pr_curve(scores, binary_labels):
+    """
+    La curva precision-recall di cui `pr_auc` restituisce solo l'area.
+
+    L'area comprime la curva in un numero, e due metodi con la stessa area
+    possono avere forme molto diverse: uno preciso ad alta soglia e inutile
+    a recall alta, l'altro il contrario. Su una minoritaria clinica la forma
+    conta piu' dell'area, perche' il punto di lavoro utile non e' "tutta la
+    curva" ma "la precisione che resta quando si pretende di trovare l'80%
+    dei PAI 5".
+
+    Restituisce (recall, precision) crescenti in recall, con il punto
+    iniziale (0, 1) aggiunto perche' la curva parta dall'asse e le aree
+    sotto curve diverse siano confrontabili a vista.
+    """
+    s = np.asarray(scores, dtype=float)
+    y = np.asarray(binary_labels, dtype=int)
+    if y.sum() == 0:
+        return np.array([0.0]), np.array([1.0])
+
+    order = np.argsort(-s)
+    y = y[order]
+    tp = np.cumsum(y)
+    precision = tp / np.arange(1, len(y) + 1)
+    recall = tp / y.sum()
+    return (np.concatenate([[0.0], recall]),
+            np.concatenate([[1.0], precision]))
+
+
+def curva_media(curve, griglia=None):
+    """
+    Media di piu' curve PR sui seed, interpolata su una griglia di recall.
+
+    Mediare le curve punto per punto e' impossibile: ogni seed produce un
+    numero diverso di punti, a valori di recall diversi. Si interpola quindi
+    ciascuna su una griglia comune di recall e si media in verticale, che e'
+    il modo standard (vertical averaging) e l'unico che conserva il
+    significato dell'asse: "a questa recall, questa precisione".
+
+    Restituisce (griglia, media, deviazione).
+    """
+    if griglia is None:
+        griglia = np.linspace(0.0, 1.0, 201)
+    righe = []
+    for rec, prec in curve:
+        # `np.interp` pretende x crescente. La recall lo e' gia' per
+        # costruzione, ma con punteggi a pari merito puo' ripetersi: si
+        # tiene per ogni recall la precisione MASSIMA, che e' la
+        # convenzione della curva PR interpolata.
+        r, p = np.asarray(rec), np.asarray(prec)
+        ordine = np.argsort(r, kind="stable")
+        r, p = r[ordine], p[ordine]
+        righe.append(np.interp(griglia, r, p))
+    m = np.stack(righe)
+    return griglia, m.mean(0), m.std(0)
+
+
 def quadratic_weighted_kappa(y_true, y_pred, num_classes=NUM_CLASSES):
     """
     Cohen's kappa con pesi quadratici - la metrica corretta per il PAI.
@@ -107,8 +164,17 @@ def ordinal_mae(y_true, y_pred):
 # ==========================================================================
 @torch.no_grad()
 def evaluate_split(clf, split_data, head_type="flat", batch_size=256,
-                   use_geom=False):
-    """Valuta la testa su uno split di latenti cachati."""
+                   use_geom=False, con_punteggi=False):
+    """
+    Valuta la testa su uno split di latenti cachati.
+
+    `con_punteggi` aggiunge al risultato i punteggi grezzi per classe e le
+    etichette vere. Servono a disegnare la curva PR, che dai soli aggregati
+    non si puo' ricostruire: l'area e' un integrale e non si inverte.
+    Restano fuori per difetto perche' sono un array per lesione e
+    finirebbero dentro i JSON dell'ablation, moltiplicandone la dimensione
+    per nessun uso.
+    """
     clf.eval()
     tokens, mask, labels = split_data["tokens"], split_data["mask"], split_data["labels"]
 
@@ -156,6 +222,9 @@ def evaluate_split(clf, split_data, head_type="flat", batch_size=256,
         res[f"precision_pai{g}"] = pc[c]["precision"]
         res[f"f1_pai{g}"] = pc[c]["f1"]
         res[f"pr_auc_pai{g}"] = pr_auc(probs[:, c], (y == c).astype(int))
+    if con_punteggi:
+        res["scores"] = probs
+        res["y_true"] = y
     return res
 
 

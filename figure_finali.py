@@ -315,6 +315,110 @@ def fig_traiettoria():
 # --------------------------------------------------------------------------
 # 5. Lo sweep di alpha
 # --------------------------------------------------------------------------
+def fig_curve_pr():
+    """
+    Le curve precision-recall su PAI 5 - la metrica primaria, non compressa.
+
+    DUE PANNELLI. Sopra la curva intera, sotto uno zoom sulla fascia di
+    recall che interessa davvero (0.6-0.95): li' le curve si separano di
+    pochi punti percentuali, e sul pannello intero quella differenza e' un
+    pelo di spessore. Uno zoom non e' un abbellimento, e' l'unico modo di
+    far vedere la differenza che il numero riporta.
+
+    Le curve sono etichettate DIRETTAMENTE oltre che in legenda: con cinque
+    metodi la sola legenda costringe a fare la spola fra il riquadro e le
+    curve, e su una slide nessuno la fa.
+    """
+    percorsi = sorted(glob.glob(os.path.join(OUT_DIR, "curve_pr_*.json")))
+    if not percorsi:
+        print("  salto fin6_curve_pr: lanciare prima exp_curve_pr.py")
+        return None
+    with open(percorsi[-1], encoding="utf-8") as f:
+        d = json.load(f)
+
+    ordine = [m for m in ("balanced_tokens", "none", "class_weighted",
+                          "oversample", "focal") if m in d["curve"]]
+    nomi = {"balanced_tokens": "balanced tokens (novita')", "none": "CE semplice",
+            "class_weighted": "CE pesata", "oversample": "oversample",
+            "focal": "focal loss"}
+    # La novita' e' l'unica in blu pieno: le baseline sono il contesto, non
+    # cinque protagonisti. Dare a ognuna un colore proprio fa perdere la sola
+    # cosa che il grafico deve dire.
+    stile = {"balanced_tokens": dict(color=BLU, linewidth=2.4, zorder=5),
+             "none": dict(color=ARANCIO, linewidth=1.8, zorder=4)}
+    grigi = [dict(color=INK_SOFT, linewidth=1.2, linestyle=ls, zorder=3)
+             for ls in ("--", ":", "-.")]
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7.4, 6.4),
+                                   gridspec_kw={"height_ratios": [1.15, 1]})
+    i_grigio = 0
+    for m in ordine:
+        c = d["curve"][m]
+        r, p_ = np.array(c["recall"]), np.array(c["precision"])
+        if m in stile:
+            kw = stile[m]
+        else:
+            kw = grigi[i_grigio % len(grigi)]
+            i_grigio += 1
+        for ax in (ax1, ax2):
+            ax.plot(r, p_, label=nomi.get(m, m), **kw)
+        if m == "balanced_tokens":
+            # La banda solo sulla novita': cinque bande sovrapposte sono
+            # illeggibili, e la dispersione che serve vedere e' la sua.
+            dev = np.array(c["dev"])
+            for ax in (ax1, ax2):
+                ax.fill_between(r, p_ - dev, p_ + dev, color=BLU, alpha=0.13,
+                                linewidth=0, zorder=2)
+
+    prev = d["prevalenza_pai5"]
+    ax1.axhline(prev, color=INK_SOFT, linestyle="--", linewidth=1)
+    ax1.text(0.985, prev + 0.02, f"classificatore casuale = prevalenza {prev:.3f}",
+             ha="right", va="bottom", fontsize=8.5, color=INK_MID)
+
+    ax1.set_xlim(0, 1); ax1.set_ylim(0, 1.02)
+    ax1.set_ylabel("precisione")
+    ax1.set_title("Curve precision-recall su PAI 5, media di "
+                  f"{len(d['seeds'])} seed, test")
+    ax1.legend(loc="lower left", fontsize=8.5)
+
+    # Zoom sulla fascia di lavoro. I limiti in y si ricavano dai dati dentro
+    # la fascia: fissarli a mano vorrebbe dire ritagliarli attorno al
+    # risultato, che e' un modo di mentire con un grafico onesto.
+    lo, hi = 0.60, 0.95
+    dentro = []
+    for m in ordine:
+        c = d["curve"][m]
+        r, p_ = np.array(c["recall"]), np.array(c["precision"])
+        dentro.append(p_[(r >= lo) & (r <= hi)])
+    dentro = np.concatenate(dentro)
+    m0, m1 = float(dentro.min()), float(dentro.max())
+    ax2.set_xlim(lo, hi)
+    ax2.set_ylim(m0 - 0.02, m1 + 0.03)
+    ax2.set_xlabel("recall su PAI 5")
+    ax2.set_ylabel("precisione")
+    ax2.set_title(f"Zoom sulla fascia di lavoro clinica, recall {lo:.2f}-{hi:.2f}")
+
+    # Precisione alle recall di lavoro, scritta: e' quello che si cita a voce.
+    pr = d["precisione_a_recall"]
+    for r in d["recall_lavoro"]:
+        if not (lo <= r <= hi):
+            continue
+        ax2.axvline(r, color=GRIGLIA, linewidth=1, zorder=1)
+        b = pr.get("balanced_tokens", {}).get(f"{r:.2f}")
+        n_ = pr.get("none", {}).get(f"{r:.2f}")
+        if b is not None and n_ is not None:
+            ax2.annotate(f"r={r:.2f}\n{b:.3f} vs {n_:.3f}",
+                         (r, m1 + 0.012), ha="center", va="top",
+                         fontsize=8, color=INK_MID)
+
+    for ax in (ax1, ax2):
+        ax.yaxis.grid(True, zorder=0)
+        ax.set_axisbelow(True)
+    fig.tight_layout()
+    print("  fin6_curve_pr da", os.path.basename(percorsi[-1]))
+    return salva(fig, "fin6_curve_pr")
+
+
 def fig_alpha():
     """
     L'ablation su alpha, quando il file c'e'.
@@ -372,7 +476,8 @@ def fig_alpha():
 
 if __name__ == "__main__":
     fatte = []
-    for f in (fig_soffitto, fig_encoder, fig_novita, fig_traiettoria, fig_alpha):
+    for f in (fig_soffitto, fig_encoder, fig_novita, fig_traiettoria,
+              fig_alpha, fig_curve_pr):
         p = f()
         if p:
             fatte.append(p)
