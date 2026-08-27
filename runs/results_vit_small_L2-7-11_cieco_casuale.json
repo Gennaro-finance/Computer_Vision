@@ -1,0 +1,40 @@
+{
+  "latenti": {
+    "file": "latents_vit_small_L2-7-11_cieco_casuale.pt",
+    "byte": 3045615935,
+    "modificato": 1787851775
+  },
+  "quando": "2026-08-27 19:50",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "righe": [
+    {
+      "method": "none",
+      "head": "flat",
+      "n_seeds": 5,
+      "macro_f1_mean": 0.5299990269994674,
+      "macro_f1_std": 0.017346740963070137,
+      "balanced_acc_mean": 0.5346660116299163,
+      "balanced_acc_std": 0.007283349693116339,
+      "recall_pai5_mean": 0.475,
+      "recall_pai5_std": 0.036333910623885336,
+      "pr_auc_pai5_mean": 0.4452445123981573,
+      "pr_auc_pai5_std": 0.017352485797834303,
+      "quadratic_kappa_mean": 0.46434827145930513,
+      "quadratic_kappa_std": 0.009370855734758729,
+      "f1_pai3_mean": 0.782749515663115,
+      "f1_pai3_std": 0.006157376350582562,
+      "f1_pai4_mean": 0.35150526011449906,
+      "f1_pai4_std": 0.04691701181049074,
+      "f1_pai5_mean": 0.4557423052207882,
+      "f1_pai5_std": 0.021161012031740253,
+      "precision_pai5_mean": 0.4434901870807809,
+      "precision_pai5_std": 0.04682692033927607
+    }
+  ]
+}

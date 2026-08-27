@@ -195,7 +195,7 @@ def istanze_per_epoca(train_labels, method, bts_alpha=0.5):
 
 def train_head(cached, method="none", head_type="flat", seed=0,
                epochs=HEAD_EPOCHS, verbose=False, bts_alpha=0.5, use_geom=False,
-               pool_type="attn", budget_istanze=None):
+               pool_type="attn", budget_istanze=None, traccia_ogni=None):
     """
     Addestra attention pooling + testa sui latenti congelati.
 
@@ -207,6 +207,13 @@ def train_head(cached, method="none", head_type="flat", seed=0,
     del numero di epoche, e le epoche si ricavano di conseguenza. Serve al
     controllo a pari esempi visti: senza, i metodi a viste ricevono piu'
     passi di gradiente delle baseline e il confronto misura anche quello.
+
+    `traccia_ogni` registra la validation ogni N epoche in `best["traiettoria"]`.
+    E' SOLO registrazione: la selezione dell'epoca migliore continua a
+    guardare la griglia ogni 10 epoche di sempre. Tenerle separate e'
+    necessario - se la selezione vedesse piu' candidati sceglierebbe il
+    massimo di piu' estrazioni, e la distorsione verso l'alto cambierebbe
+    il numero misurato invece di limitarsi a descriverlo.
     """
     set_seed(seed)
     data, dim, grid = cached["data"], cached["embed_dim"], cached["grid"]
@@ -257,6 +264,7 @@ def train_head(cached, method="none", head_type="flat", seed=0,
     bts_gen = torch.Generator(device=tr_tokens.device).manual_seed(seed)
 
     best = {"val_f1": -1.0}
+    traiettoria = []
     for epoch in range(epochs):
         clf.train()
         order = order_fn().to(tr_tokens.device)
@@ -288,6 +296,13 @@ def train_head(cached, method="none", head_type="flat", seed=0,
             loss.backward()
             opt.step()
 
+        if traccia_ogni and ((epoch + 1) % traccia_ogni == 0 or epoch == 0):
+            from evaluation import evaluate_split
+            t = evaluate_split(clf, va, head_type, use_geom=bool(gdim))
+            traiettoria.append({"epoca": epoch,
+                                "val_macro_f1": t["macro_f1"],
+                                "val_pr_auc_pai5": t["pr_auc_pai5"]})
+
         if (epoch + 1) % 10 == 0 or epoch == epochs - 1:
             from evaluation import evaluate_split
             m = evaluate_split(clf, va, head_type, use_geom=bool(gdim))
@@ -301,6 +316,8 @@ def train_head(cached, method="none", head_type="flat", seed=0,
 
     if "state" in best:
         clf.load_state_dict(best["state"])
+    if traccia_ogni:
+        best["traiettoria"] = traiettoria
     return clf, best
 
 
