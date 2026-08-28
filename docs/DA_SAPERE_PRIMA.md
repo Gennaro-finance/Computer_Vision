@@ -470,6 +470,93 @@ poi la scelta sul test con il pavimento `casuale + flat` accanto)*
 > casuale come **riferimento dichiarato**, non come avversario tarato. Vanno
 > presentate insieme: la prima difende la seconda.
 
+## Few-shot — il segno si inverte a ogni riga
+
+Train sottocampionato stratificato, validation e test interi, 5 seed. È il
+test canonico della qualità di una rappresentazione, e **non azzoppa la
+baseline**: toglie etichette a entrambi allo stesso modo.
+
+| etichette | n | `P1_bbox` z | `P3_K16` z |
+|---|---|---|---|
+| 1% | 47 | **−6,79** | **+4,05** |
+| 5% | 236 | −4,41 | +2,81 |
+| 10% | 472 | −3,18 | +3,37 |
+| 25% | 1.179 | −2,65 | +3,75 |
+| 100% | 4.719 | +0,04 | **+5,10** |
+
+Significativo **in entrambe le direzioni**, e l'unica cosa che cambia è se
+il protocollo regala il conteggio dei token.
+
+**Il vantaggio relativo si comporta come deve** — `P3_K16`, macro-F1:
+**+30,2%** all'1% → +12,3% al 5% → +7,4% al 25% → +4,8% al 100%. È la firma
+del few-shot: una buona rappresentazione vale di più quando i dati
+scarseggiano.
+
+**Il dato più duro è `P1_bbox` all'1%**: il casuale fa **0,7491 con 47
+etichette**, praticamente il suo massimo di sempre (0,7734).
+
+> **La scorciatoia non è solo disponibile: è imparabile da 47 esempi.**
+> *Più token → PAI più alto* è una relazione con un parametro. I-JEPA, che
+> quel canale l'ha in parte disimparato, deve costruire una mappa più
+> complessa e con 47 esempi non ci arriva. Ecco **perché** il modello prende
+> sempre la scorciatoia: a ogni livello di supervisione costa meno.
+
+**Da dichiarare**: sulla PR-AUC di PAI 5 il vantaggio a poche etichette
+**non è significativo** (z = +0,41 all'1%). All'1% ci sono **5 lesioni PAI 5
+nel train**: con cinque esempi non si stima una curva precision-recall. Il
+vantaggio in regime scarso si misura sulla macro-F1; sulla minoritaria
+servono più esempi per *misurarlo*, non per *averlo*.
+
+## MIL per token — un'ipotesi falsificata, e ciò che ha rivelato
+
+**L'idea.** Il brief dice di estrarre *"the latent vectors"* — plurale,
+cardinalità variabile. È Multiple Instance Learning, e il difetto noto di
+quella formulazione è il **bag-size bias**. Ilse et al. distinguono
+*embedding-level* (aggreghi le feature, poi classifichi) da *instance-level*
+(classifichi ogni istanza, poi aggreghi le decisioni). Nel secondo la
+cardinalità non entra: **la media di N probabilità non dipende da N**.
+
+Verificato prima di misurare: invarianza da 8 a 128 token con scarto 6×10⁻⁸,
+e con una testa lineare istanza ed embedding coincidono — `media(W·xᵢ) =
+W·media(xᵢ)` — per questo la testa per token è un MLP.
+
+**Il risultato**, 5 seed, test:
+
+| protocollo | posizioni dei token | casuale | I-JEPA | Δ | z |
+|---|---|---|---|---|---|
+| `P1_bbox` | **variabili** | **0,7861** | 0,7646 | −0,0215 | **−5,85** |
+| `P3_K16` | **fisse** | 0,4002 | **0,5432** | **+0,1430** | **+8,10** |
+
+**Su `P1_bbox` l'ipotesi è falsificata**: il casuale vince, e il MIL lo ha
+reso *migliore* di prima (0,7861 contro 0,7565 con la testa lineare).
+
+**Perché.** L'invarianza dimostrata era vera e **insufficiente**: ho tolto
+il *conteggio*, non l'*estensione*. I token portano il **positional
+embedding**, quindi non sono intercambiabili: una bbox grande include
+posizioni periferiche, una piccola solo centrali. La media cambia non
+perché gli addendi sono di più, ma perché sono **altri**. E un
+classificatore per token può leggere la posizione **direttamente**, mentre
+l'aggregazione la mediava in parte.
+
+> È la stessa distinzione conteggio-contro-estensione già trovata con
+> RoIAlign. Va raccontata: **un'invarianza dimostrata su un canale non
+> protegge dagli altri.**
+
+**Ma su `P3_K16` il MIL dà il margine più grande mai misurato**:
+
+| configurazione | casuale | I-JEPA | Δ | z |
+|---|---|---|---|---|
+| `P3_K16` + `flat` | 0,5347 | 0,5604 | +0,0257 | +5,10 |
+| **`P3_K16` + `mil`** | **0,4002** | **0,5432** | **+0,1430** | **+8,10** |
+
+Il casuale **crolla** (−0,135), I-JEPA scende appena (−0,017). Il MIL chiede
+a ogni singolo token *"quanto sei tessuto da PAI 5?"*: un token di una
+proiezione casuale, preso da solo, non sa rispondere; uno di I-JEPA sì.
+
+> **Il vantaggio di I-JEPA vive nel contenuto semantico del singolo token.**
+> Il contrasto fra le due righe — stessa testa, stessi encoder, stessi seed,
+> cambia solo se le posizioni variano — vale **14 errori standard**.
+
 ## L'ablation cieca alla dimensione — la prima versione
 
 Ritaglio a 3× il lato della bbox, ridimensionato a 224. Verificato:
@@ -900,9 +987,7 @@ Portali se te li chiedono. Un progetto che dichiara i propri errori corretti
 
 | esperimento | costo | cosa aggiunge |
 |---|---|---|
-| **Migliore architettura I-JEPA sotto `P3_K16`** | in corso | la riga che manca alla tabella sopra |
-| **La novità sotto `P3_K16`** | ~55 min (solo I-JEPA) o ~1h50 (entrambi) | l'obiettivo 3 misurato dove il conteggio non falsa |
-| **Curva PR + confusion matrix sotto `P3_K16`** | ~15 min | lo score focalizzato su PAI 5 |
+| **La novità sotto `P3_K16`** | ~55 min (solo I-JEPA) | l'obiettivo 3 misurato dove il conteggio non falsa. **È l'unica voce rimasta** |
 | ~~Ablation cieca alla dimensione~~ | **FATTA** | Ha ribaltato l'atto 3: I-JEPA batte il casuale di 24 errori standard |
 | `exp_controlli` — `random_tokens` + budget pari | 2h20 | Attribuisce il risultato: ribilanciamento o augmentation? È l'ablation dell'obiettivo 4 |
 | `exp_pooling` — gated e top-k | 2h | L'unico che può produrre un positivo nuovo (0,7778 in una prova a 10 epoche) |
