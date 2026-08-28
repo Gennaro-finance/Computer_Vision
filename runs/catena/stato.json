@@ -1,0 +1,154 @@
+[
+ {
+  "nome": "pretrain",
+  "cosa": "pre-training I-JEPA, 300 epoche, sonda di selezione su P3_K16",
+  "ore": 9.0,
+  "stato": "fatto",
+  "reale": null,
+  "avvio": "13:54:30"
+ },
+ {
+  "nome": "estrai_geo",
+  "cosa": "latenti nel protocollo del brief (finestra fissa 224 px)",
+  "ore": 0.1,
+  "stato": "fatto",
+  "reale": 0.02,
+  "avvio": "13:56:27"
+ },
+ {
+  "nome": "estrai_cieco",
+  "cosa": "latenti ciechi alla dimensione (finestra 3x la bbox)",
+  "ore": 0.1,
+  "stato": "fatto",
+  "reale": 0.02,
+  "avvio": "13:57:52"
+ },
+ {
+  "nome": "fixedk_flat",
+  "cosa": "i cinque protocolli di mascheramento, testa flat, sul test",
+  "ore": 2.7,
+  "stato": "fatto",
+  "reale": 1.75,
+  "avvio": "13:59:20"
+ },
+ {
+  "nome": "fixedk_mil",
+  "cosa": "MIL per token: il margine piu' grande del progetto",
+  "ore": 1.1,
+  "stato": "fatto",
+  "reale": 0.11,
+  "avvio": "15:44:31"
+ },
+ {
+  "nome": "fewshot",
+  "cosa": "few-shot 1/5/10/25/100% sui due protocolli",
+  "ore": 1.0,
+  "stato": "fatto",
+  "reale": 0.53,
+  "avvio": "15:51:02"
+ },
+ {
+  "nome": "griglia_geo",
+  "cosa": "griglia principale: 5 metodi x 2 teste, protocollo del brief",
+  "ore": 2.0,
+  "stato": "corso",
+  "reale": null,
+  "avvio": "16:22:53"
+ },
+ {
+  "nome": "griglia_cieca",
+  "cosa": "stessa griglia nel protocollo cieco, solo metodo none",
+  "ore": 0.3,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "novita_K",
+  "cosa": "obiettivo 3, la novita', misurata DOVE si vede (P3_K16)",
+  "ore": 1.0,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "mascheramento",
+  "cosa": "protocolli di mascheramento, sonda k-NN senza parametri",
+  "ore": 0.8,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "stratificata",
+  "cosa": "prestazione stratificata per dimensione della lesione",
+  "ore": 0.6,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "testa_pooling",
+  "cosa": "confronto fra i pooling, protocollo del brief",
+  "ore": 1.2,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "testa_pooling_K16",
+  "cosa": "stesso confronto a conteggio fisso, dove il metro vede",
+  "ore": 1.2,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "traiettoria",
+  "cosa": "traiettoria della testa nel protocollo cieco",
+  "ore": 0.6,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "sonde",
+  "cosa": "sonde k-NN su tutti gli encoder, curva di apprendimento",
+  "ore": 0.5,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "estrai_ultima",
+  "cosa": "latenti dall'ULTIMA epoca (non dal best): il piu' disimparato",
+  "ore": 0.1,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "fixedk_ultima",
+  "cosa": "stesso K16 ma P1 piu' basso? la previsione sulla pipeline",
+  "ore": 0.6,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "scarto",
+  "cosa": "da dove viene lo scarto di 0,0140 sul casuale",
+  "ore": 0.9,
+  "stato": "coda",
+  "reale": null,
+  "avvio": null
+ },
+ {
+  "nome": "verifica_lr",
+  "cosa": "rimisura del confronto lr sullo stack giusto (provenienza)",
+  "ore": 0.6,
+  "stato": "fatto",
+  "reale": 0.35,
+  "avvio": "13:33:02"
+ }
+]

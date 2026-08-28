@@ -47,6 +47,9 @@ dal vettore).
 | `latents_..._cieco_notte.pt` | `ijepa_vit_small_notte` | **40** | cieco | estratto il 27 ago |
 | `latents_..._cieco_mask80.pt` | `ijepa_vit_small_mask80` | **208** | cieco | estratto il 27 ago |
 | `latents_..._cieco_imagenet.pt` | torchvision ViT-B/16 | — | cieco | estratto il 27 ago |
+| `latents_..._geo_finale.pt` | `ijepa_vit_small_finale_best` | **69** | geometrico | log di estrazione, 28 ago |
+| `latents_..._cieco_finale.pt` | `ijepa_vit_small_finale_best` | **69** | cieco | log di estrazione, 28 ago |
+| `latents_..._geo_ultima.pt` | `ijepa_vit_small_finale` (ULTIMA epoca, non la migliore) | **288** | geometrico | atteso dalla catena |
 | ~~`latents_vit_small_L2-7-11.pt`~~ | **IGNOTO**, 23 ago | ? | geometrico | ❌ **non identificabile** |
 
 ---
@@ -102,7 +105,51 @@ dominato dal canale della maschera (la sola maschera one-hot, senza pixel,
 dà macro-F1 0,7708). **Il criterio di selezione era cieco alla qualità
 della rappresentazione.**
 
-Entrambe le cose vanno dichiarate in presentazione. La curva di
-apprendimento misurata con una sonda che vede — 0 epoche 0,3173, 40 epoche
-0,4668, 179 epoche 0,6092 — è **monotona e non satura**, il che suggerisce
-che più pre-training aiuterebbe.
+Entrambe le cose vanno dichiarate in presentazione.
+
+**Correzione del 28 agosto.** Qui c'era scritto che la curva di apprendimento
+— 0 epoche 0,3173, 40 epoche 0,4668, 179 epoche 0,6092, sonda k-NN a K fisso
+— è *«monotona e non satura, il che suggerisce che più pre-training
+aiuterebbe»*. È stata **la motivazione con cui è stato deciso il run
+`finale`**, e il run stesso l'ha smentita: con una testa addestrata su
+`P3_K16` la qualità satura verso l'epoca 70 e poi non si muove più
+(+0,0023, z = +0,31 fra le prime e le ultime dieci sonde).
+
+Le due misure non si contraddicono formalmente — una è k-NN a zero
+parametri, l'altra una testa addestrata, e una testa capace raggiunge prima
+il tetto — ma la conclusione operativa che se n'era tratta era sbagliata.
+Più epoche **non** comprano più qualità.
+
+Comprano un'altra cosa, che vale di più: il **disimparamento della bounding
+box** (−0,0190, z = −6,73). Vedi la sezione sul run `finale`.
+
+---
+
+## Il run `finale` (28 agosto)
+
+Rifatto da zero con la sonda di selezione corretta: sceglie su `P3_K16`
+(16 token per tutti) invece che sul protocollo del brief, che il 27 agosto
+avevamo dimostrato dominato dal canale della maschera.
+
+| | |
+|---|---|
+| epoche | **289 su 300** — fermato da `sorveglia` per sforamento di potenza (101 W su 95), non da un errore |
+| lr | 3e-5, confermato da misura contro 3e-4 (divario −0,0304, z = −2,98 su validation) |
+| EMA | 0,9996 → 1,0, invariata |
+| checkpoint migliore | **epoca 69**, macro-F1 K16 = 0,5591 su validation |
+| ultimo checkpoint | epoca 288, usato come braccio "massimo disimparamento" |
+
+**Il risultato della traiettoria.** Fra le prime 10 e le ultime 10 sonde:
+
+| serie | prime 10 | ultime 10 | Δ | z |
+|---|---|---|---|---|
+| K16 (qualità) | 0,5406 | 0,5430 | +0,0023 | **+0,31** |
+| P1_bbox (scorciatoia) | 0,7539 | 0,7349 | **−0,0190** | **−6,73** |
+
+La qualità satura verso l'epoca 70; le duecento epoche successive servono a
+**disimparare la bounding box**. È la tesi centrale del progetto misurata
+come traiettoria invece che dedotta da due estremi.
+
+**Da dichiarare**: 289/300 epoche, e il confronto sull'lr è stato prima
+misurato per errore su torch 2.12 (numeri diversi: −0,0440, z = −4,88).
+I valori citabili sono quelli su torch 2.13 del `.venv`.

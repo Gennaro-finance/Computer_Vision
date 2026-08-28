@@ -101,12 +101,12 @@ def con_maschera(cached, nome):
     return fuori
 
 
-def misura(cached, seeds, freno, head="flat", metodo="none"):
+def misura(cached, seeds, freno, head="flat", metodo="none", split="test"):
     per_seed = []
     for s in seeds:
         t0 = time.perf_counter()
         clf, _ = train_head(cached, metodo, head, seed=s)
-        per_seed.append(evaluate_split(clf, cached["data"]["test"], head))
+        per_seed.append(evaluate_split(clf, cached["data"][split], head))
         del clf
         torch.cuda.empty_cache()
         freno.pausa(t0)
@@ -125,20 +125,27 @@ if __name__ == "__main__":
     ap.add_argument("--head", default="flat")
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     ap.add_argument("--carico", type=int, default=100)
+    ap.add_argument("--split", default="test", choices=["val", "test"],
+                    help="dove si valuta. 'val' per DECIDERE, 'test' per RIPORTARE")
+    ap.add_argument("--esito", default=None,
+                    help="file dei risultati; se assente, fixedk_<variant>.json")
     a = ap.parse_args()
 
     freno = Freno(a.carico)
     print(f"[freno] {freno}", flush=True)
-    print(f"testa {a.head}, metodo none, {len(a.seeds)} seed, misure sul TEST")
+    print(f"testa {a.head}, metodo none, {len(a.seeds)} seed, "
+          f"misure su {a.split.upper()}"
+          + ("   <- split di SCELTA, non si riporta" if a.split == "val" else ""))
     print("cambia SOLO la maschera: stesso crop, stessi token, stessa "
           "architettura\n")
 
-    percorso = os.path.join(OUT_DIR, "fixedk_vit_small.json")
-    fuori = {"head": a.head, "seeds": a.seeds, "risultati": {}}
+    percorso = a.esito or os.path.join(OUT_DIR, "fixedk_vit_small.json")
+    fuori = {"head": a.head, "seeds": a.seeds, "split": a.split, "risultati": {}}
     if os.path.isfile(percorso):
         with open(percorso, encoding="utf-8") as f:
             v = json.load(f)
-        if v.get("seeds") == a.seeds and v.get("head") == a.head:
+        if (v.get("seeds") == a.seeds and v.get("head") == a.head
+                and v.get("split", "test") == a.split):
             fuori = v
             print(f"Riprendo: {len(fuori['risultati'])} celle su disco\n")
 
@@ -152,9 +159,10 @@ if __name__ == "__main__":
             if chiave not in fuori["risultati"]:
                 cached = load_latents(a.variant, layers=a.layers, tag=tag)
                 mod = con_maschera(cached, prot)
-                ntok = float(mod["data"]["test"]["mask"].sum(1).float().mean())
+                ntok = float(mod["data"][a.split]["mask"].sum(1).float().mean())
                 fuori["risultati"][chiave] = {
-                    "token_medi": ntok, **misura(mod, a.seeds, freno, a.head)}
+                    "token_medi": ntok,
+                    **misura(mod, a.seeds, freno, a.head, split=a.split)}
                 del cached, mod
                 save_json(fuori, percorso)
             r[tag] = fuori["risultati"][chiave]

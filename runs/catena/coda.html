@@ -1,0 +1,39 @@
+<title>Coda della catena</title>
+<style>:root{--bg:#faf9f7;--fg:#1c1a17;--dim:#6b665e;--line:#e2ddd4;--card:#fff;
+--ok:#2f6b45;--okbg:#e6f1ea;--run:#8a5a12;--runbg:#fbf0dc;--wait:#5a5852;--waitbg:#efece7;}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#16150f;--fg:#eceae4;
+--dim:#9d978c;--line:#2f2c26;--card:#1e1c16;--ok:#7fc79b;--okbg:#1c2f23;--run:#e0ac54;
+--runbg:#332614;--wait:#8d887f;--waitbg:#262420;}}
+:root[data-theme=dark]{--bg:#16150f;--fg:#eceae4;--dim:#9d978c;--line:#2f2c26;--card:#1e1c16;
+--ok:#7fc79b;--okbg:#1c2f23;--run:#e0ac54;--runbg:#332614;--wait:#8d887f;--waitbg:#262420;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);margin:0;padding:28px 22px;
+font:15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:21px;margin:0 0 3px;letter-spacing:-.01em}
+.sub{color:var(--dim);font-size:13px;margin:0 0 20px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+gap:10px;margin-bottom:22px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 13px}
+.tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim)}
+.tile .v{font-size:22px;font-variant-numeric:tabular-nums;margin-top:3px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:9px;background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+color:var(--dim);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+td.n{font-family:ui-monospace,"Cascadia Code",Menlo,monospace;font-size:12.5px;white-space:nowrap}
+td.c{color:var(--dim)}
+td.t{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;color:var(--dim)}
+td.t.r{color:var(--fg)}
+.b{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;
+font-weight:600;white-space:nowrap}
+.b.fatto{background:var(--okbg);color:var(--ok)}
+.b.corso{background:var(--runbg);color:var(--run)}
+.b.coda{background:var(--waitbg);color:var(--wait)}
+tr.coda td.n,tr.coda td.c{opacity:.62}
+.nota{margin-top:18px;font-size:12.5px;color:var(--dim);line-height:1.65}
+.nota b{color:var(--fg);font-weight:600}
+</style>
+<div class="wrap"><h1>Coda della catena</h1><p class="sub">Istantanea delle 16:55 &middot; non si aggiorna da sola</p><div class="tiles"><div class="tile"><div class="k">fatti</div><div class="v">7/19</div></div><div class="tile"><div class="k">in corso</div><div class="v" style="font-size:15px">griglia_geo</div></div><div class="tile"><div class="k">resta (stima)</div><div class="v">4.9 h</div></div><div class="tile"><div class="k">fine attesa</div><div class="v">21:47</div></div></div><div class="scroll"><table><thead><tr><th>stadio</th><th>cosa misura</th><th>stato</th><th>stima</th><th>reale</th></tr></thead><tbody><tr class="fatto"><td class="n">pretrain</td><td class="c">pre-training I-JEPA, 300 epoche, sonda di selezione su P3_K16</td><td><span class="b fatto">fatto</span></td><td class="t">~9.0 h</td><td class="t r">—</td></tr><tr class="fatto"><td class="n">estrai_geo</td><td class="c">latenti nel protocollo del brief (finestra fissa 224 px)</td><td><span class="b fatto">fatto</span></td><td class="t">~0.1 h</td><td class="t r">0.02 h</td></tr><tr class="fatto"><td class="n">estrai_cieco</td><td class="c">latenti ciechi alla dimensione (finestra 3x la bbox)</td><td><span class="b fatto">fatto</span></td><td class="t">~0.1 h</td><td class="t r">0.02 h</td></tr><tr class="fatto"><td class="n">fixedk_flat</td><td class="c">i cinque protocolli di mascheramento, testa flat, sul test</td><td><span class="b fatto">fatto</span></td><td class="t">~2.7 h</td><td class="t r">1.75 h</td></tr><tr class="fatto"><td class="n">fixedk_mil</td><td class="c">MIL per token: il margine piu&#x27; grande del progetto</td><td><span class="b fatto">fatto</span></td><td class="t">~1.1 h</td><td class="t r">0.11 h</td></tr><tr class="fatto"><td class="n">fewshot</td><td class="c">few-shot 1/5/10/25/100% sui due protocolli</td><td><span class="b fatto">fatto</span></td><td class="t">~1.0 h</td><td class="t r">0.53 h</td></tr><tr class="corso"><td class="n">griglia_geo</td><td class="c">griglia principale: 5 metodi x 2 teste, protocollo del brief</td><td><span class="b corso">in corso</span></td><td class="t">~2.0 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">griglia_cieca</td><td class="c">stessa griglia nel protocollo cieco, solo metodo none</td><td><span class="b coda">in coda</span></td><td class="t">~0.3 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">novita_K</td><td class="c">obiettivo 3, la novita&#x27;, misurata DOVE si vede (P3_K16)</td><td><span class="b coda">in coda</span></td><td class="t">~1.0 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">mascheramento</td><td class="c">protocolli di mascheramento, sonda k-NN senza parametri</td><td><span class="b coda">in coda</span></td><td class="t">~0.8 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">stratificata</td><td class="c">prestazione stratificata per dimensione della lesione</td><td><span class="b coda">in coda</span></td><td class="t">~0.6 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">testa_pooling</td><td class="c">confronto fra i pooling, protocollo del brief</td><td><span class="b coda">in coda</span></td><td class="t">~1.2 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">testa_pooling_K16</td><td class="c">stesso confronto a conteggio fisso, dove il metro vede</td><td><span class="b coda">in coda</span></td><td class="t">~1.2 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">traiettoria</td><td class="c">traiettoria della testa nel protocollo cieco</td><td><span class="b coda">in coda</span></td><td class="t">~0.6 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">sonde</td><td class="c">sonde k-NN su tutti gli encoder, curva di apprendimento</td><td><span class="b coda">in coda</span></td><td class="t">~0.5 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">estrai_ultima</td><td class="c">latenti dall&#x27;ULTIMA epoca (non dal best): il piu&#x27; disimparato</td><td><span class="b coda">in coda</span></td><td class="t">~0.1 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">fixedk_ultima</td><td class="c">stesso K16 ma P1 piu&#x27; basso? la previsione sulla pipeline</td><td><span class="b coda">in coda</span></td><td class="t">~0.6 h</td><td class="t r">—</td></tr><tr class="coda"><td class="n">scarto</td><td class="c">da dove viene lo scarto di 0,0140 sul casuale</td><td><span class="b coda">in coda</span></td><td class="t">~0.9 h</td><td class="t r">—</td></tr><tr class="fatto"><td class="n">verifica_lr</td><td class="c">rimisura del confronto lr sullo stack giusto (provenienza)</td><td><span class="b fatto">fatto</span></td><td class="t">~0.6 h</td><td class="t r">0.35 h</td></tr></tbody></table></div><p class="nota">Gli stadi conclusi hanno impiegato <b>50%</b> del tempo stimato, e la fine attesa applica quel fattore a ci&ograve; che resta.<br>Al termine parte da solo il riordino del repository: commit sul ramo <b>catena-300</b>, <b>nessun push</b>.</p></div>
