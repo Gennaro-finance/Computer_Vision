@@ -411,7 +411,8 @@ HEAD_TYPES = ["flat", "ordinal"]
 # con `head_type == "ordinal"`, quindi qualunque testa ordinale con un nome
 # diverso sarebbe stata addestrata con la cross-entropy e valutata come se
 # fosse piatta - in silenzio, senza errori, con numeri plausibili e sbagliati.
-HEAD_TYPES_ESTESE = ["flat", "ordinal", "norm", "norm_ord", "mlp", "mlp_ord"]
+HEAD_TYPES_ESTESE = ["flat", "ordinal", "norm", "norm_ord", "mlp", "mlp_ord",
+                     "mil"]
 
 
 def e_ordinale(head_type):

@@ -715,6 +715,62 @@ class OrdinalHead(nn.Module):
         return (labels[:, None] > lv).float()
 
 
+class InstanceMILHead(nn.Module):
+    """
+    Multiple Instance Learning a livello di ISTANZA: si giudica ogni token,
+    poi si mediano le probabilita'. Non si aggregano le feature.
+
+    PERCHE'. Il brief dice di "estrarre i vettori latenti corrispondenti
+    alle aree lesionate" - plurale, cardinalita' variabile: 16 / 36 / 64
+    token secondo la lesione. E' un problema di Multiple Instance Learning
+    alla lettera, e il difetto noto di quella formulazione e' il BAG-SIZE
+    BIAS: quando la cardinalita' del sacchetto correla con l'etichetta, il
+    modello impara a contare invece che a guardare. Qui la correlazione e'
+    quasi perfetta, perche' il grado PAI e' quasi tutto dimensione: la sola
+    maschera one-hot, senza un pixel, da' macro-F1 0.7708.
+
+    L'INVARIANZA, in una riga. La media di N probabilita' non dipende da N.
+    Il conteggio sparisce PER COSTRUZIONE, non per compensazione - ed e'
+    una proprieta' algebrica dell'aggregatore, non un effetto misurato.
+
+    PERCHE' SERVE LA NON LINEARITA'. Con una testa lineare istanza e
+    embedding coincidono: media(W x_i) = W media(x_i), cioe' classificare
+    ogni token e mediare le decisioni E' applicare il classificatore alla
+    media delle feature. La differenza esiste solo se il giudizio per token
+    e' non lineare, ed e' per questo che qui c'e' un MLP e non un Linear.
+
+    Chiede a ogni token "quanto sei tessuto da PAI 5?" e media le risposte,
+    invece di chiedere "com'e' questa regione nel complesso?".
+
+    Restituisce il LOGARITMO della probabilita' media. Serve perche' a valle
+    si applica cross_entropy, che fa log_softmax: e siccome
+    log_softmax(log p) = log p quando p somma a uno, la loss risulta la NLL
+    corretta della probabilita' media. Restituire i logit grezzi la
+    trasformerebbe in qualcos'altro, in silenzio.
+    """
+
+    def __init__(self, dim, num_classes=NUM_CLASSES, nascosto=128, dropout=0.1):
+        super().__init__()
+        self.norm = nn.LayerNorm(dim)
+        self.rete = nn.Sequential(
+            nn.Linear(dim, nascosto),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(nascosto, num_classes),
+        )
+
+    def forward(self, tokens, token_mask=None):
+        p = torch.softmax(self.rete(self.norm(tokens)), dim=-1)   # (B, N, C)
+        if token_mask is None:
+            media = p.mean(1)
+        else:
+            w = token_mask.float()[..., None]
+            media = (p * w).sum(1) / w.sum(1).clamp(min=1)
+        # I token fuori maschera non pesano: la media e' sui soli token
+        # della lesione, come chiede la traccia.
+        return torch.log(media.clamp(min=1e-8))
+
+
 class LesionClassifier(nn.Module):
     """
     Encoder CONGELATO + attention pooling + testa. Solo pooling e testa si
@@ -771,6 +827,9 @@ class LesionClassifier(nn.Module):
             "norm_ord":    lambda: NormFlatHead(dim, ordinale=True),
             "mlp":         lambda: MLPHead(dim),
             "mlp_ord":     lambda: MLPHead(dim, ordinale=True),
+            # `mil` non e' una testa come le altre: sostituisce ANCHE il
+            # pooling, perche' aggrega decisioni invece che feature.
+            "mil":         lambda: InstanceMILHead(dim),
         }
         if head_type not in teste:
             raise ValueError(f"testa sconosciuta: {head_type}. "
@@ -782,6 +841,12 @@ class LesionClassifier(nn.Module):
     def forward(self, tokens, bbox=None, token_mask=None, geom=None):
         if token_mask is None and bbox is not None:
             token_mask = bbox_to_token_mask(bbox, self.grid)
+        if self.head_type == "mil":
+            # Niente pooling: il giudizio e' per token e si media dopo.
+            # L'attention pooling resta costruito ma inutilizzato, cosi' il
+            # numero di parametri addestrabili non cambia fra i due rami e
+            # il confronto non misura anche la capacita'.
+            return self.head(tokens, token_mask), None, None
         pooled, attn = self.pool(tokens, token_mask)
         if self.geom_dim:
             if geom is None:
