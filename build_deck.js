@@ -26,7 +26,7 @@ pres.author = "Progetto 8 - Computer Vision 2025-2026";
 pres.title = "Self-Supervised Latent Representations for Imbalanced Apical Periodontitis Grading";
 
 const W = 13.333, H = 7.5, M = 0.62;
-const TOT = 25;
+const TOT = 26;
 let n = 0;
 
 function slide(titolo, occhiello, ctx) {
@@ -506,6 +506,31 @@ function note(s, testo) {
     "Under the prescribed protocol, MIL made the RANDOM encoder better, not worse: 0.7851 against 0.7705.\n\nThe proven invariance was real and insufficient. It removed the count but not the extent: tokens carry positional embeddings, so a large box includes peripheral positions. The mean changes not because the terms are more numerous, but because they are different ones.\n\nAn invariance proved on one channel does not protect against the others.",
     AMB, "FDF7EC");
   note(s, "55 s. Say the invariance was verified BEFORE measuring — it shows method, not luck.");
+}
+
+// ══════════════════════════════════════════════ 8b  LA TESTA E' MINUSCOLA
+{
+  const s = slide("The classifier is 3,459 parameters — and that is the point", "the head  ·  design choice", {
+    m: "Linear 1,152 → 3", c: "Encoder: 21.6 M · pooling: 5.3 M",
+    p: "Both protocols", k: "5 seeds per cell" });
+  s.addText("The final stage takes the aggregated vector and maps it to three logits — one per PAI grade. A single fully-connected layer, nothing else.", {
+    x: M, y: TY, w: 6.5, h: 0.55, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 13.5, color: INK, lineSpacing: 20 });
+  tab(s, [
+    [th("Stage"), th("Parameters"), th("Share")],
+    [td("Encoder (frozen)"), td("21,589,632", { align: "right" }), td("—", { color: MUT, align: "right" })],
+    [td("Attention pooling"), td("5,316,480", { align: "right" }), td("99.9 %", { align: "right" })],
+    [td("Classifier head", { bold: true }), td("3,459", { bold: true, color: GRN, align: "right" }), td("0.1 %", { bold: true, color: GRN, align: "right" })],
+  ], { x: M, y: 2.6, w: 6.5, colW: [2.5, 2.2, 1.8] });
+  s.addText("Of everything trained downstream, the classifier is one part in a thousand.", {
+    x: M, y: 4.4, w: 6.5, h: 0.4, isTextBox: true, margin: 0,
+    fontFace: F_B, fontSize: 13, bold: true, color: DEEP });
+  nota(s, 7.3, TY, 5.42, 2.5, "Small on purpose, not for lack of capacity",
+    "A large head could reconstruct information the encoder had discarded, and the comparison would then measure the head, not the representation. Keeping it linear forces the answer to be already present in the frozen vector.",
+    GRN, "F1F6F2");
+  nota(s, 7.3, 4.85, 5.42, 1.8, "And what the 5 seeds change",
+    "Head initialisation, batch order, and — for the sampling methods — which views are drawn. Not the encoder, not the split, not the test set.",
+    DEEP);
+  note(s, "40 s. The 0.1 % line is the one to say aloud: it is why the comparison is about the encoder.");
 }
 
 // ══════════════════════════════════════════════ 9  MIL RISULTATI
