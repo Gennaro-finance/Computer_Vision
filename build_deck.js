@@ -26,7 +26,7 @@ pres.author = "Progetto 8 - Computer Vision 2025-2026";
 pres.title = "Self-Supervised Latent Representations for Imbalanced Apical Periodontitis Grading";
 
 const W = 13.333, H = 7.5, M = 0.62;
-const TOT = 21;
+const TOT = 25;
 let n = 0;
 
 function slide(titolo, occhiello, ctx) {
@@ -77,12 +77,30 @@ function tab(s, righe, o) {
     border: { type: "solid", color: LINE, pt: 0.75 },
   }, o));
 }
+/* I RIQUADRI MOSTRANO UNA COSA E NE DICONO ALTRE.
+ *
+ * Misurato sul deck precedente: 1.142 caratteri medi sulla slide contro 80
+ * nelle note del relatore. Il rapporto era rovesciato - la slide portava
+ * quello che deve dire chi parla, e chi ascolta leggeva invece di ascoltare.
+ *
+ * Ora di ogni riquadro resta a schermo SOLO IL PRIMO PARAGRAFO; i successivi
+ * finiscono nelle note, dove servono. Il contenuto non si perde, cambia
+ * supporto. */
+let BUF = [];
 function nota(s, x, y, w, h, tit, testo, col, bg) {
+  const parti = String(testo).split("\n\n");
+  if (parti.length > 1) BUF.push(tit.toUpperCase() + " — " + parti.slice(1).join("  "));
   s.addShape(pres.ShapeType.roundRect, { x, y, w, h, fill: { color: bg || "F4F6F7" }, rectRadius: 0.07 });
   s.addText(tit, { x: x + 0.2, y: y + 0.14, w: w - 0.4, h: 0.3, isTextBox: true, margin: 0,
     fontFace: F_H, fontSize: 14.5, bold: true, color: col || DEEP });
-  s.addText(testo, { x: x + 0.2, y: y + 0.5, w: w - 0.4, h: h - 0.68, isTextBox: true, margin: 0,
-    fontFace: F_B, fontSize: 11.5, color: INK, lineSpacing: 17 });
+  s.addText(parti[0], { x: x + 0.2, y: y + 0.5, w: w - 0.4, h: h - 0.68, isTextBox: true, margin: 0,
+    fontFace: F_B, fontSize: 12, color: INK, lineSpacing: 18 });
+}
+
+/* Le note del relatore raccolgono anche cio' che i riquadri non mostrano. */
+function note(s, testo) {
+  s.addNotes([testo].concat(BUF).filter(Boolean).join("\n\n"));
+  BUF = [];
 }
 
 // ══════════════════════════════════════════════ 1  TITLE
@@ -113,7 +131,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
     fontFace: F_B, fontSize: 14, lineSpacing: 21 });
   s.addText("PyTorch  ·  github.com/Gennaro-finance/Computer_Vision", {
     x: M, y: 6.4, w: W - 2 * M, h: 0.28, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 11, color: MUT });
-  s.addNotes("15 s. Read the boxed sentence aloud: it is the whole talk in one line.");
+  note(s, "15 s. Read the boxed sentence aloud: it is the whole talk in one line.");
 }
 
 // ══════════════════════════════════════════════ 2  OUTLINE
@@ -141,7 +159,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, M, 5.85, W - 2 * M, 1.0, "How to read every result slide",
     "Each analytical slide opens with the same strip: which MODEL, what it is COMPARED WITH, under which PROTOCOL, on which METRIC. Nine protocols and four related metrics appear in this work — the strip tells you at a glance which pair you are looking at.",
     DEEP, "F1F4F6");
-  s.addNotes("30 s. Point at the strip explanation — it is how they will follow the numbers.");
+  note(s, "30 s. Point at the strip explanation — it is how they will follow the numbers.");
 }
 
 // ══════════════════════════════════════════════ 3  PROBLEM = GEOMETRY
@@ -169,7 +187,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
     RED, "FBF3F2");
   s.addText("Dataset: 2,746 panoramic radiographs · 6,741 annotated lesions · patient-level split (4,719 / 1,009 / 1,013)   —   Do et al., Data in Brief 54:110486 (2024)", {
     x: M, y: 6.5, w: W - 2 * M, h: 0.3, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 11, color: MUT });
-  s.addNotes("50 s. Land hard on 0.7567 with two thresholds. That number frames everything after it.");
+  note(s, "50 s. Land hard on 0.7567 with two thresholds. That number frames everything after it.");
 }
 
 // ══════════════════════════════════════════════ 4  MIL / BAG SIZE
@@ -207,7 +225,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 8.25, 1.85, 4.47, 4.1, "Why it is a trap here specifically",
     "In a generic MIL problem bag size is incidental. Here it is not: the number of tokens inside the box is a deterministic function of lesion area, and lesion area is the grading criterion.\n\nSo the shortcut is not noise the model might latch onto — it is a near-perfect predictor handed to the classifier for free, requiring no image content at all.\n\nAny encoder, trained or not, is evaluated through this channel.",
     RED, "FBF3F2");
-  s.addNotes("55 s. Name Multiple Instance Learning explicitly — it shows we placed the problem in the literature.");
+  note(s, "55 s. Name Multiple Instance Learning explicitly — it shows we placed the problem in the literature.");
 }
 
 // ══════════════════════════════════════════════ 5  BIAS MISURATO
@@ -230,7 +248,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 8.25, TY, 4.47, 4.4, "What this does and does not prove",
     "It does NOT prove that self-supervised pre-training is useless.\n\nIt proves that the prescribed evaluation cannot distinguish encoders, because a channel exists that answers the question without them.\n\nEvery comparison run under this protocol — including the one the assignment asks for — is therefore uninformative about representation quality. That is the finding, and the rest of the talk follows from it.",
     DEEP);
-  s.addNotes("70 s. The most important slide. Pause after 'within 0.0003 of each other'.");
+  note(s, "70 s. The most important slide. Pause after 'within 0.0003 of each other'.");
 }
 
 // ══════════════════════════════════════════════ 6  LA SOLUZIONE
@@ -271,7 +289,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   ], { x: 7.3, y: 4.3, w: 5.42, colW: [0.9, 2.42, 2.1], align: "right" });
   s.addText("K controls how much healthy bone enters the window, so the task shifts from “what does this tissue look like” to “how much of this window is lesion” — a question only an encoder that distinguishes lesion from bone can answer.", {
     x: 7.3, y: 5.9, w: 5.42, h: 1.0, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 11.5, color: INK, lineSpacing: 17 });
-  s.addNotes("60 s. Show, do not read. Left column: bag changes with class. Right: it does not.");
+  note(s, "60 s. Show, do not read. Left column: bag changes with class. Right: it does not.");
 }
 
 // ══════════════════════════════════════════════ 7  IL CONTROLLO
@@ -293,7 +311,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 6.75, 4.55, 5.97, 2.0, "What the design isolates",
     "The advantage appears only when the bag-size cue is gone AND localisation is kept. So the bounding box is genuinely useful — as a pointer, telling the model where to look — and harmful as a counter, telling it the answer. That distinction is the contribution.",
     GRN, "F1F6F2");
-  s.addNotes("55 s. The two 'tie' rows are the evidence, not the weakness. Say so.");
+  note(s, "55 s. The two 'tie' rows are the evidence, not the weakness. Say so.");
 }
 
 // ══════════════════════════════════════════════ ENCODER — architettura
@@ -324,7 +342,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 6.85, 4.45, 5.87, 2.1, "Why the predictor is only 2.4 % of an encoder",
     "The assignment asks for a SHALLOW predictor, and the reason is structural. If the predictor were capable enough to guess the targets on its own, the encoder would never be forced to build useful representations. The 384→96→384 bottleneck prevents that by construction.",
     GRN, "F1F6F2");
-  s.addNotes("50 s. One block class everywhere; the predictor's smallness is a design constraint, not a shortcut.");
+  note(s, "50 s. One block class everywhere; the predictor's smallness is a design constraint, not a shortcut.");
 }
 
 // ══════════════════════════════════════════════ ENCODER — congelato
@@ -348,7 +366,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 6.85, 4.85, 5.87, 1.7, "The trainable part is smaller than it looks",
     "5,319,939 parameters downstream — and 5,316,480 of them are the pooling. The classifier itself is 3,459: a single Linear from 1,152 to 3. Almost all downstream capacity sits in deciding HOW to aggregate tokens, not in classifying.",
     DEEP);
-  s.addNotes("50 s. 'Never saw a label' is the sentence that lands. Then the pooling/head asymmetry.");
+  note(s, "50 s. 'Never saw a label' is the sentence that lands. Then the pooling/head asymmetry.");
 }
 
 // ══════════════════════════════════════════════ ENCODER — la griglia
@@ -388,10 +406,32 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
     "The model could not accept a different grid without interpolating its positional embedding: 196 is baked into the architecture. Verified empirically — input (2, 3, 224, 224) gives tokens (2, 196, 384).",
     DEEP);
 
-  nota(s, M, 5.65, W - 2 * M, 1.25, "And this is where the geometry enters the pipeline",
-    "A patch is 16 px, and the median lesion box measures 57 / 80 / 127 px for PAI 3 / 4 / 5 — that is 3.6 / 5.0 / 7.9 patches per side. The grade is written directly into how many cells the box covers: 19 / 34 / 77 tokens on average. The bag-size bias is not introduced by the head or by the encoder; it is already present the moment the window is cut into a grid.",
+  note(s, "35 s. Two numbers only: 16 px per patch, and 196 tokens fixed by the positional embedding.");
+}
+
+// ══════════════════════════════════════════════ ENCODER — dove entra la geometria
+{
+  const s = slide("The bias enters at tiling time", "the encoder  ·  back to the thesis", {
+    m: "Nothing learned yet", c: "—",
+    p: "Just the 16 px grid", k: "tokens covered by the box" });
+  s.addText("A patch is 16 px wide. The median lesion box measures:", {
+    x: M, y: TY, w: 6.6, h: 0.36, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 14, color: INK });
+  tab(s, [
+    [th("PAI grade"), th("median box side"), th("patches per side"), th("tokens covered")],
+    [td("3 — mild"), td("57 px", { align: "right" }), td("3.6", { align: "right" }), td("19", { align: "right" })],
+    [td("4 — moderate"), td("80 px", { align: "right" }), td("5.0", { align: "right" }), td("34", { align: "right" })],
+    [td("5 — severe", { bold: true }), td("127 px", { bold: true, color: RED, align: "right" }), td("7.9", { bold: true, color: RED, align: "right" }), td("77", { bold: true, color: RED, align: "right" })],
+  ], { x: M, y: 2.45, w: 6.6, colW: [1.9, 1.65, 1.6, 1.45] });
+  s.addText("The grade is written into how many cells the box covers.", {
+    x: M, y: 4.35, w: 6.6, h: 0.4, isTextBox: true, margin: 0,
+    fontFace: F_B, fontSize: 14, bold: true, color: RED });
+  nota(s, 7.4, TY, 5.32, 2.6, "Neither the head nor the encoder introduces it",
+    "The shortcut is already present the moment the window is cut into a grid — before a single weight is applied. No architecture choice downstream can remove something that entered upstream of it.",
     RED, "FBF3F2");
-  s.addNotes("55 s. The last box is the bridge back to the thesis: geometry enters at tiling time.");
+  nota(s, 7.4, 4.95, 5.32, 1.7, "Which is why the fix had to be there too",
+    "We did not change the encoder, the head, or the loss. We changed which tokens the box selects — the one stage where the leak occurs.",
+    GRN, "F1F6F2");
+  note(s, "40 s. This is the bridge: geometry enters at tiling time, so that is where we intervened.");
 }
 
 // ══════════════════════════════════════════════ ENCODER — il token
@@ -423,7 +463,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 6.85, 4.15, 5.87, 2.3, "The usual interpretation, and our caution",
     "Textbooks read depth as low-level texture → mid-level structure → high-level semantics. It is a reasonable motivation for taking three depths.\n\nWe do NOT present it as a measured fact about our encoder: we measured the depth profile instead, and it says something more specific — next slide.",
     AMB, "FDF7EC");
-  s.addNotes("50 s. Show the vector, then say we measured what depth does rather than assuming it.");
+  note(s, "50 s. Show the vector, then say we measured what depth does rather than assuming it.");
 }
 
 // ══════════════════════════════════════════════ ENCODER — profilo di profondità
@@ -445,7 +485,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 8.25, TY, 4.47, 4.4, "Why this matters for our thesis",
     "It is the same story as the training trajectory, seen along a different axis.\n\nAcross EPOCHS the encoder unlearns the bounding-box shortcut. Across DEPTH it does the same thing within a single forward pass.\n\nThat is also the honest reason for concatenating three blocks rather than trusting the deepest one: they carry different information, and the trained pooling is better placed than we are to decide how much of each to use.\n\nAnd it is a caution about the textbook reading of depth — on this data the deepest block is not simply “the most useful one”.",
     GRN, "F1F6F2");
-  s.addNotes("60 s. The random-encoder row is the control that makes the other two readable.");
+  note(s, "60 s. The random-encoder row is the control that makes the other two readable.");
 }
 
 // ══════════════════════════════════════════════ 8  LE TESTE
@@ -465,7 +505,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 6.85, 4.0, 5.87, 2.5, "The hypothesis it falsified",
     "Under the prescribed protocol, MIL made the RANDOM encoder better, not worse: 0.7851 against 0.7705.\n\nThe proven invariance was real and insufficient. It removed the count but not the extent: tokens carry positional embeddings, so a large box includes peripheral positions. The mean changes not because the terms are more numerous, but because they are different ones.\n\nAn invariance proved on one channel does not protect against the others.",
     AMB, "FDF7EC");
-  s.addNotes("55 s. Say the invariance was verified BEFORE measuring — it shows method, not luck.");
+  note(s, "55 s. Say the invariance was verified BEFORE measuring — it shows method, not luck.");
 }
 
 // ══════════════════════════════════════════════ 9  MIL RISULTATI
@@ -497,7 +537,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 7.75, 4.35, 4.97, 2.35, "With the bias removed",
     "The random encoder collapses to 0.4014 while I-JEPA holds at 0.5171: +0.1158, z = +6.49, a relative gain of +28.8 %.\n\nAsked “how much PAI-5 tissue is this single token?”, a random projection cannot answer and a pre-trained one can. This is the largest margin we measured.",
     GRN, "F1F6F2");
-  s.addNotes("60 s. Left bars: bias present, random wins. Right bars: bias gone, gap opens.");
+  note(s, "60 s. Left bars: bias present, random wins. Right bars: bias gone, gap opens.");
 }
 
 // ══════════════════════════════════════════════ 10  LA NOVITÀ
@@ -525,7 +565,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 8.05, 4.55, 4.67, 2.1, "The control we owed",
     "The method rebalances AND augments at once. A budget-matched uniform variant separates the two — without it we could not attribute the gain.",
     DEEP);
-  s.addNotes("50 s. The table is the argument: only our method is both latent-space and non-inventing.");
+  note(s, "50 s. The table is the argument: only our method is both latent-space and non-inventing.");
 }
 
 // ══════════════════════════════════════════════ 11  NOVITÀ RISULTATI
@@ -546,19 +586,33 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, M, 5.1, 6.9, 1.5, "Declared before being asked",
     "On F1 of the rare class focal loss edges ahead (0.7863 vs 0.7794). Our win is on the primary metric, not on all of them. And the α sweep ran on a fixed encoder, to isolate the parameter.",
     AMB, "FDF7EC");
-  s.addText("α sweep — the optimum is interior", { x: 7.75, y: TY, w: 4.97, h: 0.3, isTextBox: true, margin: 0,
-    fontFace: F_H, fontSize: 15, bold: true, color: DEEP });
+  note(s, "40 s. Read the first row, then the precision column: that is where the novelty differs from the others.");
+}
+
+// ══════════════════════════════════════════════ 11b  LO SWEEP DI ALPHA
+{
+  const s = slide("The α sweep: more rebalancing is not better", "results  ·  objective 4", {
+    m: "Random ViT (frozen)", c: "Four values of α",
+    p: "As prescribed (bbox)", k: "PR-AUC PAI 5, test" });
+  s.addText("α sets how many views each class receives. Screening on 3 seeds, then the two finalists re-measured on 5 seeds disjoint from the screening ones.", {
+    x: M, y: TY, w: 6.4, h: 0.55, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 13.5, color: INK, lineSpacing: 20 });
   tab(s, [
-    [th("α"), th("instances"), th("PR-AUC 5")],
-    [td("0.25"), td("6,421"), td("0.8793", { align: "right" })],
-    [td("0.50"), td("6,894"), td("0.8814", { bold: true, color: GRN, align: "right" })],
-    [td("0.75"), td("7,840"), td("0.8747", { align: "right" })],
-    [td("1.00"), td("10,015"), td("0.8689", { color: RED, align: "right" })],
-  ], { x: 7.75, y: 2.35, w: 4.97, colW: [1.0, 1.9, 2.07] });
-  nota(s, 7.75, 4.15, 4.97, 2.45, "More rebalancing is not better",
-    "α = 0.5 beats α = 1.0 by +0.0125 at 2.2 standard errors. The views are subsets of the same lesion, so they are strongly correlated: with ICC ρ = 0.9864, seven views are worth 1.01 independent samples. They move the decision boundary without adding information.",
+    [th("α"), th("views per class"), th("instances/epoch"), th("PR-AUC PAI 5")],
+    [td("0.25"), td("1 / 1 / 2"), td("6,421", { align: "right" }), td("0.8793", { align: "right" })],
+    [td("0.50", { bold: true }), td("1 / 2 / 3", { bold: true }), td("6,894", { align: "right" }), td("0.8814", { bold: true, color: GRN, align: "right" })],
+    [td("0.75"), td("1 / 2 / 5"), td("7,840", { align: "right" }), td("0.8747", { align: "right" })],
+    [td("1.00"), td("1 / 3 / 7"), td("10,015", { align: "right" }), td("0.8689", { color: RED, align: "right" })],
+  ], { x: M, y: 2.6, w: 6.4, colW: [0.85, 1.85, 1.85, 1.85] });
+  s.addText("α = 0.5 beats α = 1.0 by +0.0125, at 2.2 standard errors. Doubling the instances makes it worse.", {
+    x: M, y: 4.8, w: 6.4, h: 0.55, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 13,
+    bold: true, color: DEEP, lineSpacing: 19 });
+  nota(s, 7.55, TY, 5.17, 2.6, "Why the optimum is interior",
+    "The views are subsets of the SAME lesion, so they are strongly correlated. With ICC ρ = 0.9864, seven views of a PAI 5 are worth 1.01 independent samples: they move the decision boundary without adding information.",
     DEEP);
-  s.addNotes("65 s. Table first, then the interior optimum, then the ICC explanation for why.");
+  nota(s, 7.55, 5.0, 5.17, 1.6, "Reproducible three times",
+    "α = 0.5 was measured independently three times — 0.8813 / 0.8814 / 0.8797 — with a maximum spread of 0.0017.",
+    GRN, "F1F6F2");
+  note(s, "40 s. The interior optimum is the interesting part: it is explained, not just observed.");
 }
 
 // ══════════════════════════════════════════════ 12  RISULTATO PRINCIPALE
@@ -598,7 +652,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 8.15, 4.1, 4.57, 2.5, "Not one lucky K",
     "Significant on all three values, so the result survives a fourfold change of window size. The two grey rows are the controls, where by construction nothing should appear — and nothing does.\n\nOn PR-AUC of the minority class the gain reaches +32 % at z = 8.72.",
     GRN, "F1F6F2");
-  s.addNotes("60 s. Grey bars random, green I-JEPA. First two groups tie; the K groups do not.");
+  note(s, "60 s. Grey bars random, green I-JEPA. First two groups tie; the K groups do not.");
 }
 
 // ══════════════════════════════════════════════ 13  L'ENCODER IMPARA?
@@ -627,7 +681,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
   nota(s, 8.15, 4.25, 4.57, 2.35, "Not an artefact of checkpoint choice",
     "We also measured the last-epoch encoder, which no criterion selected. It still beats the random baseline on the primary metric.\n\nOn macro-F1 its z = 2.14 falls below our own 2.31 threshold — we say so rather than round it away.",
     DEEP);
-  s.addNotes("60 s. Stress: one encoder, two readings. Then the unselected checkpoint.");
+  note(s, "60 s. Stress: one encoder, two readings. Then the unselected checkpoint.");
 }
 
 // ══════════════════════════════════════════════ 14  SETUP
@@ -640,13 +694,38 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
     [td("Metrics", { bold: true }), td("Primary: PR-AUC on PAI 5 — minority-specific and threshold-agnostic. Reported alongside: macro-F1, quadratic-weighted kappa. Global accuracy excluded by the assignment.")],
     [td("Significance", { bold: true }), td("|z| ≥ 2.31 — Student's t at 8 d.o.f., not 1.96: with five repetitions the normal underestimates the tail")],
   ], { x: M, y: 1.3, w: W - 2 * M, colW: [1.9, 10.2], fontSize: 11 });
-  nota(s, M, 4.5, 6.0, 2.1, "Selection discipline",
-    "Checkpoint chosen on validation, never on test. Learning rate chosen on validation (3e-4 measured worse: −0.0304, z = −2.98). In the α sweep the two finalists were re-measured on five seeds disjoint from the screening seeds — selecting and reporting on the same seeds inflates the winner by about one standard deviation.",
-    DEEP);
-  nota(s, 6.85, 4.5, 5.87, 2.1, "What ± means here, and what it does not",
-    "The ± is the spread across five seeds: it answers “is this reproducible if I retrain the head?”. It does NOT capture test-set sampling error, which with only 112 PAI-5 lesions is roughly 0.021 — an order of magnitude larger. Differences below that should be read as reproducible, not as proven to generalise.",
-    AMB, "FDF7EC");
-  s.addNotes("45 s. The right-hand box pre-empts the sharpest question about our error bars.");
+  note(s, "35 s. Do not read the table — point at the three lines that matter: frozen, five seeds, PR-AUC on the minority class.");
+}
+
+// ══════════════════════════════════════════════ 14b  DISCIPLINA STATISTICA
+{
+  const s = slide("Statistical discipline", "how it was configured");
+  s.addText("Three safeguards against reporting a number we could not defend.", {
+    x: M, y: 1.3, w: W - 2 * M, h: 0.4, isTextBox: true, margin: 0,
+    fontFace: F_B, fontSize: 14, color: INK });
+  const g = [
+    ["Selection never touches the test set",
+     "Checkpoint chosen on validation. Learning rate chosen on validation — 3e-4 measured worse there: −0.0304, z = −2.98.", DEEP],
+    ["Disjoint seeds for the α sweep",
+     "The two finalists were re-measured on five seeds disjoint from the screening ones. Selecting and reporting on the same seeds inflates the winner by about one standard deviation.", DEEP],
+    ["The ± is reproducibility, not generalisation",
+     "It is the spread across five seeds. It does NOT capture test-set sampling error, which with 112 PAI-5 lesions is roughly 0.021 — ten times larger.", AMB],
+  ];
+  let y = 1.95;
+  g.forEach((r, i) => {
+    s.addShape(pres.ShapeType.ellipse, { x: M, y: y + 0.06, w: 0.36, h: 0.36, fill: { color: r[2] } });
+    s.addText(String(i + 1), { x: M, y: y + 0.06, w: 0.36, h: 0.36, isTextBox: true, margin: 0,
+      fontFace: F_B, fontSize: 12, bold: true, color: "FFFFFF", align: "center", valign: "middle" });
+    s.addText(r[0], { x: M + 0.55, y: y, w: 11.4, h: 0.4, isTextBox: true, margin: 0,
+      fontFace: F_B, fontSize: 15, bold: true, color: r[2] });
+    s.addText(r[1], { x: M + 0.55, y: y + 0.42, w: 11.4, h: 0.7, isTextBox: true, margin: 0,
+      fontFace: F_B, fontSize: 12.5, color: MUT, lineSpacing: 17 });
+    y += 1.42;
+  });
+  s.addText("Differences below 0.021 are reproducible — not proven to generalise. We say which is which.", {
+    x: M, y: 6.15, w: W - 2 * M, h: 0.45, isTextBox: true, margin: 0,
+    fontFace: F_H, fontSize: 15, italic: true, bold: true, color: DEEP });
+  note(s, "35 s. Point 3 pre-empts the sharpest question about our error bars — say it before they ask.");
 }
 
 // ══════════════════════════════════════════════ 15  CONCLUSIONI
@@ -679,15 +758,40 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
     { text: "289 of the 300 scheduled epochs, halted by our own power limiter. The last 11 change nothing measurable — quality had plateaued by epoch 69 (z = +1.15 across the whole run) — and we did not have to assume it: we extracted the final epoch-288 encoder and measured it. It still beats the random baseline by +16 % on the primary metric (z = 3.15).", options: { color: INK } },
   ], { x: M, y: 5.4, w: 7.4, h: 0.85, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 11.5, lineSpacing: 16 });
   s.addText("There is no “best model” — only the best model for a given reading, and choosing that reading is the work.", {
-    x: M, y: 6.35, w: 7.4, h: 0.5, isTextBox: true, margin: 0, fontFace: F_H, fontSize: 14.5,
+    x: M, y: 6.35, w: 11.5, h: 0.5, isTextBox: true, margin: 0, fontFace: F_H, fontSize: 15,
     italic: true, bold: true, color: DEEP });
-  nota(s, 8.15, 1.3, 4.57, 2.4, "Declared limitations",
-    "The selected checkpoint is better on the criterion we selected it with, and worse on size-blind readings.\n\nThe α sweep used a fixed encoder, to isolate the parameter.\n\nOur ± is the spread across seeds; test-set sampling error, with 112 PAI-5 lesions, is roughly ten times larger.",
-    AMB, "FDF7EC");
-  nota(s, 8.15, 3.95, 4.57, 2.4, "Future work",
-    "Detection and grading end to end, removing the bounding box from inference entirely.\n\nPer-token MIL as the default head, since it gives the largest margin we measured.\n\nVariance-covariance regularisation as an explicit anti-collapse term.",
-    DEEP);
-  s.addNotes("60 s. Three numbered claims, then the closing line. Do not add anything after it.");
+  note(s, "50 s. Three numbered claims, then the closing line. Do not add anything after it.");
+}
+
+// ══════════════════════════════════════════════ 15b  LIMITI E FUTURO
+{
+  const s = slide("Declared limitations, and what comes next", "final considerations");
+  const col = (x, tit, voci, c, bg) => {
+    s.addShape(pres.ShapeType.roundRect, { x, y: 1.35, w: 5.9, h: 0.5, fill: { color: bg }, rectRadius: 0.06 });
+    s.addText(tit, { x: x + 0.2, y: 1.45, w: 5.5, h: 0.32, isTextBox: true, margin: 0,
+      fontFace: F_H, fontSize: 16, bold: true, color: c });
+    let y = 2.05;
+    voci.forEach(v => {
+      s.addShape(pres.ShapeType.ellipse, { x: x + 0.2, y: y + 0.07, w: 0.15, h: 0.15, fill: { color: c } });
+      s.addText(v[0], { x: x + 0.5, y: y, w: 5.2, h: 0.32, isTextBox: true, margin: 0,
+        fontFace: F_B, fontSize: 13, bold: true, color: INK });
+      s.addText(v[1], { x: x + 0.5, y: y + 0.32, w: 5.2, h: 0.6, isTextBox: true, margin: 0,
+        fontFace: F_B, fontSize: 11.5, color: MUT, lineSpacing: 16 });
+      y += 1.1;
+    });
+  };
+  col(M, "Declared limitations", [
+    ["Checkpoint selection", "Better on the criterion we selected it with, worse on size-blind readings — the same bias we denounce."],
+    ["α sweep on a fixed encoder", "Deliberate, to isolate the parameter — but it means the sweep is not encoder-agnostic."],
+    ["± is not generalisation", "Spread across seeds; test sampling error is ten times larger."],
+    ["SMOTE not measured", "Not among the baselines of the final grid."],
+  ], AMB, "FDF7EC");
+  col(6.85, "Future work", [
+    ["Remove the box from inference", "Detection and grading end to end. In real use nobody draws the bounding box — drawing it is already the diagnosis."],
+    ["Per-token MIL as the default head", "It gives the largest margin we measured: +28.8 % on fixed count."],
+    ["Explicit anti-collapse term", "Variance-covariance regularisation, instead of relying on the EMA alone."],
+  ], GRN, "F1F6F2");
+  note(s, "40 s. Read the left column without softening it. The right column is short on purpose.");
 }
 
 // ══════════════════════════════════════════════ 16  REFERENCES
@@ -711,7 +815,7 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
       fontFace: F_B, fontSize: 10, italic: true, color: MUT, lineSpacing: 13 });
     y += 0.63;
   });
-  s.addNotes("15 s. Leave on screen for questions.");
+  note(s, "15 s. Leave on screen for questions.");
 }
 
 pres.writeFile({ fileName: "Project8_CV_2025-2026.pptx" })
