@@ -1,4 +1,6 @@
 """
+INFRASTRUTTURA — attende la fine della catena e chiama sistema_repo.
+
 Aspetta la catena, poi esegue cio' che alla prima passata mancava, poi mette
 in ordine il repository.
 

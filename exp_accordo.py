@@ -1,4 +1,6 @@
 """
+CONFRONTO — accordo fra le predizioni di due encoder sugli stessi casi.
+
 I due encoder sbagliano sugli STESSI casi?
 
 Il CKA dice che condividono solo il 50% della struttura, ma ottengono lo

@@ -1,4 +1,6 @@
 """
+CONFRONTO — PR-AUC PAI 5 fra teste e tipi di pooling.
+
 La testa e' il solo pezzo addestrabile: e' lei il collo di bottiglia?
 
 L'encoder e' congelato per vincolo del brief, quindi tutta la capacita'

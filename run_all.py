@@ -1,4 +1,6 @@
 """
+PIPELINE — esegue l'intera pipeline in un comando.
+
 Pipeline completa, da zero, in un comando solo.
 
     python run_all.py                 # tutto

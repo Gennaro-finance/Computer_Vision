@@ -1,4 +1,6 @@
 """
+CONFRONTO — macro-F1 k-NN fra protocolli di mascheramento.
+
 Il canale nascosto del protocollo: l'estensione della maschera.
 
 LA SCOPERTA. Nel protocollo del brief la bounding box seleziona i token da

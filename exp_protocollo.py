@@ -1,4 +1,6 @@
 """
+CONFRONTO — macro-F1 e PR-AUC5 fra encoder, con la selezione neutralizzata.
+
 Il protocollo definitivo, in tre stadi con la selezione neutralizzata.
 
 PERCHE' TRE STADI E NON UNA GRIGLIA SOLA. Provando 6 teste per 3 pooling e

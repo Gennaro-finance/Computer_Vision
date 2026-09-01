@@ -1,4 +1,6 @@
 """
+INFRASTRUTTURA — pulizia e commit del repository dopo la catena.
+
 Mette in ordine il repository dopo la catena notturna: pulisce, verifica,
 propone cosa togliere e prepara il commit. NON pubblica.
 

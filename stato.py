@@ -1,4 +1,6 @@
 """
+INFRASTRUTTURA — pagina di stato della coda degli esperimenti.
+
 Stato della coda in una pagina: quali stadi sono chiusi, quale gira, quanto
 resta. Rigenerabile a piacere - e' una fotografia, non si aggiorna da sola.
 

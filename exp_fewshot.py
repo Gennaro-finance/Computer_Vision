@@ -1,4 +1,6 @@
 """
+CONFRONTO — macro-F1 e PR-AUC5 fra due encoder al calare delle etichette.
+
 Valutazione few-shot: quanto vale la rappresentazione quando le etichette
 costano.
 

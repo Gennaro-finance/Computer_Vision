@@ -1,4 +1,6 @@
 """
+CONFRONTO — macro-F1 e PR-AUC5 fra encoder, sui cinque protocolli di mascheramento.
+
 Fixed-K nella pipeline vera: attention pooling addestrato piu' testa.
 
 PERCHE' ESISTE, dato che exp_mascheramento.py misura gia' gli stessi

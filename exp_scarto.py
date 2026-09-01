@@ -1,4 +1,6 @@
 """
+DIAGNOSI — origine di uno scarto di 0,0140 fra misure della stessa cella.
+
 Da dove viene lo scarto di 0,0140 sul braccio casuale.
 
 IL FATTO. La stessa misura - encoder casuale, protocollo del brief, testa

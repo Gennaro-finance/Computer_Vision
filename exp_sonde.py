@@ -1,4 +1,6 @@
 """
+MISURAZIONE — macro-F1 di sonde k-NN senza parametri addestrati.
+
 Le sonde senza parametri: cosa contiene un vettore, prima di qualunque testa.
 
 PERCHE' SENZA PARAMETRI. La domanda "questo encoder e' migliore?" con una

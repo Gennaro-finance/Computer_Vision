@@ -1,4 +1,6 @@
 """
+MISURAZIONE — curve precision-recall su PAI 5.
+
 Curve precision-recall su PAI 5 - la metrica primaria, disegnata invece che
 riassunta.
 

@@ -1,4 +1,6 @@
 """
+PIPELINE — seed, checkpoint, monitor del collasso, freno hardware.
+
 Utils - seed, checkpoint, monitoraggio del collasso, k-NN probe, plot.
 
 Sezione "Utils" della struttura richiesta dal corso.

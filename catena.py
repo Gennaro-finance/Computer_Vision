@@ -1,4 +1,6 @@
 """
+INFRASTRUTTURA — orchestra pre-training ed esperimenti senza interazione.
+
 Catena notturna: pre-training completo e tutte le misure che ne dipendono,
 senza interazione.
 

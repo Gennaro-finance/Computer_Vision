@@ -1,4 +1,6 @@
 """
+PIPELINE — baseline per lo sbilanciamento e la novita' balanced_token_sampling.
+
 Imbalance - metodi per lo sbilanciamento di classe, baseline e la novita'.
 
 Copre l'obiettivo 3 del brief: "formulate and integrate an original

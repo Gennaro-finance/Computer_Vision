@@ -1,4 +1,6 @@
 """
+PIPELINE — stadio 1 - pre-training I-JEPA.
+
 Train (stadio 1) - pre-training I-JEPA sui tile, con monitoraggio del collasso.
 
 Sezione "Train" della struttura richiesta dal corso.
