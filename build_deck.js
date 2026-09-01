@@ -179,15 +179,29 @@ function note(s, testo) {
   s.addText("Two thresholds on the box side alone — no network at all — already reach macro-F1 0.7567 on the test set.", {
     x: M, y: 4.25, w: 7.3, h: 0.5, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 13.5, bold: true, color: RED });
 
-  nota(s, 8.25, 1.3, 4.47, 2.45, "Why this matters for a CNN-free pipeline",
-    "A randomly initialised ViT already encodes lesion intensity (R² = 0.99) and lesion size (R² = 0.89) with no training whatsoever. Architecture plus geometry starts close to the ceiling — before any learning happens.",
-    DEEP);
-  nota(s, 8.25, 3.95, 4.47, 2.3, "The consequence we had to confront",
-    "Any evaluation that gives the model access to lesion size through a side channel is measuring the disease definition, not the representation. This is what happened, and detecting it is the core of this work.",
-    RED, "FBF3F2");
-  s.addText("Dataset: 2,746 panoramic radiographs · 6,741 annotated lesions · patient-level split (4,719 / 1,009 / 1,013)   —   Do et al., Data in Brief 54:110486 (2024)", {
-    x: M, y: 6.5, w: W - 2 * M, h: 0.3, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 11, color: MUT });
-  note(s, "50 s. Land hard on 0.7567 with two thresholds. That number frames everything after it.");
+  /* Gli approfondimenti blu e rosso escono: il loro contenuto vive gia' nelle
+   * slide 5 e 6. Al loro posto la DIVISIONE DEI DATI e come e' stato evitato
+   * il leakage, che e' un requisito esplicito della traccia e finora stava
+   * schiacciato in una riga di piede. */
+  s.addText("6,741 lesions on 3,924 radiographs — 1.7 lesions per image", {
+    x: 8.25, y: 1.3, w: 4.47, h: 0.34, isTextBox: true, margin: 0,
+    fontFace: F_B, fontSize: 13, bold: true, color: DEEP });
+  tab(s, [
+    [th("Split"), th("Images"), th("Lesions")],
+    [td("Train"), td("2,746", { align: "right" }), td("4,719", { align: "right" })],
+    [td("Validation"), td("588", { align: "right" }), td("1,009", { align: "right" })],
+    [td("Test"), td("590", { align: "right" }), td("1,013", { align: "right" })],
+    [td("Total", { bold: true }), td("3,924", { bold: true, align: "right" }), td("6,741", { bold: true, align: "right" })],
+  ], { x: 8.25, y: 1.75, w: 4.47, colW: [1.85, 1.31, 1.31] });
+
+  s.addText("Several lesions share one image — so splitting by LESION would put the same patient on both sides.", {
+    x: 8.25, y: 4.05, w: 4.47, h: 0.6, isTextBox: true, margin: 0,
+    fontFace: F_B, fontSize: 12, color: INK, lineSpacing: 17 });
+
+  nota(s, M, 5.15, W - 2 * M, 1.5, "No data leakage — found the hidden patient ID, then counted it",
+    "The published files are renamed with a running number, so patient IDs look absent. They are not: every XML keeps the ORIGINAL name in its <filename> field, as PN######. Measured: 3,924 distinct PN on 3,924 images — zero repetitions.\n\nOne panoramic per patient, so an image-level split IS a patient-level split, exactly as the assignment requires. verify_patient_level() re-checks it at every run, and load_splits() asserts that no image appears in two splits — so it is a measured result, not a declaration of good faith.",
+    GRN, "F1F6F2");
+  note(s, "50 s. Land hard on 0.7567 with two thresholds. Then: we did not assume one patient per image — we found the hidden ID and counted it.");
 }
 
 // ══════════════════════════════════════════════ 4  MIL / BAG SIZE
