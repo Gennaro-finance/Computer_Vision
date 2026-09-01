@@ -26,7 +26,7 @@ pres.author = "Progetto 8 - Computer Vision 2025-2026";
 pres.title = "Self-Supervised Latent Representations for Imbalanced Apical Periodontitis Grading";
 
 const W = 13.333, H = 7.5, M = 0.62;
-const TOT = 16;
+const TOT = 21;
 let n = 0;
 
 function slide(titolo, occhiello, ctx) {
@@ -294,6 +294,158 @@ function nota(s, x, y, w, h, tit, testo, col, bg) {
     "The advantage appears only when the bag-size cue is gone AND localisation is kept. So the bounding box is genuinely useful — as a pointer, telling the model where to look — and harmful as a counter, telling it the answer. That distinction is the contribution.",
     GRN, "F1F6F2");
   s.addNotes("55 s. The two 'tie' rows are the evidence, not the weakness. Say so.");
+}
+
+// ══════════════════════════════════════════════ ENCODER — architettura
+{
+  const s = slide("The network: two encoders and a deliberately small predictor", "the encoder  ·  objective 1");
+  const mod = (x, y, w, h, tit, sub, col, sp) => {
+    s.addShape(pres.ShapeType.roundRect, { x, y, w, h, fill: { color: "FFFFFF" },
+      line: { color: col, width: 1.6 }, rectRadius: 0.06 });
+    s.addText(tit, { x: x + 0.1, y: y + 0.12, w: w - 0.2, h: 0.28, isTextBox: true, margin: 0,
+      fontFace: F_B, fontSize: 12.5, bold: true, color: col, align: "center" });
+    s.addText(sub, { x: x + 0.1, y: y + 0.42, w: w - 0.2, h: h - 0.85, isTextBox: true, margin: 0,
+      fontFace: F_B, fontSize: 10.5, color: INK, align: "center", lineSpacing: 15 });
+    s.addText(sp, { x: x + 0.1, y: y + h - 0.4, w: w - 0.2, h: 0.28, isTextBox: true, margin: 0,
+      fontFace: F_B, fontSize: 11.5, bold: true, color: col, align: "center" });
+  };
+  mod(M, 1.4, 3.5, 2.5, "Context encoder",
+      "ViT-S/16\npatch embed 16×16 → 384\n12 × Block (384, 6 heads)\nLayerNorm", DEEP, "21,589,632 par.");
+  mod(M + 3.85, 1.4, 3.0, 2.5, "Predictor",
+      "384 → 96\n4 × Block (96, 3 heads)\n96 → 384", GRN, "521,856 par.");
+  mod(M + 7.2, 1.4, 3.5, 2.5, "Target encoder",
+      "identical architecture\nsame 12 blocks, same widths\nonly the weight VALUES differ", TEAL, "21,589,632 par.");
+  s.addText("EMA:  θtarget ← τ·θtarget + (1−τ)·θcontext", {
+    x: M + 3.5, y: 4.0, w: 6.5, h: 0.3, isTextBox: true, margin: 0,
+    fontFace: F_B, fontSize: 12, bold: true, color: TEAL, align: "center" });
+  nota(s, M, 4.45, 6.0, 2.1, "One block class, three instantiations",
+    "The same Block — LayerNorm, multi-head attention, residual, LayerNorm, MLP (d→4d→d), residual — is used everywhere. The predictor is not a different architecture: it is the same one at width 96 instead of 384, repeated 4 times instead of 12.",
+    DEEP);
+  nota(s, 6.85, 4.45, 5.87, 2.1, "Why the predictor is only 2.4 % of an encoder",
+    "The assignment asks for a SHALLOW predictor, and the reason is structural. If the predictor were capable enough to guess the targets on its own, the encoder would never be forced to build useful representations. The 384→96→384 bottleneck prevents that by construction.",
+    GRN, "F1F6F2");
+  s.addNotes("50 s. One block class everywhere; the predictor's smallness is a design constraint, not a shortcut.");
+}
+
+// ══════════════════════════════════════════════ ENCODER — congelato
+{
+  const s = slide("What “frozen” means, and what is actually trained", "the encoder  ·  objective 2", {
+    m: "Target encoder — 21.6 M par.", c: "Head — 5.3 M par.",
+    p: "Encoder frozen, as required", k: "no backbone weight moves" });
+  s.addText("The assignment requires the representations to be evaluated FROZEN. After pre-training, no weight of the backbone is updated again — not by the classifier's gradient, not by fine-tuning.", {
+    x: M, y: TY, w: 7.3, h: 0.65, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 13.5, color: INK, lineSpacing: 20 });
+  tab(s, [
+    [th("Component"), th("Parameters"), th("During pre-training"), th("Downstream")],
+    [td("Context encoder"), td("21,589,632", { align: "right" }), td("trained by gradient", { color: GRN }), td("discarded", { color: MUT })],
+    [td("Predictor"), td("521,856", { align: "right" }), td("trained by gradient", { color: GRN }), td("discarded", { color: MUT })],
+    [td("Target encoder", { bold: true }), td("21,589,632", { bold: true, align: "right" }), td("EMA only, no gradient", { color: TEAL }), td("FROZEN — this is what we ship", { bold: true, color: TEAL })],
+    [td("Attention pooling"), td("5,316,480", { align: "right" }), td("—", { color: MUT }), td("trained", { color: GRN })],
+    [td("Head (flat)"), td("3,459", { align: "right" }), td("—", { color: MUT }), td("trained", { color: GRN })],
+  ], { x: M, y: 2.7, w: W - 2 * M, colW: [2.7, 2.2, 3.4, 3.8] });
+  nota(s, M, 4.85, 6.0, 1.7, "Two consequences worth stating",
+    "The encoder we deliver never saw a label — not one, at any point.\n\nAnd the same frozen encoder can be compared against a randomly initialised one on equal terms: with fine-tuning that comparison would measure adaptability, not representation.",
+    TEAL, "E4F0F2");
+  nota(s, 6.85, 4.85, 5.87, 1.7, "The trainable part is smaller than it looks",
+    "5,319,939 parameters downstream — and 5,316,480 of them are the pooling. The classifier itself is 3,459: a single Linear from 1,152 to 3. Almost all downstream capacity sits in deciding HOW to aggregate tokens, not in classifying.",
+    DEEP);
+  s.addNotes("50 s. 'Never saw a label' is the sentence that lands. Then the pooling/head asymmetry.");
+}
+
+// ══════════════════════════════════════════════ ENCODER — la griglia
+{
+  const s = slide("From a 224 px window to 196 tokens", "the encoder  ·  spatial decomposition", {
+    m: "ViT-S/16 patch embedding", c: "—",
+    p: "224 px input, fixed", k: "14 × 14 = 196 tokens, always" });
+  s.addText("The window is cut into a regular grid of square patches. Each patch becomes exactly one token — no pooling, no overlap, no resizing at this stage.", {
+    x: M, y: TY, w: 3.9, h: 0.62, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 12.5, color: INK, lineSpacing: 18 });
+
+  // Griglia in scala, con una cella chiamata fuori. Il richiamo sta a DESTRA
+  // della griglia, non sopra: sopra finiva sotto il paragrafo.
+  const C = 0.15, G = 14, gx = M + 0.28, gy = 2.62;
+  s.addShape(pres.ShapeType.rect, { x: gx, y: gy, w: G * C, h: G * C,
+    fill: { color: "F4F6F7" }, line: { color: DEEP, width: 1.4 } });
+  for (let i = 1; i < G; i++) {
+    s.addShape(pres.ShapeType.line, { x: gx + i * C, y: gy, w: 0, h: G * C, line: { color: LINE, width: 0.5 } });
+    s.addShape(pres.ShapeType.line, { x: gx, y: gy + i * C, w: G * C, h: 0, line: { color: LINE, width: 0.5 } });
+  }
+  s.addShape(pres.ShapeType.rect, { x: gx + 5 * C, y: gy + 4 * C, w: C, h: C, fill: { color: GRN } });
+  s.addShape(pres.ShapeType.line, { x: gx + 6 * C, y: gy + 4.5 * C, w: 1.05, h: -0.2,
+    line: { color: GRN, width: 1.2, endArrowType: "triangle" } });
+  s.addText("one patch\n16 × 16 px\n→ one token", { x: gx + G * C + 0.12, y: 2.95, w: 1.45, h: 0.75,
+    isTextBox: true, margin: 0, fontFace: F_B, fontSize: 11, bold: true, color: GRN, lineSpacing: 14 });
+  s.addText("224 px  ·  14 × 14 cells", { x: gx, y: gy + G * C + 0.08, w: G * C, h: 0.24,
+    isTextBox: true, margin: 0, fontFace: F_B, fontSize: 11, color: DEEP, align: "center" });
+
+  tab(s, [
+    [th("Quantity"), th("Value"), th("Why it cannot change")],
+    [td("Input window"), td("224 × 224 px", { bold: true }), td("fixed crop, chosen so lesion scale is preserved")],
+    [td("Patch size"), td("16 × 16 px", { bold: true }), td("Conv2d kernel = stride = 16 → exact, non-overlapping tiling")],
+    [td("Grid"), td("14 × 14", { bold: true }), td("224 ÷ 16 = 14, with no remainder and no padding")],
+    [td("Tokens per window", { bold: true }), td("196", { bold: true, color: DEEP }), td("the positional embedding has exactly 196 entries", { bold: true })],
+  ], { x: 4.6, y: 2.55, w: 8.1, colW: [1.9, 1.5, 4.7], fontSize: 11 });
+
+  nota(s, 4.6, 4.5, 8.1, 0.95, "The grid is fixed by construction, not by convention",
+    "The model could not accept a different grid without interpolating its positional embedding: 196 is baked into the architecture. Verified empirically — input (2, 3, 224, 224) gives tokens (2, 196, 384).",
+    DEEP);
+
+  nota(s, M, 5.65, W - 2 * M, 1.25, "And this is where the geometry enters the pipeline",
+    "A patch is 16 px, and the median lesion box measures 57 / 80 / 127 px for PAI 3 / 4 / 5 — that is 3.6 / 5.0 / 7.9 patches per side. The grade is written directly into how many cells the box covers: 19 / 34 / 77 tokens on average. The bag-size bias is not introduced by the head or by the encoder; it is already present the moment the window is cut into a grid.",
+    RED, "FBF3F2");
+  s.addNotes("55 s. The last box is the bridge back to the thesis: geometry enters at tiling time.");
+}
+
+// ══════════════════════════════════════════════ ENCODER — il token
+{
+  const s = slide("What one latent vector actually contains", "the encoder  ·  representation", {
+    m: "Target encoder (frozen)", c: "—",
+    p: "3 blocks concatenated", k: "196 tokens × 1,152 d per lesion" });
+  s.addText("Each 224 px window becomes a 14×14 grid of 196 tokens. We do not take the last block alone: we concatenate three depths, so every token is 1,152 numbers in three contiguous sections.", {
+    x: M, y: TY, w: W - 2 * M, h: 0.48, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 13.5, color: INK, lineSpacing: 20 });
+  // il vettore, disegnato in scala
+  const x0 = M, wtot = W - 2 * M, wsec = wtot / 3, y0 = 2.70;
+  const sez = [["Block 2", "x₁ … x₃₈₄", DEEP], ["Block 7", "x₃₈₅ … x₇₆₈", TEAL], ["Block 11", "x₇₆₉ … x₁₁₅₂", GRN]];
+  sez.forEach(([b, r, c], i) => {
+    s.addShape(pres.ShapeType.rect, { x: x0 + i * wsec, y: y0, w: wsec - 0.04, h: 0.62,
+      fill: { color: "FFFFFF" }, line: { color: c, width: 1.6 } });
+    s.addText(r, { x: x0 + i * wsec, y: y0 + 0.16, w: wsec - 0.04, h: 0.3, isTextBox: true, margin: 0,
+      fontFace: "Courier New", fontSize: 13, color: INK, align: "center" });
+    s.addText(b, { x: x0 + i * wsec, y: y0 + 0.68, w: wsec - 0.04, h: 0.26, isTextBox: true, margin: 0,
+      fontFace: F_B, fontSize: 12, bold: true, color: c, align: "center" });
+    s.addText("384 values", { x: x0 + i * wsec, y: y0 + 0.92, w: wsec - 0.04, h: 0.24, isTextBox: true,
+      margin: 0, fontFace: F_B, fontSize: 10.5, color: MUT, align: "center" });
+  });
+  s.addText("tᵢ  ∈  ℝ¹¹⁵²        i ∈ [1, 196]", {
+    x: M, y: 2.38, w: wtot, h: 0.26, isTextBox: true, margin: 0,
+    fontFace: F_B, fontSize: 13, bold: true, color: DEEP, align: "center" });
+  nota(s, M, 4.15, 6.0, 2.3, "Why not the last block only",
+    "The last block is the most COMPRESSED: it has discarded whatever the pre-training objective did not need. With a linear head — which is what the assignment's protocol uses — an intermediate block reads better.\n\nConcatenating three depths lets the trained pooling decide how much to weigh each, instead of us deciding in advance.",
+    DEEP);
+  nota(s, 6.85, 4.15, 5.87, 2.3, "The usual interpretation, and our caution",
+    "Textbooks read depth as low-level texture → mid-level structure → high-level semantics. It is a reasonable motivation for taking three depths.\n\nWe do NOT present it as a measured fact about our encoder: we measured the depth profile instead, and it says something more specific — next slide.",
+    AMB, "FDF7EC");
+  s.addNotes("50 s. Show the vector, then say we measured what depth does rather than assuming it.");
+}
+
+// ══════════════════════════════════════════════ ENCODER — profilo di profondità
+{
+  const s = slide("What depth actually does, measured", "the encoder  ·  representation", {
+    m: "Three encoders, 0 / 69 / 179 epochs", c: "One another, block by block",
+    p: "k-NN probe, no trained parameters", k: "macro-F1, validation" });
+  s.addText("A parameter-free k-NN probe read each block separately. The random encoder is the control: with untrained weights, depth should carry no structure — and it does not.", {
+    x: M, y: TY, w: 7.4, h: 0.55, isTextBox: true, margin: 0, fontFace: F_B, fontSize: 13.5, color: INK, lineSpacing: 20 });
+  tab(s, [
+    [th("Encoder"), th("epochs"), th("Block 2"), th("Block 7"), th("Block 11"), th("spread")],
+    [td("Random init", { bold: true }), td("0", { align: "right" }), td("0.7626", { align: "right" }), td("0.7639", { align: "right" }), td("0.7680", { align: "right" }), td("0.005", { color: MUT, align: "right" })],
+    [td("I-JEPA finale"), td("69", { align: "right" }), td("0.6782", { bold: true, color: DEEP, align: "right" }), td("0.4043", { align: "right" }), td("0.3845", { color: RED, align: "right" }), td("0.294", { bold: true, color: DEEP, align: "right" })],
+    [td("I-JEPA completa"), td("179", { align: "right" }), td("0.6400", { bold: true, color: DEEP, align: "right" }), td("0.4910", { align: "right" }), td("0.4892", { align: "right" }), td("0.151", { bold: true, color: DEEP, align: "right" })],
+  ], { x: M, y: 2.6, w: 7.4, colW: [2.0, 0.85, 1.25, 1.25, 1.25, 0.8] });
+  nota(s, M, 4.4, 7.4, 2.1, "Read the first row against the others",
+    "On untrained weights the three blocks are indistinguishable — spread 0.005. On trained ones block 2 is worth nearly twice block 11.\n\nThis probe rewards geometry, so what the numbers say is precise: DEPTH PROGRESSIVELY DISCARDS THE SIZE INFORMATION. Block 2 still carries it; block 11 has largely shed it.",
+    DEEP);
+  nota(s, 8.25, TY, 4.47, 4.4, "Why this matters for our thesis",
+    "It is the same story as the training trajectory, seen along a different axis.\n\nAcross EPOCHS the encoder unlearns the bounding-box shortcut. Across DEPTH it does the same thing within a single forward pass.\n\nThat is also the honest reason for concatenating three blocks rather than trusting the deepest one: they carry different information, and the trained pooling is better placed than we are to decide how much of each to use.\n\nAnd it is a caution about the textbook reading of depth — on this data the deepest block is not simply “the most useful one”.",
+    GRN, "F1F6F2");
+  s.addNotes("60 s. The random-encoder row is the control that makes the other two readable.");
 }
 
 // ══════════════════════════════════════════════ 8  LE TESTE
