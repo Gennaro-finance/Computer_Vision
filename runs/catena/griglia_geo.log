@@ -1,0 +1,26 @@
+tetto      : 95 W, 86 C
+a riposo   : 20 W, 58 C, clock 300 MHz
+registro   : runs\consumi_20260828_162253.csv
+comando    : .venv\Scripts\python.exe train_downstream.py --grid --layers 2 7 11 --tag _geo_finale
+----------------------------------------------------------------------
+  none             flat     macroF1=0.7663+-0.0082  F1(3/4/5)=0.883/0.636/0.779  recall5=0.7589  prec5=0.802  kappa=0.7875
+  none             ordinal  macroF1=0.7592+-0.0061  F1(3/4/5)=0.889/0.625/0.764  recall5=0.7464  prec5=0.789  kappa=0.7862
+  class_weighted   flat     macroF1=0.7505+-0.0043  F1(3/4/5)=0.874/0.621/0.757  recall5=0.7786  prec5=0.738  kappa=0.7753
+  class_weighted   ordinal  macroF1=0.7417+-0.0106  F1(3/4/5)=0.881/0.604/0.740  recall5=0.7964  prec5=0.695  kappa=0.7733
+  focal            flat     macroF1=0.7462+-0.0111  F1(3/4/5)=0.863/0.620/0.755  recall5=0.7911  prec5=0.729  kappa=0.7640
+  focal            ordinal  macroF1=0.7468+-0.0131  F1(3/4/5)=0.872/0.611/0.758  recall5=0.7964  prec5=0.729  kappa=0.7729
+  oversample       flat     macroF1=0.7499+-0.0137  F1(3/4/5)=0.857/0.621/0.772  recall5=0.7768  prec5=0.768  kappa=0.7635
+  oversample       ordinal  macroF1=0.7479+-0.0085  F1(3/4/5)=0.880/0.608/0.755  recall5=0.7946  prec5=0.722  kappa=0.7795
+  balanced_tokens  flat     macroF1=0.7586+-0.0031  F1(3/4/5)=0.873/0.635/0.768  recall5=0.7625  prec5=0.778  kappa=0.7772
+  balanced_tokens  ordinal  macroF1=0.7509+-0.0065  F1(3/4/5)=0.876/0.612/0.764  recall5=0.7696  prec5=0.762  kappa=0.7737
+
+Risultati in ./runs\results_vit_small_L2-7-11_geo_finale.json
+----------------------------------------------------------------------
+durata     : 115.1 min
+letture    : 3383
+picco      : 86 W   (tetto 95)
+temp max   : 78 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_162253.csv
+
+Picco a 9 W dal tetto: la taratura va bene cosi'.

@@ -1,0 +1,47 @@
+tetto      : 95 W, 86 C
+a riposo   : 10 W, 57 C, clock 1350 MHz
+registro   : runs\consumi_20260828_192753.csv
+comando    : .venv\Scripts\python.exe exp_stratificata.py --tag _casuale _geo_finale
+----------------------------------------------------------------------
+[freno] Freno(carico=100%, run 1.00x piu' lungo)
+
+REGOLA A DUE SOGLIE sul lato della bbox, adattata sul train
+  soglie: 72 px e 106 px
+  macro-F1 train 0.7657   test 0.7558
+
+PARTIZIONE DEL TEST
+  tipici      (la geometria basta)    808
+  ingannevoli (la geometria sbaglia)  205
+  composizione degli ingannevoli per classe vera:
+    PAI 3:  89 su 643 (14%)   lato mediano 77 px
+    PAI 4:  89 su 258 (34%)   lato mediano 67 px
+    PAI 5:  27 su 112 (24%)   lato mediano 93 px
+
+========================================================================
+ACCURATEZZA SUI DUE GRUPPI, media di 5 seed
+========================================================================
+encoder              tipici   ingannevoli   divario
+------------------------------------------------------------------------
+_casuale         0.9361+-0.010    0.3395+-0.007    0.5966
+_geo_finale      0.9252+-0.004    0.3415+-0.018    0.5838
+
+========================================================================
+LA PREVISIONE
+========================================================================
+  sui TIPICI           _geo_finale - _casuale = -0.0109   z = -2.24
+  sugli INGANNEVOLI    _geo_finale - _casuale = +0.0020   z = +0.23
+
+  attesa: pareggio sui tipici, vantaggio dell'addestrato
+  sugli ingannevoli. Se non si vede, la complementarita' e'
+  piu' debole di quanto la sonda k-NN suggerisca.
+
+Risultati in ./runs\stratificata_vit_small.json
+----------------------------------------------------------------------
+durata     : 21.0 min
+letture    : 616
+picco      : 83 W   (tetto 95)
+temp max   : 72 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_192753.csv
+
+Picco a 12 W dal tetto: la taratura va bene cosi'.

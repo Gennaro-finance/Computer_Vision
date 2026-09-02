@@ -1,0 +1,32 @@
+tetto      : 95 W, 86 C
+a riposo   : 13 W, 54 C, clock 210 MHz
+registro   : runs\consumi_20260828_233744.csv
+comando    : .venv\Scripts\python.exe exp_fixedk.py --tag _casuale _geo_finale _geo_ultima --protocolli P1_bbox P3_K16 --head flat --split test --esito runs\catena/fixedk_flat_test.json
+----------------------------------------------------------------------
+[freno] Freno(carico=100%, run 1.00x piu' lungo)
+testa flat, metodo none, 5 seed, misure su TEST
+cambia SOLO la maschera: stesso crop, stessi token, stessa architettura
+
+Riprendo: 10 celle su disco
+
+protocollo              token                   _casuale                _geo_finale                _geo_ultima   divario
+-------------------------------------------------------------------------------------------------------------------------
+P1_bbox                    29    0.7705+-0.0111 (0.8758)    0.7663+-0.0082 (0.8785)    0.7596+-0.0105 (0.8671)   -0.0109
+P3_K16                     16    0.5187+-0.0306 (0.3861)    0.5689+-0.0189 (0.4713)    0.5537+-0.0201 (0.4495)   +0.0351
+
+==============================================================================
+LA PREVISIONE: il casuale crolla, I-JEPA tiene
+==============================================================================
+  P1_bbox                I-JEPA - casuale -0.0109 (z = -1.59)   il casuale rispetto a P1: +0.0000
+  P3_K16                 I-JEPA - casuale +0.0351 (z = +2.14)   il casuale rispetto a P1: -0.2518
+
+Risultati in runs\catena/fixedk_flat_test.json
+----------------------------------------------------------------------
+durata     : 20.8 min
+letture    : 612
+picco      : 82 W   (tetto 95)
+temp max   : 71 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_233744.csv
+
+Picco a 13 W dal tetto: la taratura va bene cosi'.

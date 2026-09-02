@@ -1,0 +1,59 @@
+tetto      : 95 W, 86 C
+a riposo   : 6 W, 48 C, clock 210 MHz
+registro   : runs\consumi_20260829_000136.csv
+comando    : .venv\Scripts\python.exe exp_scarto.py --tag _casuale --esito runs\catena/scarto.json
+----------------------------------------------------------------------
+[freno] Freno(carico=100%, run 1.00x piu' lungo)
+tag _casuale, semi [0, 1, 2, 3, 4], metodo none, testa flat, test
+
+I DATI SONO GLI STESSI?
+  train  {'tokens_stesso_oggetto': True, 'mask_stesso_oggetto': True, 'labels_uguali': True, 'mask_uguale': True}
+  val    {'tokens_stesso_oggetto': True, 'mask_stesso_oggetto': True, 'labels_uguali': True, 'mask_uguale': True}
+  test   {'tokens_stesso_oggetto': True, 'mask_stesso_oggetto': True, 'labels_uguali': True, 'mask_uguale': True}
+  -> SI: i tensori coincidono
+
+A_diretto:
+    A_diretto seme 0: macro_f1=0.749820  pr_auc5=0.871460
+    A_diretto seme 1: macro_f1=0.783124  pr_auc5=0.879297
+    A_diretto seme 2: macro_f1=0.774189  pr_auc5=0.872815
+    A_diretto seme 3: macro_f1=0.770534  pr_auc5=0.873282
+    A_diretto seme 4: macro_f1=0.774756  pr_auc5=0.882390
+  -> macro_f1 0.770485 +- 0.011124   pr_auc5 0.875849
+
+B_maschera:
+    B_maschera seme 0: macro_f1=0.749820  pr_auc5=0.871460
+    B_maschera seme 1: macro_f1=0.783124  pr_auc5=0.879297
+    B_maschera seme 2: macro_f1=0.774189  pr_auc5=0.872815
+    B_maschera seme 3: macro_f1=0.770534  pr_auc5=0.873282
+    B_maschera seme 4: macro_f1=0.774756  pr_auc5=0.882390
+  -> macro_f1 0.770485 +- 0.011124   pr_auc5 0.875849
+
+A_ripetuto:
+    A_ripetuto seme 0: macro_f1=0.749820  pr_auc5=0.871460
+    A_ripetuto seme 1: macro_f1=0.783124  pr_auc5=0.879297
+    A_ripetuto seme 2: macro_f1=0.774189  pr_auc5=0.872815
+    A_ripetuto seme 3: macro_f1=0.770534  pr_auc5=0.873282
+    A_ripetuto seme 4: macro_f1=0.774756  pr_auc5=0.882390
+  -> macro_f1 0.770485 +- 0.011124   pr_auc5 0.875849
+
+==========================================================================
+A contro A_ripetuto : 0.000000   per-seme identici: True
+A contro B_maschera : 0.000000
+
+VERDETTO: i due percorsi coincidono. Lo scarto non nasce qui:
+l'indagine si sposta su run_grid, che e' l'unico percorso
+rimasto fra quelli che hanno prodotto 0,7565.
+
+valore di agosto 0,7565   valore di oggi 0,7705
+misurato ora: A=0.7705  B=0.7705
+
+Risultati in runs\catena/scarto.json
+----------------------------------------------------------------------
+durata     : 31.2 min
+letture    : 916
+picco      : 82 W   (tetto 95)
+temp max   : 72 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260829_000136.csv
+
+Picco a 13 W dal tetto: la taratura va bene cosi'.

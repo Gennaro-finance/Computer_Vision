@@ -79,8 +79,3 @@ runs/consumi_*.csv
 # package.json e package-lock.json bastano a ricostruirle con `npm install`.
 node_modules/
 
-# Log della catena notturna: 20 file di output degli esperimenti. Restano sul
-# disco come tracciabilita', ma nel repo sarebbero rumore - i NUMERI stanno
-# nei .json di runs/, che sono versionati.
-runs/catena/*.log
-runs/catena/guidelines.txt

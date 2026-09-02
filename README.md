@@ -11,7 +11,7 @@ fino a **+32 % di PR-AUC sulla classe rara**.
 | **Gruppo** | Nome 1 (matricola) · Nome 2 (matricola) · Nome 3 (matricola) |
 | **Sessione** | 11 settembre 2026 |
 | **Framework** | PyTorch |
-| **Presentazione** | `Project8_CV_2025-2026.pptx` (21 slide, generata da `build_deck.js`) |
+| **Presentazione** | `Project8_CV_2025-2026.pptx` (26 slide, generata da `build_deck.js`) |
 
 ---
 
@@ -152,7 +152,7 @@ pipeline non si confonde con gli script che hanno prodotto i numeri.
 | `MISURAZIONE` | misura una metrica su un braccio | 5 script `exp_*` |
 | `CONFRONTO` | confronta una metrica fra bracci | 13 script `exp_*` |
 | `DIAGNOSI` | indaga una discrepanza fra misure | `exp_scarto` |
-| `INFRASTRUTTURA` | supporto, non richiesto dalla traccia | `catena` `sorveglia` `stato` `figure_finali` … |
+| `INFRASTRUTTURA` | supporto, non richiesto dalla traccia | `sorveglia` (limite di potenza GPU) · `figure_finali` `make_figures` |
 
 L'architettura: ViT-S/16 (12 blocchi, dim 384, 6 teste) come **context
 encoder** e **target encoder** a EMA, più un **predictor** deliberatamente

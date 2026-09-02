@@ -1,0 +1,21 @@
+tetto      : 95 W, 86 C
+a riposo   : 22 W, 57 C, clock 1350 MHz
+registro   : runs\consumi_20260828_233618.csv
+comando    : .venv\Scripts\python.exe train_downstream.py --cache --layers 2 7 11 --ckpt-tag finale --tag _geo_ultima
+----------------------------------------------------------------------
+Encoder da ijepa_vit_small_finale, epoca 288
+  train :  4719 lesioni  token=(4719, 196, 1152)  PAI3/4/5 = [3017, 1229, 473]
+  val   :  1009 lesioni  token=(1009, 196, 1152)  PAI3/4/5 = [617, 268, 124]
+  test  :  1013 lesioni  token=(1013, 196, 1152)  PAI3/4/5 = [643, 258, 112]
+
+Latenti salvati: ./runs\cache\latents_vit_small_L2-7-11_geo_ultima.pt (3046 MB)
+Da qui in poi ogni esperimento sullo sbilanciamento gira in secondi.
+----------------------------------------------------------------------
+durata     : 1.4 min
+letture    : 42
+picco      : 97 W   (tetto 95)
+temp max   : 65 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_233618.csv
+
+Picco a -2 W dal tetto: la taratura va bene cosi'.

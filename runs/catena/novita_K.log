@@ -1,0 +1,43 @@
+tetto      : 95 W, 86 C
+a riposo   : 23 W, 59 C, clock 1500 MHz
+registro   : runs\consumi_20260828_182828.csv
+comando    : .venv\Scripts\python.exe exp_novita_K.py --tag _geo_finale --K 16
+----------------------------------------------------------------------
+[freno] Freno(carico=100%, run 1.00x piu' lungo)
+encoder_geo_finale, protocollo P3_K16: 16 token per lesione, uguali per tutte le classi
+testa flat, 5 seed, misure sul TEST
+
+metodo                      macro-F1           PR-AUC5  F1 PAI5    rec5   prec5
+----------------------------------------------------------------------------------
+none                  0.5689+-0.0189    0.4713+-0.0294    0.469  0.4554   0.490
+class_weighted        0.5493+-0.0149    0.4935+-0.0368    0.479  0.5411   0.439
+focal                 0.5343+-0.0237    0.4751+-0.0132    0.461  0.5750   0.389
+oversample            0.5425+-0.0178    0.4375+-0.0386    0.462  0.5661   0.392
+balanced_tokens       0.5860+-0.0056    0.5150+-0.0158    0.518  0.5196   0.522
+
+======================================================================
+LA NOVITA' contro le baseline, sotto P3_K16
+======================================================================
+  vs none             macro_f1    +0.0172 (z=+1.95)   pr_auc5     +0.0437 (z=+2.93)
+  vs class_weighted   macro_f1    +0.0367 (z=+5.15)   pr_auc5     +0.0215 (z=+1.20)
+  vs focal            macro_f1    +0.0517 (z=+4.74)   pr_auc5     +0.0398 (z=+4.32)
+  vs oversample       macro_f1    +0.0435 (z=+5.21)   pr_auc5     +0.0775 (z=+4.15)
+
+  Riferimento: `none` sull'encoder CASUALE sotto lo stesso
+  protocollo vale 0.5347 di macro-F1 e 0.4220 di PR-AUC5.
+
+  ATTESA: con n_eff = 1.01 la novita' riassegna peso senza
+  aggiungere informazione. Sotto K fisso il compito e' piu'
+  difficile, quindi il vantaggio puo' ridursi. Se pareggia, il
+  meccanismo lo prevedeva.
+
+Risultati in ./runs\novita_K16_geo_finale.json
+----------------------------------------------------------------------
+durata     : 57.5 min
+letture    : 1691
+picco      : 82 W   (tetto 95)
+temp max   : 72 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_182828.csv
+
+Picco a 13 W dal tetto: la taratura va bene cosi'.

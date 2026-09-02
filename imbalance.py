@@ -318,9 +318,8 @@ def compute_loss(logits, targets, method="none", head_type="flat",
     """
     Contratto unico verso train_downstream.py.
 
-    Definite questa firma il giorno 1 e non cambiatela: e' cio' che permette
-    alla Persona B di lavorare sulle baseline mentre la Persona A sta ancora
-    addestrando il SSL.
+    Metodo e tipo di testa entrano da qui, cosi' aggiungere una baseline non
+    richiede di toccare il ciclo di addestramento.
     """
     weight = None
     if method in ("class_weighted", "focal") and train_labels is not None:
