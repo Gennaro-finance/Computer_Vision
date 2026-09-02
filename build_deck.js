@@ -26,7 +26,7 @@ pres.author = "Progetto 8 - Computer Vision 2025-2026";
 pres.title = "Self-Supervised Latent Representations for Imbalanced Apical Periodontitis Grading";
 
 const W = 13.333, H = 7.5, M = 0.62;
-const TOT = 27;
+const TOT = 26;
 let n = 0;
 
 function slide(titolo, occhiello, ctx) {
@@ -160,72 +160,6 @@ function note(s, testo) {
     "Each analytical slide opens with the same strip: which MODEL, what it is COMPARED WITH, under which PROTOCOL, on which METRIC. Nine protocols and four related metrics appear in this work — the strip tells you at a glance which pair you are looking at.",
     DEEP, "F1F4F6");
   note(s, "30 s. Point at the strip explanation — it is how they will follow the numbers.");
-}
-
-// ══════════════════════════════════════════════ 2b  LA PIPELINE A BLOCCHI
-{
-  const s = slide("The pipeline, end to end", "the map before the details");
-
-  /* Blocchi e frecce: due bande. Sopra il pre-training, che PRODUCE
-   * l'encoder; sotto il downstream, che lo USA. Fra le due, la linea del
-   * congelamento — sotto quella riga nessun peso del backbone si muove. */
-  const bloc = (x, y, w, h, tit, sub, col, bg) => {
-    s.addShape(pres.ShapeType.roundRect, { x, y, w, h,
-      fill: { color: bg || "FFFFFF" }, line: { color: col, width: 1.6 }, rectRadius: 0.06 });
-    s.addText(tit, { x: x + 0.06, y: y + 0.1, w: w - 0.12, h: 0.28, isTextBox: true, margin: 0,
-      fontFace: F_B, fontSize: 11.5, bold: true, color: col, align: "center" });
-    s.addText(sub, { x: x + 0.06, y: y + 0.38, w: w - 0.12, h: h - 0.46, isTextBox: true, margin: 0,
-      fontFace: F_B, fontSize: 9.5, color: INK, align: "center", lineSpacing: 12 });
-  };
-  const fre = (x, y, w, col) => s.addShape(pres.ShapeType.line,
-    { x, y, w, h: 0, line: { color: col || MUT, width: 1.4, endArrowType: "triangle" } });
-
-  // ---- banda 1: pre-training, senza etichette
-  s.addText("1 — SELF-SUPERVISED PRE-TRAINING     ·     no labels used", {
-    x: M, y: 1.28, w: 8, h: 0.24, isTextBox: true, margin: 0,
-    fontFace: F_B, fontSize: 10, bold: true, color: MUT, charSpacing: 0.8 });
-  bloc(M, 1.58, 2.15, 0.95, "224 px tiles", "sampled anywhere\non the radiograph", DEEP);
-  fre(M + 2.15, 2.05, 0.32);
-  bloc(M + 2.47, 1.58, 2.15, 0.95, "Block masking", "1 context block\n+ 4 target blocks", DEEP);
-  fre(M + 4.62, 2.05, 0.32);
-  bloc(M + 4.94, 1.58, 2.15, 0.95, "Context encoder", "ViT-S/16 · 21.6 M\ntrained by gradient", DEEP);
-  fre(M + 7.09, 2.05, 0.32);
-  bloc(M + 7.41, 1.58, 2.15, 0.95, "Predictor", "4 blocks · dim 96\n2.4 % of an encoder", GRN);
-  fre(M + 9.56, 2.05, 0.32);
-  bloc(M + 9.88, 1.58, 2.22, 0.95, "smooth-L1 loss", "on LayerNormed target\nrepresentations, not pixels", GRN);
-
-  // il target encoder, aggiornato solo per EMA
-  bloc(M + 4.94, 2.78, 2.15, 0.8, "Target encoder", "EMA copy · no gradient", TEAL, "F1F7F8");
-  s.addShape(pres.ShapeType.line, { x: M + 6.02, y: 2.53, w: 0, h: 0.24,
-    line: { color: TEAL, width: 1.3, dashType: "dash", endArrowType: "triangle" } });
-  s.addText("EMA  τ = 0.9996", { x: M + 7.2, y: 3.0, w: 1.9, h: 0.24, isTextBox: true, margin: 0,
-    fontFace: F_B, fontSize: 9.5, color: TEAL });
-
-  // ---- la linea del congelamento
-  s.addShape(pres.ShapeType.line, { x: M, y: 3.82, w: W - 2 * M, h: 0,
-    line: { color: TEAL, width: 2, dashType: "dash" } });
-  s.addText("the encoder is FROZEN from here down — no backbone weight moves again", {
-    x: M, y: 3.86, w: W - 2 * M, h: 0.24, isTextBox: true, margin: 0,
-    fontFace: F_B, fontSize: 10, bold: true, color: TEAL, align: "center" });
-
-  // ---- banda 2: downstream, con le etichette
-  s.addText("2 — DOWNSTREAM CLASSIFICATION     ·     labels used here, and only here", {
-    x: M, y: 4.28, w: 8, h: 0.24, isTextBox: true, margin: 0,
-    fontFace: F_B, fontSize: 10, bold: true, color: MUT, charSpacing: 0.8 });
-  bloc(M, 4.58, 2.15, 0.95, "Lesion window", "224 px, centred\nscale preserved", DEEP);
-  fre(M + 2.15, 5.05, 0.32);
-  bloc(M + 2.47, 4.58, 2.15, 0.95, "Frozen encoder", "196 tokens × 1,152\nblocks 2, 7, 11", TEAL, "F1F7F8");
-  fre(M + 4.62, 5.05, 0.32);
-  bloc(M + 4.94, 4.58, 2.15, 0.95, "Token selection", "the bounding box\nchooses which tokens", RED, "FBF3F2");
-  fre(M + 7.09, 5.05, 0.32);
-  bloc(M + 7.41, 4.58, 2.15, 0.95, "Pooling + head", "5.3 M + 3,459 par.\nthe only trained part", DEEP);
-  fre(M + 9.56, 5.05, 0.32);
-  bloc(M + 9.88, 4.58, 2.22, 0.95, "PR-AUC on PAI 5", "5 seeds · test split\nnever seen before", DEEP);
-
-  nota(s, M, 5.85, W - 2 * M, 0.95, "One stage is ours",
-    "Everything here is the assignment's pipeline except the red block. The bounding box enters exactly once, and that is where the bag-size bias lives — so that is the only stage we changed.",
-    RED, "FBF3F2");
-  note(s, "45 s. Trace it left to right with a finger, twice: top band builds the encoder, bottom band uses it. Then point at the red block.");
 }
 
 // ══════════════════════════════════════════════ 3  PROBLEM = GEOMETRY
