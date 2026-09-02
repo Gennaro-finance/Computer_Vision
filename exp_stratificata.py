@@ -1,4 +1,6 @@
 """
+CONFRONTO — macro-F1 fra encoder, stratificata per dimensione della lesione.
+
 Chi prende i casi in cui la dimensione inganna - analisi stratificata.
 
 L'IDEA, che viene da una domanda giusta. Il grado PAI e' quasi tutto

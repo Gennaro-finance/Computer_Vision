@@ -1,4 +1,6 @@
 """
+INFRASTRUTTURA — genera le figure di valutazione dai file di risultati.
+
 Evaluation - figure finali per la presentazione.
 
 Sezione "Evaluation" della struttura richiesta dal corso.

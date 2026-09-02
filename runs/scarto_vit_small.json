@@ -1,0 +1,103 @@
+{
+  "tag": "_casuale",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "identita": {
+    "train": {
+      "tokens_stesso_oggetto": true,
+      "mask_stesso_oggetto": true,
+      "labels_uguali": true,
+      "mask_uguale": true
+    },
+    "val": {
+      "tokens_stesso_oggetto": true,
+      "mask_stesso_oggetto": true,
+      "labels_uguali": true,
+      "mask_uguale": true
+    },
+    "test": {
+      "tokens_stesso_oggetto": true,
+      "mask_stesso_oggetto": true,
+      "labels_uguali": true,
+      "mask_uguale": true
+    }
+  },
+  "atteso_agosto": {
+    "macro_f1": 0.7565,
+    "pr_auc_pai5": 0.8676
+  },
+  "atteso_fixedk_oggi": {
+    "macro_f1": 0.7705,
+    "pr_auc_pai5": 0.8758
+  },
+  "bracci": {
+    "A_diretto": {
+      "macro_f1": [
+        0.7704846354505341,
+        0.011124241803329033
+      ],
+      "pr_auc_pai5": [
+        0.8758487050542797,
+        0.004236425015118813
+      ],
+      "quadratic_kappa": [
+        0.7932291565712843,
+        0.009066502453520413
+      ],
+      "per_seme": [
+        0.7498203205978206,
+        0.7831244984113485,
+        0.7741886575256728,
+        0.7705340568990362,
+        0.7747556438187927
+      ]
+    },
+    "B_maschera": {
+      "macro_f1": [
+        0.7704846354505341,
+        0.011124241803329033
+      ],
+      "pr_auc_pai5": [
+        0.8758487050542797,
+        0.004236425015118813
+      ],
+      "quadratic_kappa": [
+        0.7932291565712843,
+        0.009066502453520413
+      ],
+      "per_seme": [
+        0.7498203205978206,
+        0.7831244984113485,
+        0.7741886575256728,
+        0.7705340568990362,
+        0.7747556438187927
+      ]
+    },
+    "A_ripetuto": {
+      "macro_f1": [
+        0.7704846354505341,
+        0.011124241803329033
+      ],
+      "pr_auc_pai5": [
+        0.8758487050542797,
+        0.004236425015118813
+      ],
+      "quadratic_kappa": [
+        0.7932291565712843,
+        0.009066502453520413
+      ],
+      "per_seme": [
+        0.7498203205978206,
+        0.7831244984113485,
+        0.7741886575256728,
+        0.7705340568990362,
+        0.7747556438187927
+      ]
+    }
+  }
+}

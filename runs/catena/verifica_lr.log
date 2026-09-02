@@ -1,0 +1,28 @@
+tetto      : 95 W, 86 C
+a riposo   : 43 W, 73 C, clock 1500 MHz
+registro   : runs\consumi_20260828_133302.csv
+comando    : .venv\Scripts\python.exe exp_fixedk.py --tag _geo_completa _spinto --protocolli P3_K16 --head flat --split val --esito runs\catena/fixedk_lr_val_venv.json
+----------------------------------------------------------------------
+[freno] Freno(carico=100%, run 1.00x piu' lungo)
+testa flat, metodo none, 5 seed, misure su VAL   <- split di SCELTA, non si riporta
+cambia SOLO la maschera: stesso crop, stessi token, stessa architettura
+
+protocollo              token              _geo_completa                    _spinto   divario
+----------------------------------------------------------------------------------------------
+P3_K16                     16    0.5780+-0.0169 (0.5074)    0.5475+-0.0154 (0.4887)   -0.0304
+
+==============================================================================
+LA PREVISIONE: il casuale crolla, I-JEPA tiene
+==============================================================================
+  P3_K16                 I-JEPA - casuale -0.0304 (z = -2.98)   il casuale rispetto a P1: +nan
+
+Risultati in runs\catena/fixedk_lr_val_venv.json
+----------------------------------------------------------------------
+durata     : 20.9 min
+letture    : 614
+picco      : 84 W   (tetto 95)
+temp max   : 79 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_133302.csv
+
+Picco a 11 W dal tetto: la taratura va bene cosi'.

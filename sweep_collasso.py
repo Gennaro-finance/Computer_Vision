@@ -1,4 +1,6 @@
 """
+CONFRONTO — sonda k-NN fra configurazioni anti-collasso del pre-training.
+
 Ricerca degli iperparametri che evitano il collasso del pre-training.
 
 Non e' un confronto con altre tecnologie: e' la taratura di I-JEPA, il

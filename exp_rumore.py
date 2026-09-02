@@ -1,4 +1,6 @@
 """
+MISURAZIONE — riproducibilita' della stessa misura fra due esecuzioni.
+
 Pavimento di rumore: quanto varia la STESSA misura fra due esecuzioni.
 
 PERCHE' ESISTE QUESTO FILE. Il 27 agosto `none` sull'encoder casuale ha dato

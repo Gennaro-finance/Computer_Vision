@@ -1,0 +1,52 @@
+tetto      : 95 W, 86 C
+a riposo   : 20 W, 58 C, clock 300 MHz
+registro   : runs\consumi_20260828_194852.csv
+comando    : .venv\Scripts\python.exe exp_testa.py --tag _geo_finale --controllo _casuale
+----------------------------------------------------------------------
+[freno] Freno(carico=100%, run 1.00x piu' lungo)
+
+encoder_geo_finale, embed 1152, 5 seed, metodo `none`
+
+SEI TESTE, pooling `attn`, misura su VALIDATION
+testa                                         macro-F1       PR-AUC PAI5
+--------------------------------------------------------------------------
+  lineare (attuale)                  0.7607+-0.0079  0.8746+-0.0076
+  LayerNorm + lineare                0.7520+-0.0056  0.8644+-0.0133
+  LayerNorm + nascosto 256 + GELU    0.7575+-0.0038  0.8740+-0.0040
+  ordinale (attuale)                 0.7501+-0.0046  0.8636+-0.0066
+  LayerNorm + ordinale               0.7585+-0.0037  0.8731+-0.0049
+  LayerNorm + nascosto + ordinale    0.7572+-0.0042  0.8632+-0.0107
+
+confronto                              d macro-F1       z
+------------------------------------------------------------
+  norm vs lineare                         -0.0087   -1.80
+  mlp vs lineare                          -0.0032   -0.74
+  mlp vs norm (solo il nascosto)          +0.0055   +1.62
+  norm_ord vs ordinale                    +0.0084   +2.86
+  mlp_ord vs ordinale                     +0.0071   +2.29
+
+Testa migliore su validation: flat (0.7607)
+
+TRE POOLING con la testa `flat`, VALIDATION
+pooling                                       macro-F1       PR-AUC PAI5
+--------------------------------------------------------------------------
+  attn                               0.7607+-0.0079  0.8746+-0.0076
+  gated                              0.7511+-0.0049  0.8687+-0.0063
+  topk                               0.7625+-0.0066  0.8714+-0.0039
+
+TEST - configurazione scelta (flat + attn) e riferimento (flat + attn), su entrambi gli encoder
+encoder          configurazione                  macro-F1       PR-AUC PAI5
+------------------------------------------------------------------------------
+_geo_finale      flat + attn            0.7663+-0.0082  0.8785+-0.0058
+_casuale         flat + attn            0.7705+-0.0111  0.8758+-0.0042
+
+Risultati in ./runs\testa_pooling_geo_finale.json
+----------------------------------------------------------------------
+durata     : 96.1 min
+letture    : 2824
+picco      : 90 W   (tetto 95)
+temp max   : 72 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_194852.csv
+
+Picco a 5 W dal tetto: la taratura va bene cosi'.

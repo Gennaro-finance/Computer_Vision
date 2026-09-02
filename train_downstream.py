@@ -1,4 +1,6 @@
 """
+PIPELINE — stadio 2 - estrazione latenti e addestramento della testa.
+
 Train (stadio 2) - caching dei latenti + testa di classificazione PAI.
 
 Sezione "Train" della struttura richiesta dal corso.

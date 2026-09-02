@@ -1,0 +1,34 @@
+tetto      : 95 W, 86 C
+a riposo   : 37 W, 60 C, clock 1500 MHz
+registro   : runs\consumi_20260828_233513.csv
+comando    : .venv\Scripts\python.exe exp_sonde.py
+----------------------------------------------------------------------
+
+=== GEOMETRICO === macro-F1 della sonda k-NN, nessun parametro addestrato
+encoder       epoche        b2        b7       b11     tutti
+----------------------------------------------------------
+casuale            0    0.7626    0.7639    0.7680    0.7638
+finale            69    0.6782    0.4043    0.3845    0.4451
+completa         179    0.6400    0.4910    0.4892    0.5166
+
+=== CIECO === macro-F1 della sonda k-NN, nessun parametro addestrato
+encoder       epoche        b2        b7       b11     tutti
+----------------------------------------------------------
+casuale            0    0.3025    0.3148    0.3263    0.3173
+notte             40    0.4559    0.4745    0.4716    0.4668
+finale            69    0.5125    0.4891    0.4865    0.4867
+completa         179    0.6099    0.6112    0.6084    0.6092
+mask80           208    0.6280    0.6390    0.6047    0.6391
+
+Risultati in ./runs\sonde_vit_small.json
+----------------------------------------------------------------------
+durata     : 1.1 min
+letture    : 30
+picco      : 37 W   (tetto 95)
+temp max   : 60 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_233513.csv
+
+58 W di margine sotto il tetto. C'e' spazio per
+alzare il clock e finire prima:
+    .\limiti_hw.ps1 -Clock 1800      (da amministratore)

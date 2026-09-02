@@ -1,4 +1,6 @@
 """
+CONFRONTO — PR-AUC PAI 5 al variare di alpha, il parametro della novita'.
+
 Ablation su alpha della novita' - obiettivo 4.
 
 alpha regola quante viste riceve ogni classe: n_c = ceil((max/n_c)^alpha).

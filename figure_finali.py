@@ -1,4 +1,6 @@
 """
+INFRASTRUTTURA — genera le figure della presentazione dai file di risultati.
+
 Le figure della presentazione, dai file di risultati.
 
 Nessuna GPU, nessun latente: legge i JSON in runs/ e i log delle traiettorie.

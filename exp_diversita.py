@@ -1,4 +1,6 @@
 """
+MISURAZIONE — diversita' (coseno) fra le viste della stessa lesione.
+
 Diversita' dei token - il meccanismo dietro il risultato dello sweep di alpha.
 
 LA DOMANDA. Lo sweep ha trovato il massimo a alpha 0.50, non a 1.00: dare

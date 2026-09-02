@@ -1,4 +1,6 @@
 """
+PIPELINE — parsing XML, split per paziente, dataset SSL e downstream.
+
 Data - parsing annotazioni, split anti-leakage, dataset per SSL e downstream.
 
 Sezione "Data" della struttura richiesta dal corso.

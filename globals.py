@@ -1,4 +1,6 @@
 """
+PIPELINE — iperparametri e percorsi condivisi.
+
 Globals - iperparametri e path condivisi.
 
 Sezione "Globals" della struttura richiesta dal corso.

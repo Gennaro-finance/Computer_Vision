@@ -1,0 +1,17 @@
+tetto      : 95 W, 86 C
+a riposo   : 27 W, 65 C, clock 1500 MHz
+registro   : runs\consumi_20260828_181800.csv
+comando    : .venv\Scripts\python.exe train_downstream.py --grid --layers 2 7 11 --tag _cieco_finale --metodi none --teste flat
+----------------------------------------------------------------------
+  none             flat     macroF1=0.6406+-0.0112  F1(3/4/5)=0.830/0.489/0.603  recall5=0.5714  prec5=0.647  kappa=0.6345
+
+Risultati in ./runs\results_vit_small_L2-7-11_cieco_finale.json
+----------------------------------------------------------------------
+durata     : 10.5 min
+letture    : 307
+picco      : 82 W   (tetto 95)
+temp max   : 72 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_181800.csv
+
+Picco a 13 W dal tetto: la taratura va bene cosi'.

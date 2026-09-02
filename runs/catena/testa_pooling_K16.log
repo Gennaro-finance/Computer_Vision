@@ -1,0 +1,55 @@
+tetto      : 95 W, 86 C
+a riposo   : 19 W, 61 C, clock 300 MHz
+registro   : runs\consumi_20260828_212459.csv
+comando    : .venv\Scripts\python.exe exp_testa.py --tag _geo_finale --controllo _casuale --protocollo P3_K16
+----------------------------------------------------------------------
+[freno] Freno(carico=100%, run 1.00x piu' lungo)
+
+protocollo P3_K16: 16 token per lesione, uguali per tutte le classi
+encoder_geo_finale, embed 1152, 5 seed, metodo `none`
+
+SEI TESTE, pooling `attn`, misura su VALIDATION
+testa                                         macro-F1       PR-AUC PAI5
+--------------------------------------------------------------------------
+  lineare (attuale)                  0.5714+-0.0127  0.4897+-0.0307
+  LayerNorm + lineare                0.5692+-0.0101  0.4940+-0.0172
+  LayerNorm + nascosto 256 + GELU    0.5693+-0.0134  0.5009+-0.0305
+  ordinale (attuale)                 0.5528+-0.0120  0.4619+-0.0197
+  LayerNorm + ordinale               0.5636+-0.0104  0.4962+-0.0286
+  LayerNorm + nascosto + ordinale    0.5779+-0.0069  0.4633+-0.0200
+
+confronto                              d macro-F1       z
+------------------------------------------------------------
+  norm vs lineare                         -0.0023   -0.28
+  mlp vs lineare                          -0.0022   -0.24
+  mlp vs norm (solo il nascosto)          +0.0001   +0.01
+  norm_ord vs ordinale                    +0.0108   +1.36
+  mlp_ord vs ordinale                     +0.0251   +3.64
+
+Testa migliore su validation: mlp (0.5693)
+
+TRE POOLING con la testa `mlp`, VALIDATION
+pooling                                       macro-F1       PR-AUC PAI5
+--------------------------------------------------------------------------
+  attn                               0.5693+-0.0134  0.5009+-0.0305
+  gated                              0.5400+-0.0090  0.4597+-0.0203
+  topk                               0.5576+-0.0112  0.4964+-0.0047
+
+TEST - configurazione scelta (mlp + attn) e riferimento (flat + attn), su entrambi gli encoder
+encoder          configurazione                  macro-F1       PR-AUC PAI5
+------------------------------------------------------------------------------
+_geo_finale      mlp + attn             0.5553+-0.0133  0.4581+-0.0223
+_geo_finale      flat + attn            0.5689+-0.0189  0.4713+-0.0294
+_casuale         mlp + attn             0.5152+-0.0134  0.4234+-0.0128
+_casuale         flat + attn            0.5187+-0.0306  0.3861+-0.0228
+
+Risultati in ./runs\testa_pooling_geo_finale_P3_K16.json
+----------------------------------------------------------------------
+durata     : 117.1 min
+letture    : 3441
+picco      : 81 W   (tetto 95)
+temp max   : 72 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_212459.csv
+
+Picco a 14 W dal tetto: la taratura va bene cosi'.

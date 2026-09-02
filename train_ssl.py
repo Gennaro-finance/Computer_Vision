@@ -1,4 +1,6 @@
 """
+PIPELINE — stadio 1 - pre-training I-JEPA.
+
 Train (stadio 1) - pre-training I-JEPA sui tile, con monitoraggio del collasso.
 
 Sezione "Train" della struttura richiesta dal corso.
@@ -194,10 +196,8 @@ def _token_multilayer(model, loader, cap):
 
 def sonda_downstream(model, records, splits, seed=0):
     """
-    Il MODELLO VERO dell'obiettivo 2, non un surrogato.
-
-    Addestra attention pooling piu' testa sui token dell'encoder congelato,
-    esattamente come train_downstream.py, e valuta su VALIDATION.
+    Il modello vero dell'obiettivo 2, ma letto DOVE si vede la
+    rappresentazione: a conteggio di token fisso.
 
     ESISTE PERCHE' TUTTI I SURROGATI HANNO MENTITO. In quest'ordine:
       rango effettivo  segnava collasso anche sull'encoder casuale, che e'
@@ -209,12 +209,44 @@ def sonda_downstream(model, records, splits, seed=0):
                        entrambi i numeri ha il SEGNO INVERTITO rispetto al
                        downstream: +0.0043 contro -0.0074.
 
-    Qui non c'e' surrogato: e' la stessa lettura che finisce in
-    presentazione. Si valuta su validation e MAI su test - scegliere il
-    checkpoint guardando il test sarebbe barare.
+    E POI HA MENTITO ANCHE IL NON-SURROGATO. Questa funzione leggeva la
+    pipeline del brief tale e quale - maschera della bbox - e sembrava
+    l'unica misura al riparo, perche' era la stessa lettura che finisce in
+    presentazione. Il 27 agosto abbiamo mostrato che quella lettura e'
+    dominata dal CANALE DELLA MASCHERA: la bbox seleziona 16 / 36 / 64
+    token secondo la classe, e la sola maschera one-hot, senza un solo
+    pixel, da' macro-F1 0.7708 - piu' del vettore intero dell'encoder
+    casuale. Il criterio guardava la bounding box, non l'encoder.
+
+    La prova sta nel resoconto del run `completa`: fra l'epoca 154 e la 229
+    il downstream cosi' misurato oscilla fra 0.7415 e 0.7639 SENZA TENDENZA,
+    mentre nello stesso intervallo la rappresentazione stava cambiando. Era
+    rumore attorno a un canale costante.
+
+    COSA CAMBIA ORA. Si seleziona sul protocollo P3_K16 - i 16 token piu'
+    vicini al centro della bbox, uguali per ogni classe. La bbox resta usata
+    per LOCALIZZARE, non per contare. Cambia solo la maschera: stessi token,
+    stessa testa, stessi seed.
+
+    SI MISURA ANCHE P1_bbox, e non serve al criterio: serve come CONTROLLO.
+    Se durante il pre-training K16 sale e P1 resta piatta, la diagnosi e'
+    dimostrata sulla curva stessa invece che a posteriori. Costa un secondo
+    train_head ogni RESOCONTO_OGNI epoche - i token, che sono la parte cara,
+    si estraggono una volta sola.
+
+    Si valuta su validation e MAI su test: scegliere il checkpoint guardando
+    il test sarebbe barare.
+
+    Ritorna (macroF1_K16, PR-AUC5_K16, macroF1_P1): il criterio e' il primo.
     """
     from train_downstream import train_head
     from evaluation import evaluate_split
+    from exp_fixedk import maschera, GRID
+
+    # maschera() ragiona su una griglia GRID x GRID fissa. Se il modello ne
+    # avesse un'altra, gli indici dei token piu' vicini al centro sarebbero
+    # sbagliati in silenzio - e la sonda mentirebbe di nuovo.
+    assert model.grid == GRID, f"griglia {model.grid} != {GRID} di exp_fixedk"
 
     d = _dati_sonda(records, splits)
     cached = {"data": {"train": _token_multilayer(model, d["train"],
@@ -222,11 +254,22 @@ def sonda_downstream(model, records, splits, seed=0):
                        "val": _token_multilayer(model, d["val"], 10 ** 9)},
               "grid": model.grid}
     cached["embed_dim"] = cached["data"]["train"]["tokens"].shape[-1]
-    clf, _ = train_head(cached, "none", "flat", seed=seed)
-    r = evaluate_split(clf, cached["data"]["val"], "flat")
-    del cached, clf
+
+    out = {}
+    for prot in ("P3_K16", "P1_bbox"):
+        # Copia superficiale con la sola maschera sostituita: i token non si
+        # toccano. E' esattamente cio' che fa exp_fixedk.con_maschera.
+        c = {**cached, "data": {s: {**v, "mask": maschera(prot, v)}
+                                for s, v in cached["data"].items()}}
+        clf, _ = train_head(c, "none", "flat", seed=seed)
+        r = evaluate_split(clf, c["data"]["val"], "flat")
+        out[prot] = (r["macro_f1"], r.get("pr_auc_pai5", float("nan")))
+        del clf, c
+        torch.cuda.empty_cache()
+
+    del cached
     torch.cuda.empty_cache()
-    return r["macro_f1"], r.get("pr_auc_pai5", float("nan"))
+    return out["P3_K16"][0], out["P3_K16"][1], out["P1_bbox"][0]
 
 
 def stampa_resoconto(storico, rif, run_name, epoca, totale, rif_down=None):
@@ -244,17 +287,22 @@ def stampa_resoconto(storico, rif, run_name, epoca, totale, rif_down=None):
     righe = []
     righe.append("=" * 78)
     righe.append(f"RESOCONTO - {run_name} - epoca {epoca}/{totale}")
-    righe.append(f"DA BATTERE - encoder casuale: downstream = "
+    righe.append(f"DA BATTERE - encoder casuale su P3_K16 = "
                  f"{rif_down if rif_down is not None else float('nan'):.4f}"
                  f"   (sonda lineare {rif:.4f})")
+    righe.append("CRITERIO: P3_K16, 16 token per tutti. La colonna P1 ctrl e' di"
+                 " CONTROLLO e non giudica:")
+    righe.append("se K16 sale mentre P1 resta piatta, il protocollo del brief"
+                 " sta leggendo la bbox e non l'encoder.")
     righe.append("=" * 78)
-    righe.append(f"{'epoca':>6s} {'DOWNSTREAM':>11s} {'PR-AUC5':>8s} "
-                 f"{'lineare':>9s} {'k-NN':>8s} {'rango':>7s} "
+    righe.append(f"{'epoca':>6s} {'K16 *crit*':>11s} {'PR-AUC5':>8s} "
+                 f"{'P1 ctrl':>8s} {'lineare':>9s} {'k-NN':>8s} {'rango':>7s} "
                  f"{'R2 int':>7s} {'R2 dim':>7s}")
     for e in storico:
         righe.append(f"{e['epoch']:6d} "
                      f"{e.get('downstream', float('nan')):11.4f} "
                      f"{e.get('pr_auc5', float('nan')):8.4f} "
+                     f"{e.get('p1_bbox', float('nan')):8.4f} "
                      f"{e['lineare']:9.4f} {e['knn']:8.4f} "
                      f"{e.get('rango_c', float('nan')):7.2f} "
                      f"{e.get('r2_int', float('nan')):7.3f} "
@@ -460,12 +508,13 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
         set_seed()
         casuale = build_ijepa(variant).to(DEVICE).eval()
         knn_ref = run_probe(casuale, records, splits, completo=True)['lineare']
-        rif_down, rif_pra = sonda_downstream(casuale, records, splits)
+        rif_down, rif_pra, rif_p1 = sonda_downstream(casuale, records, splits)
         del casuale
         torch.cuda.empty_cache()
         set_seed()
-        print(f"  [downstream] macroF1={rif_down:.4f}  PR-AUC5={rif_pra:.4f}"
-              f"   <- E' QUESTO il numero da battere", flush=True)
+        print(f"  [K16 *criterio*] macroF1={rif_down:.4f}  PR-AUC5={rif_pra:.4f}"
+              f"   <- E' QUESTO il numero da battere"
+              f"     [P1_bbox di controllo {rif_p1:.4f}]", flush=True)
     print(f"Da battere: macro-F1 della sonda LINEARE = {knn_ref:.4f}"
           f"   (cancello: se a {GATE_AT} epoche non e' superato, ci si ferma)")
     knn_best = 0.0
@@ -532,11 +581,14 @@ def train(variant=DEFAULT_VARIANT, epochs=SSL_EPOCHS, batch_size=SSL_BATCH_SIZE,
             # criterio: vedi sonda_downstream().
             if (epoch + 1) % RESOCONTO_OGNI == 0 or epoch == epochs - 1:
                 t0 = time.time()
-                dwn, pra = sonda_downstream(model, records, splits)
-                knn["downstream"], knn["pr_auc5"] = dwn, pra
-                print(f"  [downstream] macroF1={dwn:.4f}  PR-AUC5={pra:.4f}"
+                dwn, pra, p1 = sonda_downstream(model, records, splits)
+                knn["downstream"], knn["pr_auc5"], knn["p1_bbox"] = dwn, pra, p1
+                print(f"  [K16 *criterio*] macroF1={dwn:.4f}  PR-AUC5={pra:.4f}"
                       f"   (riferimento casuale {rif_down:.4f}, "
                       f"{dwn - rif_down:+.4f})   [{time.time()-t0:.0f}s]",
+                      flush=True)
+                print(f"  [P1_bbox controllo] {p1:.4f}   (casuale {rif_p1:.4f}, "
+                      f"{p1 - rif_p1:+.4f})   -- NON entra nel criterio",
                       flush=True)
             sonde.append({**knn, "epoch": epoch})
 

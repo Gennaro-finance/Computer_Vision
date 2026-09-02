@@ -1,0 +1,21 @@
+tetto      : 95 W, 86 C
+a riposo   : 13 W, 57 C, clock 210 MHz
+registro   : runs\consumi_20260828_135752.csv
+comando    : .venv\Scripts\python.exe train_downstream.py --cache --layers 2 7 11 --ckpt-tag finale_best --tag _cieco_finale --context-factor 3.0
+----------------------------------------------------------------------
+Encoder da ijepa_vit_small_finale_best, epoca 69
+  train :  4719 lesioni  token=(4719, 196, 1152)  PAI3/4/5 = [3017, 1229, 473]
+  val   :  1009 lesioni  token=(1009, 196, 1152)  PAI3/4/5 = [617, 268, 124]
+  test  :  1013 lesioni  token=(1013, 196, 1152)  PAI3/4/5 = [643, 258, 112]
+
+Latenti salvati: ./runs\cache\latents_vit_small_L2-7-11_cieco_finale.pt (3046 MB)
+Da qui in poi ogni esperimento sullo sbilanciamento gira in secondi.
+----------------------------------------------------------------------
+durata     : 1.5 min
+letture    : 43
+picco      : 88 W   (tetto 95)
+temp max   : 70 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_135752.csv
+
+Picco a 7 W dal tetto: la taratura va bene cosi'.

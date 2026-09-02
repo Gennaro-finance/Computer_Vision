@@ -1,4 +1,6 @@
 """
+CONFRONTO — PR-AUC PAI 5, la novita' contro le baseline sotto conteggio fisso.
+
 La novita' sotto il protocollo a K fisso - obiettivo 3 senza il canale.
 
 PERCHE' RIMISURARLA. `balanced_token_sampling` e' stata validata nel

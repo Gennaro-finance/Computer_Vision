@@ -1,4 +1,6 @@
 """
+CONFRONTO — PR-AUC PAI 5 fra tipi di attention pooling.
+
 Pooling: gated e top-k contro l'attention a query fissa - obiettivi 2 e 4.
 
 PERCHE' IL POOLING E NON LA TESTA. L'encoder e' congelato per vincolo del

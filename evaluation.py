@@ -1,4 +1,6 @@
 """
+PIPELINE — metriche, verificate contro scikit-learn a 4.4e-16.
+
 Evaluation - metriche per il grading PAI sbilanciato e ordinale.
 
 Sezione "Evaluation" della struttura richiesta dal corso.

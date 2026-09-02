@@ -1,4 +1,6 @@
 """
+INFRASTRUTTURA — ferma un comando se la GPU sfora potenza o temperatura.
+
 Sorveglianza dei consumi: lancia un comando e lo FERMA se la GPU sfora.
 
 PERCHE' NON BASTA IL CLOCK LOCK. `limiti_hw.ps1` mette un tetto al clock, e

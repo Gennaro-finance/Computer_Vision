@@ -1,4 +1,6 @@
 """
+PIPELINE — ViT, I-JEPA, attention pooling, teste di classificazione.
+
 Network - ViT compatto, I-JEPA (context + target EMA + predictor), teste.
 
 Sezione "Network" della struttura richiesta dal corso.

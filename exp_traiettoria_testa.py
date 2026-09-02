@@ -1,4 +1,6 @@
 """
+MISURAZIONE — macro-F1 e PR-AUC5 su validation, epoca per epoca.
+
 La curva di validation epoca per epoca, per due encoder a confronto.
 
 LA DOMANDA CHE LA MEDIA NASCONDE. La griglia riporta un numero per

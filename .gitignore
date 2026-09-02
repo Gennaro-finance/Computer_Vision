@@ -74,3 +74,8 @@ runs/tb/
 # Archivi di trasferimento: 850 MB, si rigenerano da data/
 *.zip
 runs/consumi_*.csv
+
+# Dipendenze npm: servono solo a generare la presentazione (build_deck.js).
+# package.json e package-lock.json bastano a ricostruirle con `npm install`.
+node_modules/
+

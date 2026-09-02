@@ -1,0 +1,208 @@
+===== PAGINA 1 =====
+Computer
+Vision
+A.A. 2025-2026
+Exam guidelines
+===== PAGINA 2 =====
+Exam structure
+Final Grade
+50% 50%
+Written exam Project
+Project Project
+Development Presentation
+===== PAGINA 3 =====
+Exam registration
+The written exam and project can be taken at different times
+●
+○ We will keep your grade for each part
+○ Final grade will be registered once you have completed both parts
+○ Written exam and project must be completed within the academic year
+i.e., between the June 2026 session and the March 2027 session.
+* October and March session are reserved to “categories of students referred to in Article 21, paragraph 7, of the General Study Manifesto
+https://www.uniroma1.it/it/content/esami-di-profitto-idoneita-tirocini-altre-attivita-formative
+If you complete only one part, a refused will be recorded
+●
+○ This is not a negative thing, it’s just the standard procedure
+○ We will keep the grade for the part you have completed
+● A Google Form will be provided to communicate your project choose
+===== PAGINA 4 =====
+Exam registration
+3 possible cases:
+1) You take the written exam and project presentation in the same session
+○ register on infostud
+○ fill in the project Google Form
+2) You take first the written exam in a specific session and the project presentation in
+another session
+○ register on infostud for the written exam
+○ a refused/rinuncia will be recorded (just to keep your grade, don’t worry!!)
+○ fill in the project Google Form for the project presentation and register on infostud
+when taking the project part
+3) You take first the project presentation in a specific session and the written exam in
+another session:
+○ fill in the project Google Form when taking the project presentation
+○ register on infostud when taking the written exam
+===== PAGINA 5 =====
+Project guidelines
+Objective: develop a non-trivial solution to a proposed topic
+●
+○ Develop all the objectives of your chosen project
+○ Show critical thinking and problem solving skills
+○ Introduce small novelty in the approach, feel free to experiment
+This is a hands-on project, not a survey
+●
+○ Focus on methodology and approach
+The project can be carried out by a group
+●
+○ Maximum 3 members
+○ Projects can also be completed by individual students.
+○ We suggest to work in team
+Plagiarism will be strictly penalized
+●
+===== PAGINA 6 =====
+OPEN Project guidelines
+● All the previous guidelines apply! (Slide 5)
+● Proposal: Students choosing this project must submit
+○ A topic proposal summarizing their chosen topic (max 1 page)
+○ At least two reference papers, underlining their current limitations
+○ Highlight the novelty of the proposal
+● Students must select a backup project among our proposed topics, in case their
+proposal gets rejected
+● Choosing the OPEN Project is exclusive to June-July session!
+===== PAGINA 7 =====
+How to Communicate the Project Topic
+● All the students willingly to deliver the project in the
+June-July session, must fill this Google Form by May
+10th, in order to select the preferred project topic.
+For students choosing the OPEN Project,
+acceptance will be notified by May 15th.
+Only one form registration per group is needed. Form Link
+make sure to login with the
+@studenti.uniroma1.it account
+===== PAGINA 8 =====
+Code guidelines
+Deep Learning framework: PyTorch
+●
+○ NO exceptions
+Code: Google Colab
+●
+○ Or other notebooks (Kaggle, etc.)
+○ You can also VSCode in local or similar
+In all cases, you MUST follow a precise code structure
+●
+○ Try to maintain as much as possible the conceptual structure
+No tutoring for the project development
+●
+===== PAGINA 9 =====
+Code structure
+Imports: all the needed packages
+●
+○ This section is for the notebook projects
+Globals: useful variables on the whole code
+●
+Utils: code support functions
+●
+Data: everything related to data management
+●
+Network: code to structure the neural network
+●
+Train: part containing the training cycle elements
+●
+Evaluation: tests needed for the trained network
+●
+===== PAGINA 10 =====
+Code structure
+Notebook-like
+example
+===== PAGINA 11 =====
+Code structure
+VSCode-like
+example
+===== PAGINA 12 =====
+When to Register Your project for the final Exam
+A list of projects will be published according this schedule:
+●
+○ June-July → list available by the end of April
+○ September-October → list available by the end of July
+○ Other sessions → list available by the end of October
+It is not allowed to submit a project outside the session for
+●
+which it was proposed.
+○ No exceptions will be made
+===== PAGINA 13 =====
+How to Register for the Project Presentation
+Google Form (to deliver 7 days before
+●
+this google form will be
+the exam date) in which specify
+published in proximity of the
+○ Group members exam date
+Name, Surname, Student-ID, mail
+■
+○ Project chosen
+○ GitHub repository link
+GitHub repository should contains
+●
+○ Code
+○ Dataset (or the link to it)
+○ Project presentation
+○ Detailed Readme
+===== PAGINA 14 =====
+How to Register for the Project Presentation
+Please remember that
+●
+○ The form must be submitted no later than 7 days before the date on
+which you intend to present the project
+○ The repository can be modified up to 2 days before the date on which
+you intend to present the project
+===== PAGINA 15 =====
+Presentation guidelines
+Upload the presentation to GitHub and saved on a USB drive
+●
+○ You can use PDF, PowerPoint, or both formats.
+Use white background slides
+●
+Use high color contrast elements for plots and images
+●
+Each presentation should last 10 minutes
+●
+Avoid jumping forward and backward during the presentation
+●
+Ensure to include page numbers on each slide
+●
+○ Show the current slide number out of the total slide number
+===== PAGINA 16 =====
+Presentation suggested scheme
+● Title: Report the project name, your names, and course information
+● Outline: Briefly describe the presentation workflow
+● Problem Statement: The challenge you are addressing
+● State of the Art: How current research approaches this challenge
+● Proposed Method: How you approached this challenge
+● Dataset: The data you used for the project
+● Experimental Setup: How you configured the elements of the project
+● Model Evaluation: How you assessed the performance of your model
+● Conclusions: Final considerations and future work
+● References: Where you drew inspiration from
+===== PAGINA 17 =====
+What is the purpose of all these rules?
+● These rules aim to instill in you a professional approach
+● We firmly believe that this will benefit you in all your future tests
+○ This is a standardized method to present any project
+● Don’t be intimidated by the challenges
+○ The important thing is to adopt an engineering mindset
+○ From this, we focus on the methods you propose
+○ And how you present your ideas
+===== PAGINA 18 =====
+Exam dates
+15 June 10 July 11 Sept
+June July Aug Sept
+===== PAGINA 19 =====
+Next appointments
+Title: Self-supervised learning, JEPA, Title: AI and Computer Vision for Guidance, Navigation, and
+world models, and AI’s future Control of Deep-Space RoboticSystems
+Alfredo Canziani: Assistant Professor of Computer Science at Courant Antonio Genova: Associate Professor in the Department of Mechanical and
+Institute of Mathematical Sciences, mentored by professor Yann LeCun. Aerospace Engineering (DIMA) at Sapienza, leading the SPace Robotics
+21/05/2026, DIAG B2, Online & In presence INvestigation Group (SPRING).
+27/05/2026, DIAG B2, In presence
+===== PAGINA 20 =====
+Projects List
+June-July session

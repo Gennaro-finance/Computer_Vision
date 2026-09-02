@@ -8,10 +8,74 @@ senza guardare.
 Regola d'uso: **se un numero è in questo file, devi saperlo difendere. Se
 non lo sai difendere, toglilo dalle slide.**
 
-Aggiornato il 28 agosto 2026. Il risultato centrale ha cambiato segno due
-volte: prima con l'ablation cieca alla dimensione, poi con il protocollo a
-K fisso, che è la versione definitiva perché lascia invariata la finestra
-di osservazione.
+---
+
+## ⚠ AGGIORNAMENTO DEL 28 AGOSTO — leggi questo prima del resto
+
+**Tutti i numeri di I-JEPA in questo documento vengono dall'encoder
+`completa`, epoca 179. Sono superati.** Il 28 agosto il pre-training è
+stato rifatto con una sonda di selezione che non legge la bounding box, e
+l'encoder di riferimento è ora `finale`, **epoca 69**.
+
+I numeri validi stanno nella **scaletta**, ricostruita sui risultati nuovi:
+<https://claude.ai/code/artifact/0ede17e5-1c68-4503-b874-ec25b0418ef8>
+
+Cosa è cambiato in sostanza:
+
+| misura | `completa` ep. 179 | **`finale` ep. 69** |
+|---|---:|---:|
+| P3_K16 flat | +0,0257 | **+0,0502** (z 3,12) |
+| P3_K36 flat | +0,0398 | **+0,0701** (z 5,73) |
+| P3_K64 flat | +0,0587 | +0,0522 (z 3,72) |
+| P3_K16 + mil | +0,1430 | +0,1158 (z 6,49) |
+| P1_bbox flat | +0,0002 | −0,0041 |
+
+**Il vantaggio si allarga dove conta**, con un checkpoint scelto da un
+criterio che vede.
+
+### Tre cose nuove che prima non c'erano
+
+1. **La traiettoria** (slide 07 della scaletta). Durante il pre-training,
+   la stessa sonda misura entrambi i protocolli ogni dieci epoche, 28 punti
+   su 279 epoche. La qualità su K16 sale fino all'epoca 69 e **si ferma**
+   (+0,0075, z = +1,15 fra prime e ultime dieci sonde). La leggibilità
+   della bbox **cala** (−0,0268, z = **−11,27**), e la sonda lineare con
+   lei (−0,0414, z = −13,60). Il rango effettivo intanto va da 2,91 a
+   14,79. È la tesi centrale misurata come traiettoria, non dedotta da due
+   estremi.
+
+2. **Il controllo `P2b_griglia_fissa`**: 36 token nelle stesse posizioni
+   per tutti, senza localizzare la lesione. Lì I-JEPA **non vince**
+   (−0,0046, z = −0,69). Risponde all'obiezione «avete costruito un
+   protocollo su misura»: il vantaggio richiede la localizzazione, non è
+   quello di un estrattore genericamente migliore.
+
+3. **Il learning rate deciso da una misura**: lr 3e-4 produce una
+   rappresentazione peggiore di 0,0304 (z = −2,98) su validation. Sul k-NN
+   il segno era opposto — il quarto surrogato che mente.
+
+### Affermazioni di questo documento ora FALSE
+
+- *«la curva di apprendimento è monotona e non satura»* — era la
+  motivazione con cui si è deciso di rifare il pre-training, e il
+  pre-training l'ha smentita. Con una testa addestrata su K16 la qualità
+  satura verso l'epoca 70. Più epoche **non** comprano più qualità:
+  comprano il disimparamento della scorciatoia.
+- I valori del braccio `completa` nelle tabelle di PARTE 2, ovunque
+  compaia `_geo_completa` o «I-JEPA».
+
+### Uno scarto di misura aperto
+
+La stessa cella — casuale, protocollo del brief, testa flat, test, 5 seed —
+vale **0,7565** in tre file (griglia, few-shot al 100%, exp_rumore) e
+**0,7705** in `exp_fixedk`. Riprodotto **oggi, stesso interprete, stessa
+sessione**, quindi non è ambiente: le due versioni di torch presenti sulla
+macchina danno risultati bit-identici. È un percorso di codice, e
+`exp_scarto.py` lo isola.
+
+Non tocca nessun confronto riportato — dentro ogni tabella i due encoder
+sono misurati dallo stesso script nella stessa esecuzione — ma tocca la
+confrontabilità *fra* tabelle diverse. Va dichiarato.
 
 ---
 

@@ -1,0 +1,78 @@
+[28/08 04:14:30] in attesa di runs\catena\esito.md (limite 30 h, controllo ogni 5 min)
+[28/08 05:07:57] in attesa di runs\catena\esito.md (limite 30 h, controllo ogni 5 min)
+[28/08 13:54:27] prima passata finita dopo 8.8 h di attesa
+[28/08 13:54:27] marcatori ricostruiti per 1 stadi riusciti: verifica_lr
+[28/08 13:54:27] seconda passata (stadi aggiunti dopo l'avvio): avvio
+[28/08 13:54:55] seconda passata (stadi aggiunti dopo l'avvio): codice 4294967295 dopo 0.01 h
+[13:54:30] CATENA - lanciata 28/08 13:54, controllo che la GPU sia libera
+[13:54:30] ==========================================================================
+[13:54:30] CATENA - avvio 28/08 13:54
+[13:54:30] lr scelto: 3e-05
+[13:54:30]   motivo: spinto e' PEGGIORE in modo separabile -> lr 3e-5 confermato dalla misura, non per prudenza.  completa(3e-5)=0.5763+-0.0182  spinto(3e-4)=0.5322+-0.0087  divario=-0.0440  z=-4.88   [ATTENZIONE: misurato su torch 2.12 del python di sistema, non sul .venv del progetto. Il divario e' interno e regge; i valori assoluti li rimisura lo stadio verifica_lr]
+[13:54:30] stima totale: 23.5 h
+[13:54:30] ==========================================================================
+[13:54:30] pretrain: AVVIO - pre-training I-JEPA, 300 epoche, sonda di selezione su P3_K16  (stima 9.0 h)
+[13:54:55] pretrain: FALLITO (codice 4294967295) dopo 0.01 h - vedi runs\catena\pretrain.log
+[13:54:55] estrai_geo: SALTATO (dipende da pretrain, che e' fallito)
+[13:54:55] estrai_cieco: SALTATO (dipende da pretrain, che e' fallito)
+[13:54:55] fixedk_flat: SALTATO (dipende da estrai_geo, che e' saltato)
+[13:54:55] fixedk_mil: SALTATO (dipende da estrai_geo, che e' saltato)
+[28/08 13:54:55] riordino del repository: avvio
+[28/08 13:56:33] in attesa di runs\catena\esito.md (limite 30 h, controllo ogni 5 min)
+[29/08 00:01:33] prima passata finita dopo 10.1 h di attesa
+[29/08 00:01:33] marcatori ricostruiti per 18 stadi riusciti: pretrain, estrai_geo, estrai_cieco, fixedk_flat, fixedk_mil, fewshot, griglia_geo, griglia_cieca, novita_K, mascheramento, stratificata, testa_pooling, testa_pooling_K16, traiettoria, sonde, estrai_ultima, fixedk_ultima, verifica_lr
+[29/08 00:01:33] seconda passata (stadi aggiunti dopo l'avvio): avvio
+[29/08 00:32:47] seconda passata (stadi aggiunti dopo l'avvio): codice 0 dopo 0.52 h
+[00:01:36] lr scelto: 3e-05
+[00:01:36]   motivo: spinto e' PEGGIORE in modo separabile -> lr 3e-5 confermato dalla misura, non per prudenza.  completa(3e-5)=0.5763+-0.0182  spinto(3e-4)=0.5322+-0.0087  divario=-0.0440  z=-4.88   [ATTENZIONE: misurato su torch 2.12 del python di sistema, non sul .venv del progetto. Il divario e' interno e regge; i valori assoluti li rimisura lo stadio verifica_lr]
+[00:01:36] stima totale: 24.4 h
+[00:01:36] ==========================================================================
+[00:01:36] pretrain: gia' fatto in una passata precedente, salto
+[00:01:36] estrai_geo: gia' fatto in una passata precedente, salto
+[00:01:36] estrai_cieco: gia' fatto in una passata precedente, salto
+[00:01:36] fixedk_flat: gia' fatto in una passata precedente, salto
+[00:01:36] fixedk_mil: gia' fatto in una passata precedente, salto
+[00:01:36] fewshot: gia' fatto in una passata precedente, salto
+[00:01:36] griglia_geo: gia' fatto in una passata precedente, salto
+[00:01:36] griglia_cieca: gia' fatto in una passata precedente, salto
+[00:01:36] novita_K: gia' fatto in una passata precedente, salto
+[00:01:36] mascheramento: gia' fatto in una passata precedente, salto
+[00:01:36] stratificata: gia' fatto in una passata precedente, salto
+[00:01:36] testa_pooling: gia' fatto in una passata precedente, salto
+[00:01:36] testa_pooling_K16: gia' fatto in una passata precedente, salto
+[00:01:36] traiettoria: gia' fatto in una passata precedente, salto
+[00:01:36] sonde: gia' fatto in una passata precedente, salto
+[00:01:36] estrai_ultima: gia' fatto in una passata precedente, salto
+[00:01:36] fixedk_ultima: gia' fatto in una passata precedente, salto
+[00:01:36] scarto: AVVIO - da dove viene lo scarto di 0,0140 sul casuale  (stima 0.9 h)
+[00:32:47] scarto: fatto in 0.52 h
+[00:32:47] verifica_lr: gia' fatto in una passata precedente, salto
+[00:32:47] resoconto in runs\catena\esito.md
+[29/08 00:32:47] riordino del repository: avvio
+[29/08 00:32:48] riordino del repository: codice 0 dopo 0.00 h
+ runs/catena/registro.txt                         | 214 ++++++++++
+ runs/catena/repo_proposta.md                     |  44 ++
+ runs/catena/scarto.json                          | 103 +++++
+ runs/catena/stato.json                           | 154 +++++++
+ runs/catena/stile.css                            |  36 ++
+ runs/catena/traiettoria.json                     | 124 ++++++
+ runs/fewshot_vit_small.json                      | 190 +++++++++
+ runs/fixedk_lr_val.json                          |  67 +++
+ runs/mascheramento_vit_small.json                |  60 +--
+ runs/novita_K16_geo_finale.json                  | 144 +++++++
+ runs/resoconto_ijepa_vit_small_finale.txt        |  67 +++
+ runs/results_vit_small_L2-7-11_cieco_finale.json |  25 ++
+ runs/results_vit_small_L2-7-11_geo_finale.json   | 232 +++++++++++
+ runs/sonde_vit_small.json                        |  38 ++
+ runs/stratificata_vit_small.json                 |  26 +-
+ runs/testa_pooling_geo_finale.json               | 132 ++++++
+ runs/testa_pooling_geo_finale_P3_K16.json        | 152 +++++++
+ runs/traiettoria_testa_cieco.json                | 334 +++++++--------
+ sistema_repo.py                                  | 251 ++++++++++++
+ stato.py                                         | 103 +++++
+ train_ssl.py                                     |  90 ++++-
+ 55 files changed, 4455 insertions(+), 247 deletions(-)
+
+NESSUN PUSH FATTO. Leggi runs\catena\repo_proposta.md, poi:
+    git push -u origin catena-300
+[29/08 00:32:48] FINITO. Nessun push fatto: leggi runs/catena/repo_proposta.md, poi decidi tu.

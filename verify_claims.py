@@ -1,4 +1,6 @@
 """
+PIPELINE — ricalcola dai file salvati ogni numero riportato.
+
 Verifica - ricalcola dai file salvati ogni numero riportato.
 
 Serve a non dover credere sulla parola a nessuno, incluse le tabelle nelle

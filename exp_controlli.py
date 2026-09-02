@@ -1,4 +1,6 @@
 """
+CONFRONTO — PR-AUC PAI 5, la novita' contro i suoi controlli a budget uguale.
+
 I due controlli che attribuiscono il risultato della novita' - obiettivo 4.
 
 La griglia dice che `balanced_tokens` ha la PR-AUC piu' alta sull'encoder

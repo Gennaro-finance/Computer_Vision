@@ -1,4 +1,6 @@
 """
+MISURAZIONE — macro-F1 di sonde k-NN senza parametri addestrati.
+
 Le sonde senza parametri: cosa contiene un vettore, prima di qualunque testa.
 
 PERCHE' SENZA PARAMETRI. La domanda "questo encoder e' migliore?" con una
@@ -39,15 +41,38 @@ from globals import OUT_DIR
 from train_downstream import load_latents, percorso_latenti
 from utils import save_json
 
+def _epoca_di(nome, fallback):
+    """
+    L'epoca del checkpoint letta DAL CHECKPOINT, non scritta a mano.
+
+    Serve perche' il numero finisce sull'asse x della curva di
+    apprendimento: se il run si ferma prima delle 300 epoche configurate -
+    per il cancello o per uno spegnimento, come il 24 agosto - una costante
+    scritta qui direbbe una bugia proprio nella figura che dovrebbe
+    dimostrare che I-JEPA impara.
+    """
+    import os
+    from globals import CKPT_DIR
+    try:
+        d = torch.load(os.path.join(CKPT_DIR, nome + ".pt"),
+                       map_location="cpu", weights_only=False)
+        return int(d["epoch"])
+    except Exception:
+        return fallback
+
+
 # nome leggibile -> (tag dei latenti, epoche di pre-training)
 ENCODER = {
     "casuale":  ("_casuale",       0),
     "notte":    (None,             40),     # solo cieco
     "completa": ("_geo_completa", 179),
     "mask80":   (None,            208),     # solo cieco
+    "finale":   ("_geo_finale",
+                 _epoca_di("ijepa_vit_small_finale_best", 300)),
 }
 CIECO = {"casuale": "_cieco_casuale", "notte": "_cieco_notte",
-         "completa": "_cieco_completa", "mask80": "_cieco_mask80"}
+         "completa": "_cieco_completa", "mask80": "_cieco_mask80",
+         "finale": "_cieco_finale"}
 BLOCCHI = {"b2": slice(0, 384), "b7": slice(384, 768),
            "b11": slice(768, 1152), "tutti": slice(0, 1152)}
 

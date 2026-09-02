@@ -1,4 +1,6 @@
 """
+CONFRONTO — prestazione contro distanza dai pesi casuali.
+
 Spostarsi di piu' dai pesi casuali aiuta o peggiora?
 
 L'ipotesi da testare: esiste una configurazione che si allontana molto

@@ -1,202 +1,189 @@
 # Self-Supervised Latent Representations for Imbalanced Apical Periodontitis Grading
 
-Progetto 8 — Computer Vision A.A. 2025-2026, Prof. Irene Amerini
-Sapienza Università di Roma · ALCOR Lab
+**Il protocollo di valutazione richiesto dalla traccia non misura l'encoder.**
+La sola bounding box, senza un pixel, dà macro-F1 0,7708 — quanto un encoder
+con pesi casuali che vede l'immagine intera. Tolto quel canale, I-JEPA vince
+fino a **+32 % di PR-AUC sulla classe rara**.
 
 | | |
 |---|---|
+| **Progetto** | 8 — Computer Vision A.A. 2025-2026, Prof. Irene Amerini · Sapienza, ALCOR Lab |
 | **Gruppo** | Nome 1 (matricola) · Nome 2 (matricola) · Nome 3 (matricola) |
 | **Sessione** | 11 settembre 2026 |
 | **Framework** | PyTorch |
+| **Presentazione** | `Project8_CV_2025-2026.pptx` (26 slide, generata da `build_deck.js`) |
 
 ---
 
-## Overview
+## Il problema, e cosa abbiamo trovato
 
-Pipeline a due stadi per il grading automatico della periodontite apicale su
-radiografie panoramiche:
+Il grado PAI è in larga parte la **dimensione** della lesione. La traccia
+chiede di usare la bounding box per estrarre i vettori latenti — ma la bbox
+seleziona **19 / 34 / 77 token** in media per PAI 3 / 4 / 5, quindi il loro
+numero è quasi l'etichetta. È un caso da manuale di **bag-size bias**.
 
-1. **Pre-training self-supervised** — una Vision-JEPA (context encoder,
-   target encoder aggiornato via EMA, predictor shallow) impara a predire le
-   rappresentazioni latenti di patch anatomiche mascherate, senza etichette.
-2. **Classificazione downstream** — encoder congelato, attention pooling sui
-   token interni alla bbox della lesione, testa leggera che predice il grado
-   PAI (3, 4 o 5) su una distribuzione fortemente sbilanciata.
+| Cosa legge il classificatore | Immagine | Macro-F1 |
+|---|---|---|
+| la sola maschera one-hot, pixel azzerati | nessuna | **0,7708** |
+| encoder **casuale**, vettore latente intero | tutta | 0,7705 |
+| encoder **I-JEPA**, vettore latente intero | tutta | 0,7663 |
+| due soglie sul lato in px della bbox, nessuna rete | nessuna | 0,7567 |
 
-La novità metodologica affronta la scarsità della classe PAI 5 agendo nello
-spazio latente (`imbalance.py`).
+Quattro modi diversi di **non** usare l'encoder danno lo stesso numero.
 
-## Le due decisioni di progetto che contano
+**La correzione**: si tiene il *centro* della bbox e si prendono i **K token
+più vicini**, stesso K per ogni classe. La cardinalità non porta più
+l'etichetta, la localizzazione resta. Cambia solo quali token si aggregano —
+stesso ritaglio, stessa risoluzione, stessi token dell'encoder, stessi semi.
 
-### 1. Tile a risoluzione nativa, non panoramiche ridimensionate
+---
 
-Una panoramica inquadra l'intera arcata (~2900 px); una lesione periapicale è
-di pochi millimetri (~50 px). Ridimensionando l'immagine intera a 224×224 la
-lesione diventa **~4 px, cioè meno di un patch token da 16×16**: il latente
-estratto alla bbox descriverebbe mandibola generica, non patologia.
+## Risultati
 
-Per questo si lavora a tile su risoluzione nativa. **Verificatelo sui vostri
-dati prima di addestrare qualsiasi cosa:**
+5 semi, split di test, encoder **congelato**. Metrica primaria **PR-AUC su
+PAI 5**. Soglia |z| ≥ 2,31 (Student, 8 g.d.l., non 1,96: con cinque
+ripetizioni la normale sottostima la coda).
 
-```bash
-python data.py --bbox-stats
-```
+### Obiettivo 2 — le rappresentazioni congelate
 
-Il tool riporta la copertura in token per ogni risoluzione candidata e segna
-come `INUTILIZZABILE` quelle sotto soglia.
+| Protocollo | Conteggio | Localizz. | Casuale | I-JEPA | Δ | z |
+|---|---|---|---|---|---|---|
+| `P1_bbox` — la traccia | presente | presente | 0,8758 | 0,8785 | +0,0027 | +0,84 |
+| `P2b` griglia fissa | tolto | **tolta** | 0,3621 | 0,3792 | +0,0171 | +0,78 |
+| **`P3_K16`** | tolto | presente | 0,3861 | **0,4713** | **+0,0851** | **+5,11** |
+| **`P3_K36`** | tolto | presente | 0,3823 | **0,5031** | **+0,1209** | **+8,72** |
+| **`P3_K64`** | tolto | presente | 0,3740 | **0,4553** | **+0,0813** | **+5,60** |
 
-### 2. I-JEPA come primario, SIGReg come assicurazione
+Le prime due righe sono **controlli** e devono pareggiare: `P2b` toglie anche
+la localizzazione, e lì I-JEPA non vince. Il vantaggio compare in una casella
+su tre di un disegno a due fattori — è ciò che lo rende interpretabile, e
+significativo su tutti e tre i valori di K.
 
-L'obiettivo 1 del brief richiede esplicitamente il target encoder aggiornato
-via EMA — cioè I-JEPA. LeJEPA (ref [2] del brief) rimuove precisamente EMA,
-stop-gradient e teacher-student, sostituendoli con SIGReg.
+Con una testa **MIL a livello di istanza** su `P3_K16` il margine sale a
+**+0,1158 di macro-F1 (z = 6,49)**, il più grande del progetto.
 
-La scelta implementata: **I-JEPA come metodo primario** (obiettivo 1
-soddisfatto alla lettera) e **SIGReg come braccio di confronto**. Quest'ultimo
-è anche l'assicurazione sul collasso: se I-JEPA diverge sulle ~4k immagini,
-averlo già pronto vale giorni.
+### Obiettivi 3 e 4 — la novità e la sua ablation
+
+`balanced_token_sampling`: per le classi rare si campionano **sottoinsiemi
+diversi** dei token della stessa lesione, e ogni sottoinsieme è un'istanza di
+training. Non duplica vettori identici come l'oversampling, non inventa punti
+come SMOTE.
+
+| Metodo | PR-AUC PAI 5 ↑ | Recall 5 | Precisione 5 |
+|---|---|---|---|
+| **Balanced token sampling** | **0,8826 ± 0,0050** | 0,771 | **0,789** |
+| Focal loss | 0,8730 ± 0,0117 | 0,791 | 0,784 |
+| Cross-entropy pesata | 0,8706 ± 0,0091 | 0,798 | 0,737 |
+| Cross-entropy semplice | 0,8676 ± 0,0065 | 0,755 | 0,774 |
+| Oversampling | 0,8658 ± 0,0142 | 0,798 | 0,728 |
+
+**+0,0168 su oversampling (z = 2,50)**, senza lo scambio recall-contro-precisione
+degli altri. Sulla F1 della classe rara vince `focal` di misura (0,7863 contro
+0,7794): il primato è sulla metrica primaria, non su tutte.
+
+Lo **sweep di α** ha il massimo interno — 0,8814 a α = 0,5 contro 0,8689 a
+α = 1,0. Ribilanciare di più non è meglio: le viste sono sottoinsiemi della
+stessa lesione, e con ICC ρ = 0,9864 sette viste valgono 1,01 campioni
+indipendenti.
+
+E la novità **si comporta al contrario nei due protocolli**: nel protocollo
+della traccia danneggia I-JEPA, sotto conteggio fisso lo aiuta di +0,0437
+(z = 2,93).
+
+### Obiettivo 1 — il pre-training impara?
+
+La stessa sonda ha letto due protocolli ogni dieci epoche, 28 misure su 279:
+
+| Serie | prime 10 sonde | ultime 10 | Δ | z |
+|---|---|---|---|---|
+| qualità (conteggio fisso) | 0,5406 | 0,5482 | +0,0075 | +1,15 |
+| **scorciatoia (bbox)** | 0,7539 | 0,7271 | **−0,0268** | **−11,27** |
+| rango effettivo | 2,91 | 14,79 | ×5,1 | — |
+
+La rappresentazione continua a cambiare, la qualità tiene, e la leggibilità
+della bounding box cala a undici errori standard.
+
+---
 
 ## Dati
 
-[Panoramic Radiographs with Periapical Lesions Dataset](https://data.mendeley.com/datasets/kx52tk2ddj/3)
-(Do et al., *Data in Brief* 54:110486, 2024) — Hanoi Medical University.
+Radiografie panoramiche con bounding box e grado PAI per lesione, **split a
+livello di paziente** (l'id viene dal campo `<filename>` degli XML: dividere
+per lesione farebbe passare informazione fra train e test).
 
-| | |
-|---|---|
-| Immagini originali | 3.926 |
-| Lesioni etichettate | 6.029 (≈1,54 per immagine) |
-| PAI 3 / PAI 4 / PAI 5 | 3.691 / 1.817\* / 521 |
-| Sbilanciamento | 7,08 : 1 |
+| Split | Immagini | Lesioni | PAI 3 | PAI 4 | PAI 5 |
+|---|---|---|---|---|---|
+| train | 2.746 | 4.719 | 3.017 | 1.229 | 473 |
+| validation | 588 | 1.009 | 617 | 268 | 124 |
+| test | 590 | 1.013 | 643 | 258 | 112 |
 
-\* derivato per sottrazione; `data.py` verifica se i conti tornano davvero.
+Fonte: Do, H. V. et al., *Data in Brief* 54:110486 (2024) ·
+[Mendeley Data, DOI 10.17632/kx52tk2ddj.3](https://data.mendeley.com/datasets/kx52tk2ddj/3)
 
-**La cartella `Augmentation JPG Images` non viene usata.** Contiene 17.004
-immagini derivate dalle 3.926 originali: splittarle a caso metterebbe
-varianti geometriche della stessa radiografia in train e test. Il SSL applica
-già le proprie augmentation on-the-fly.
-
-## Struttura del codice
-
-Segue la struttura concettuale richiesta dal corso:
-
-| File | Sezione | Contenuto |
-|---|---|---|
-| `globals.py` | Globals | iperparametri, path, config I-JEPA e tiling |
-| `utils.py` | Utils | seed, checkpoint, **monitoraggio del collasso**, k-NN probe |
-| `data.py` | Data | parsing XML, statistiche bbox, split anti-leakage, tile e crop |
-| `network.py` | Network | ViT, I-JEPA, masking a blocchi, attention pooling, teste |
-| `imbalance.py` | Network / Train | baseline per lo sbilanciamento e **la novità** |
-| `train_ssl.py` | Train | pre-training stadio 1 con resume |
-| `train_downstream.py` | Train | caching dei latenti + stadio 2 + griglia di ablation |
-| `evaluation.py` | Evaluation | Macro-F1, PR-AUC, confusion matrix, **kappa quadratico** |
+---
 
 ## Come si esegue
 
 ```bash
 pip install -r requirements.txt
+python data.py --inspect --bbox-stats --splits     # dati e split, sempre per primo
+python train_ssl.py --variant vit_small --epochs 300 --tag finale
+python train_downstream.py --cache --layers 2 7 11 --ckpt-tag finale_best --tag _geo_finale
+python train_downstream.py --cache --layers 2 7 11 --random --tag _casuale
+python train_downstream.py --grid --layers 2 7 11 --tag _geo_finale
+python exp_fixedk.py --tag _casuale _geo_finale    # il risultato centrale
+python verify_claims.py                            # ricalcola ogni numero dai file salvati
 ```
 
-### 1. Verificare i dati — sempre per primo
+Su GPU con alimentazione al limite, anteporre
+`python sorveglia.py --tetto 95 --tetto-temp 86 --` a qualunque comando.
 
-```bash
-python data.py --inspect       # struttura reale del dataset
-python data.py --bbox-stats    # la lesione copre abbastanza token?
-python data.py --splits        # split a livello immagine + assert anti-leakage
-```
+---
 
-### 2. Pre-training self-supervised
+## Struttura del codice
 
-```bash
-python train_ssl.py --variant vit_tiny --epochs 300
-python train_ssl.py --resume          # dopo un timeout Kaggle
-python train_ssl.py --smoke           # 20 step, per verificare che giri
-```
+Segue la struttura concettuale richiesta dal corso. **Ogni file dichiara in
+prima riga del proprio docstring a quale famiglia appartiene**, così la
+pipeline non si confonde con gli script che hanno prodotto i numeri.
 
-I checkpoint sono salvati a ogni epoca: 300 epoche ≈ 6 h, 600 ≈ 12,5 h, e la
-sessione Kaggle si stacca a 12 h. Il resume non è opzionale.
+| Marca | Significato | File |
+|---|---|---|
+| `PIPELINE` | il codice consegnato, quello che gira | `globals` `utils` `data` `network` `imbalance` `train_ssl` `train_downstream` `evaluation` `run_all` `verify_claims` |
+| `MISURAZIONE` | misura una metrica su un braccio | 5 script `exp_*` |
+| `CONFRONTO` | confronta una metrica fra bracci | 13 script `exp_*` |
+| `DIAGNOSI` | indaga una discrepanza fra misure | `exp_scarto` |
+| `INFRASTRUTTURA` | supporto, non richiesto dalla traccia | `sorveglia` (limite di potenza GPU) · `figure_finali` `make_figures` |
 
-**Guardate il monitoraggio, non la loss.** La loss I-JEPA può scendere
-regolarmente mentre gli embedding collassano a una costante — predire un
-target costante è banale. Ogni epoca vengono loggati deviazione standard e
-rango effettivo, e ogni 20 epoche un k-NN probe.
+L'architettura: ViT-S/16 (12 blocchi, dim 384, 6 teste) come **context
+encoder** e **target encoder** a EMA, più un **predictor** deliberatamente
+stretto — 4 blocchi a dim 96, il 2,4 % di un encoder. Finestra 224 px →
+griglia 14×14 di patch da 16 px → **196 token**, numero fisso per costruzione.
+A valle si concatenano i blocchi 2, 7 e 11 (1.152 dim) e si addestrano solo
+attention pooling e testa.
 
-### 3. Caching dei latenti — una volta sola
+---
 
-```bash
-python train_downstream.py --cache --arm ijepa
-python train_downstream.py --cache --arm imagenet   # il braccio critico
-python train_downstream.py --cache --arm random     # il pavimento
-```
+## Limiti dichiarati
 
-Da qui in poi ogni esperimento sullo sbilanciamento gira **in secondi**, anche
-su CPU: l'ablation dell'obiettivo 4 diventa praticamente gratuito.
+- Il ciclo ha coperto **289 delle 300 epoche** configurate, fermato dal
+  limitatore di potenza. Le ultime 11 non cambiano nulla di misurabile, e non
+  è un'assunzione: abbiamo valutato anche l'encoder dell'**epoca 288**, che
+  nessun criterio ha selezionato, e batte comunque il casuale del **+16 %**
+  sulla metrica primaria (z = 3,15).
+- Il checkpoint consegnato (epoca 69) è migliore **sul criterio con cui è
+  stato scelto** e peggiore su letture cieche alla dimensione.
+- Lo sweep di α ha usato un encoder fisso, per isolare il parametro.
+- Il `±` riportato è la dispersione **fra semi**: non cattura l'errore di
+  campionamento del test, che con 112 lesioni PAI 5 vale circa **0,021**.
+  Differenze sotto quella soglia sono riproducibili, non dimostrate
+  generalizzabili.
+- `SMOTE latente` non è fra le baseline della griglia finale.
 
-### 4. Classificazione e ablation
-
-```bash
-python train_downstream.py --method balanced_tokens --head ordinal
-python train_downstream.py --grid     # metodi × teste × seed
-```
-
-### 5. Verifiche autonome
-
-Ogni modulo ha un `__main__` che si autoverifica su casi con esito noto:
-
-```bash
-python utils.py        # rilevamento del collasso su 4 casi noti
-python network.py      # forward I-JEPA, conteggio parametri, maschera bbox
-python imbalance.py    # pesi e loss sulla distribuzione reale
-python evaluation.py   # metriche su predizioni con risultato atteso
-```
-
-## Metriche
-
-Il brief vieta implicitamente l'accuracy globale, e ha ragione: con il 61% di
-PAI 3, predire sempre la maggioritaria dà 61% di accuracy e zero utilità
-clinica.
-
-Riportate: **Macro-F1**, **PR-AUC per classe**, **confusion matrix**, recall
-per classe, balanced accuracy.
-
-**In più: kappa di Cohen quadratico pesato.** Il PAI è una scala *ordinale*
-(3 < 4 < 5) e confondere PAI 3 con PAI 5 è clinicamente peggio che confondere
-4 con 5. La Macro-F1 non lo coglie — nei test in `evaluation.py` valuta
-l'errore a due gradi *meglio* di quello a un grado (0.641 contro 0.619),
-mentre il kappa quadratico lo penalizza correttamente (0.429 contro 0.857).
-È l'argomento per cui c'è anche una testa ordinale accanto a quella piatta.
-
-## Risultati
-
-<!-- Da compilare dopo gli esperimenti. -->
-
-### Bracci di confronto — la domanda vera del progetto
-
-| Encoder | Macro-F1 ↑ | Recall PAI 5 ↑ | PR-AUC PAI 5 ↑ | Kappa quad. ↑ |
-|---|---|---|---|---|
-| Random (pavimento) | | | | |
-| **ImageNet frozen** | | | | |
-| **JEPA in-domain** | | | | |
-| Supervisionato da zero | | | | |
-
-Il confronto tra le righe 2 e 3 è la tesi del progetto. Se il JEPA in-domain
-non batte il transfer da ImageNet, *quello* è il risultato da riportare.
-
-### Ablation sullo sbilanciamento
-
-| Metodo | Testa | Macro-F1 ↑ | Recall PAI 5 ↑ | Kappa quad. ↑ |
-|---|---|---|---|---|
-| Cross-entropy | | | | |
-| CE pesata | | | | |
-| Focal loss | | | | |
-| Oversampling | | | | |
-| SMOTE latente | | | | |
-| **Balanced token sampling** | | | | |
-
-Media ± deviazione standard su 5 seed: con 7:1 di sbilanciamento i margini
-sono stretti e un singolo run non distingue nulla.
+---
 
 ## Riferimenti
 
-1. Assran, M. et al. *Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture.* CVPR 2023. · [codice](https://github.com/facebookresearch/ijepa)
-2. Balestriero, R., LeCun, Y. *LeJEPA: Provable and Scalable Self-Supervised Learning Without the Heuristics.* arXiv:2511.08544, 2025. · [codice](https://github.com/rbalestr-lab/lejepa)
-3. Do, H.V. et al. *A Dataset of apical periodontitis lesions in panoramic radiographs for deep-learning based classification and detection.* Data in Brief 54:110486, 2024.
+1. Assran, M. et al. *Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture (I-JEPA).* CVPR 2023 · [codice](https://github.com/facebookresearch/ijepa)
+2. Ilse, M., Tomczak, J., Welling, M. *Attention-based Deep Multiple Instance Learning.* ICML 2018
+3. Do, H. V. et al. *A Dataset of apical periodontitis lesions in panoramic radiographs.* Data in Brief 54:110486, 2024
+4. Saito, T., Rehmsmeier, M. *The precision-recall plot is more informative than the ROC plot on imbalanced datasets.* PLoS ONE 10(3), 2015

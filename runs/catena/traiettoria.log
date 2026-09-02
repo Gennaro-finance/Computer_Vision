@@ -1,0 +1,53 @@
+tetto      : 95 W, 86 C
+a riposo   : 20 W, 58 C, clock 315 MHz
+registro   : runs\consumi_20260828_232206.csv
+comando    : .venv\Scripts\python.exe exp_traiettoria_testa.py --tag _cieco_casuale _cieco_finale --nome cieco
+----------------------------------------------------------------------
+[freno] Freno(carico=100%, run 1.00x piu' lungo)
+metodo none, testa flat, 3 seed, validation ogni 5 epoche
+
+_cieco_casuale
+   epoca           macro-F1            PR-AUC5
+       0    0.2530+-0.0000    0.1420+-0.0203
+       9    0.3655+-0.0088    0.3099+-0.0140
+      19    0.5044+-0.0128    0.3938+-0.0164
+      29    0.4547+-0.0302    0.4360+-0.0387
+      39    0.4829+-0.0356    0.4540+-0.0270
+      49    0.5020+-0.0401    0.4460+-0.0409
+      59    0.5342+-0.0095    0.4640+-0.0188
+      69    0.5119+-0.0155    0.4796+-0.0294
+      79    0.5356+-0.0282    0.4867+-0.0266
+      89    0.5419+-0.0113    0.4847+-0.0325
+      99    0.5210+-0.0197    0.4803+-0.0246
+  finale    0.5210             0.4803
+
+_cieco_finale
+   epoca           macro-F1            PR-AUC5
+       0    0.3439+-0.0216    0.4763+-0.0473
+       9    0.6266+-0.0381    0.7434+-0.0134
+      19    0.6501+-0.0228    0.7724+-0.0102
+      29    0.6586+-0.0119    0.7834+-0.0076
+      39    0.6593+-0.0117    0.7825+-0.0077
+      49    0.6656+-0.0248    0.7912+-0.0177
+      59    0.6630+-0.0180    0.7906+-0.0113
+      69    0.6598+-0.0171    0.7840+-0.0082
+      79    0.6809+-0.0070    0.7916+-0.0153
+      89    0.6791+-0.0039    0.7836+-0.0055
+      99    0.6701+-0.0122    0.7841+-0.0104
+  finale    0.6701             0.7841
+
+                           _cieco_casuale      _cieco_finale
+massimo macro-F1                   0.5419             0.6824
+  _cieco_casuale       raggiunge il 95% del suo massimo all'epoca 54
+  _cieco_finale        raggiunge il 95% del suo massimo all'epoca 14
+
+Risultati in ./runs\traiettoria_testa_cieco.json
+----------------------------------------------------------------------
+durata     : 13.1 min
+letture    : 385
+picco      : 82 W   (tetto 95)
+temp max   : 72 C
+clock max  : 1500 MHz
+registro   : runs\consumi_20260828_232206.csv
+
+Picco a 13 W dal tetto: la taratura va bene cosi'.

@@ -1,0 +1,5 @@
+tetto      : 95 W, 86 C
+a riposo   : 7 W, 61 C, clock 210 MHz
+registro   : runs\consumi_20260828_135430.csv
+comando    : .venv\Scripts\python.exe train_ssl.py --variant vit_small --epochs 300 --tag finale --lr 3e-05 --ema-start 0.9996
+----------------------------------------------------------------------
